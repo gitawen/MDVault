@@ -44,13 +44,6 @@ When delegating, invoke subagents using the `Agent` tool:
 # For analysis & planning:
 Agent(subagent_type="system-analyst", prompt="Analyze requirements and create plan for .ai/features/active/<feature-name>/")
 
-## Delegation Is Mandatory
-The user explicitly requests subagent use in this repo; this counts as the user asking for subagents.
-- Level 2+: the main session must not write application code or tests itself. Implementation → `senior-developer`, verification → `senior-qa`, planning → `system-analyst`.
-- Always pass `subagent_type` with one of those names. Never omit it and never pass a `model` override.
-- Only Level 1 mechanical edits may be done directly in the main session.
-
-
 # For implementation:
 Agent(subagent_type="senior-developer", prompt="Implement tasks from .ai/features/active/<feature-name>/plan.md")
 
@@ -62,6 +55,12 @@ Agent definitions are located in:
 - `.claude/agents/system-analyst.md`
 - `.claude/agents/senior-developer.md`
 - `.claude/agents/senior-qa.md`
+
+### Delegation Is Mandatory
+The user explicitly requests subagent use in this repo; this counts as the user asking for subagents.
+- Level 2+: the main session must not write application code or tests itself. Implementation → `senior-developer`, verification → `senior-qa`, planning → `system-analyst`.
+- Always pass `subagent_type` with one of those names. Never omit it and never pass a `model` override.
+- Only Level 1 mechanical edits may be done directly in the main session.
 
 ---
 
@@ -91,8 +90,39 @@ Agent definitions are located in:
 
 ## 6. Technical Stack & Conventions (MDVault)
 - **Framework**: Laravel 13 / PHP 8.4
-- **Frontend**: Inertia.js v3 + Vue 3 (single root element per component) + Tailwind CSS v4
+- **Desktop Runtime**: NativePHP (local-first desktop app)
+- **Frontend**: Inertia.js v3 + Vue 3 (single root element per component) + Tailwind CSS v4 + shadcn-vue
+- **Editor**: Tiptap (Markdown round-trip)
 - **Routing**: Laravel Wayfinder (`@/actions/` and `@/routes/`)
 - **Linter**: `vendor/bin/pint --dirty --format agent`
 - **Testing**: Pest 5 (`php artisan test --compact`)
-- **Database**: SQLite
+- **Database**: SQLite (metadata/index only)
+
+---
+
+## 7. Product Master Plan (`docs/Masterplan.md`)
+
+`docs/Masterplan.md` is the authoritative product and architecture spec for MDVault v1.
+- `system-analyst` **must** read it in full before any Level 3–4 analysis, and every `plan.md` must name the Master Plan phase (0–8) it implements.
+- `senior-developer` and `senior-qa` must read the sections relevant to the feature (schema §9–17, services §40–42, phases §49–57, testing §62).
+- If a request conflicts with the Master Plan, stop and escalate to `system-analyst`. Do not code around it.
+
+### Non-Negotiable Architectural Rules
+1. **Markdown files are the source of truth.** Note content lives in `.md` files on disk. Never add a `notes.content` column or make SQLite the primary content store.
+2. **SQLite is only a metadata index/registry**: settings, vaults, notes registry, hashes, encryption and backup metadata. v1 tables: `settings`, `vaults`, `notes`, `vault_encryption`, `backups`. No `folders` table.
+3. **Relative paths.** Notes store paths relative to their Vault (`Projects/HRMIS.md`), never absolute paths.
+4. **Stable UUIDs** on vaults and notes. Integer IDs are never the only identity.
+5. **Filesystem logic lives in services** (`VaultService`, `NoteService`, `FileStorageService`, `StoragePathService`, `SettingsService`, `FileHashService`, `VaultIndexService`, `MarkdownService`, `BackupService`, `EncryptionService`). Vue components do presentation only: no filesystem, path, crypto or DB logic.
+6. **Settings go through `SettingsService`.** No scattered settings queries.
+7. **No hardcoded platform paths.** Resolve the default storage location via `StoragePathService`.
+8. **SHA-256 hash every indexed file**, for change detection and integrity.
+9. **External edits are valid.** Detect them, never silently overwrite them, and always support re-indexing the vault from disk.
+10. **DB and filesystem can fail independently.** SQLite transactions don't roll back file operations, so handle consistency and recovery explicitly.
+11. **Crypto:** use established libraries only. Never store plaintext passwords. Never log or expose passwords or keys (logs, exceptions, debug output, browser console).
+12. **Backups:** ZIP with `manifest.json`. Validate first, import second, using temp directories; never partially overwrite.
+13. **Tiptap:** only enable features with a reliable Markdown representation. Save on debounce, never on every keystroke.
+14. **Offline-first:** normal operation needs no internet, accounts or remote servers.
+15. **Scope control:** no sync, sharing, collaboration, devices or remote-account tables or infrastructure in v1 without explicit approval.
+
+### Pre-Implementation Checklist (Master Plan §67)
+Before implementing a feature, answer: Is it in v1? Does it keep Markdown as the source of truth and keep the filesystem portable? Does the logic sit in a service? Does it need a migration? Does it add premature sync complexity? How does it behave with external edits, offline, and on a DB/filesystem mismatch? How will it be tested?
