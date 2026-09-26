@@ -1,6 +1,6 @@
-import Settings from './Settings'
+import WorkspaceController from './WorkspaceController'
 const Controllers = {
-    Settings: Object.assign(Settings, Settings),
+    WorkspaceController: Object.assign(WorkspaceController, WorkspaceController),
 }
 
 export default Controllers

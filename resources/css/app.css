@@ -170,3 +170,53 @@
         @apply bg-background text-foreground;
     }
 }
+
+@layer components {
+    .tiptap-content {
+        @apply min-h-40 outline-none;
+    }
+
+    .tiptap-content h1 {
+        @apply mt-2 mb-4 text-2xl font-bold;
+    }
+
+    .tiptap-content h2 {
+        @apply mt-6 mb-3 text-xl font-semibold;
+    }
+
+    .tiptap-content h3 {
+        @apply mt-4 mb-2 text-lg font-semibold;
+    }
+
+    .tiptap-content p {
+        @apply my-3 leading-relaxed;
+    }
+
+    .tiptap-content ul {
+        @apply my-3 list-disc pl-6;
+    }
+
+    .tiptap-content ol {
+        @apply my-3 list-decimal pl-6;
+    }
+
+    .tiptap-content blockquote {
+        @apply my-3 border-l-2 border-border pl-4 text-muted-foreground;
+    }
+
+    .tiptap-content code {
+        @apply rounded bg-muted px-1 py-0.5 font-mono text-sm;
+    }
+
+    .tiptap-content pre {
+        @apply my-3 overflow-x-auto rounded-lg bg-muted p-3 font-mono text-sm;
+    }
+
+    .tiptap-content pre code {
+        @apply bg-transparent p-0;
+    }
+
+    .tiptap-content hr {
+        @apply my-6 border-border;
+    }
+}

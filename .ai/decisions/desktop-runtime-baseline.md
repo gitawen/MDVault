@@ -1,6 +1,6 @@
 # ADR: Desktop runtime baseline (NativePHP, SSR, offline)
 
-- **Status**: Proposed (needs user approval A6 for `app_id`)
+- **Status**: Accepted (A6 approved 2026-09-26: app_id `com.mdvault.app`; analyst sign-off 2026-09-27)
 - **Date**: 2026-09-26
 - **Phase**: Master Plan Phase 0 — Foundation (acceptance: "Application launches as desktop application")
 

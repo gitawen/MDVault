@@ -1,6 +1,6 @@
 # ADR: Service layer architecture
 
-- **Status**: Proposed (needs user approval A4 in `phase-0-foundation/plan.md`)
+- **Status**: Accepted (A4 approved 2026-09-26; enforced by tests/Unit/ArchitectureTest.php; analyst sign-off 2026-09-27)
 - **Date**: 2026-09-26
 - **Phase**: Master Plan Phase 0 — Foundation (acceptance: "Basic Laravel service architecture exists")
 

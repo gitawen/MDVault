@@ -1,6 +1,6 @@
 # ADR: Local desktop app without authentication
 
-- **Status**: Proposed (needs user approval A1/A3/A5 in `phase-0-foundation/plan.md`)
+- **Status**: Accepted (A1/A3/A5 approved 2026-09-26; implemented in phase-0-foundation, analyst sign-off 2026-09-27)
 - **Date**: 2026-09-26
 - **Phase**: Master Plan Phase 0 — Foundation
 - **Deciders**: System Analyst (pending user approval)

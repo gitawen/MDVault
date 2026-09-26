@@ -25,7 +25,7 @@ defineOptions({
         <Heading
             variant="small"
             title="Appearance settings"
-            description="Update the appearance settings for your account"
+            description="Choose how MDVault looks on this device."
         />
         <AppearanceTabs />
     </div>

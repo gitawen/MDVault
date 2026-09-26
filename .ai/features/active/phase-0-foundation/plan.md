@@ -8,7 +8,7 @@
 - **Created Date**: 2026-09-26
 - **Task Complexity**: Level 4 — Architectural
 - **Requirements**: `requirements.md`
-- **Status**: APPROVED (user approved A1–A7 as recommended on 2026-09-26; git already initialised with remote — A7 satisfied via branch `phase-0-foundation`)
+- **Status**: COMPLETE (user approved A1–A7 on 2026-09-26; QA round 1 PASS; Level 4 analyst sign-off 2026-09-27, conditional on user-verified desktop launch)
 
 ---
 
@@ -95,7 +95,7 @@ All Fortify/passkey/profile/security/dashboard routes are removed.
   - User runs `git init && git add -A && git commit -m "Starter kit baseline before Phase 0"` (A7), so the deletions can be reviewed and reverted.
   - Covers: —
 
-- [ ] **T1 — Application identity & desktop runtime baseline**
+- [x] **T1 — Application identity & desktop runtime baseline**
   - Files:
     - `.env.example`: `APP_NAME=MDVault`. Also update the local `.env` `APP_NAME=MDVault`, or tell the user to.
     - `resources/js/app.ts`: `const appName = import.meta.env.VITE_APP_NAME || 'MDVault';`
@@ -121,7 +121,7 @@ All Fortify/passkey/profile/security/dashboard routes are removed.
   - Test: `php artisan make:test NativeAppServiceProviderTest --pest --no-interaction` → `tests/Feature/NativeAppServiceProviderTest.php`. Use `Window::fake()->alwaysReturnWindows([$window = new \Native\Desktop\Windows\Window('main')])`, call `(new NativeAppServiceProvider)->boot()`, then `Window::assertOpened('main')` and `expect($window->toArray())->toMatchArray(['title' => config('app.name'), 'width' => 1280, 'height' => 800, 'minWidth' => 960, 'minHeight' => 600, 'rememberState' => true])`.
   - Covers: FR-01, FR-08 (SSR/updater), FR-09
 
-- [ ] **T2 — Service layer foundation**
+- [x] **T2 — Service layer foundation**
   - Command: `php artisan make:class Services/SystemStatusService --no-interaction` → `app/Services/SystemStatusService.php` (new folder, A4)
   - Details:
     ```php
@@ -166,7 +166,7 @@ All Fortify/passkey/profile/security/dashboard routes are removed.
       If a preset flags existing starter code, fix it or use `->ignoring(...)` with a one-line reason, and record this in `implementation.md`.
   - Covers: FR-06
 
-- [ ] **T3 — Remove authentication; establish workspace routing, shell and basic settings**
+- [x] **T3 — Remove authentication; establish workspace routing, shell and basic settings**
   - **Step A — backend routes & controller**
     - Command: `php artisan make:controller WorkspaceController --invokable --no-interaction`
     - `WorkspaceController::__invoke(SystemStatusService $systemStatus): \Inertia\Response` → `Inertia::render('Workspace', ['status' => $systemStatus->summary()])`.
@@ -255,7 +255,7 @@ All Fortify/passkey/profile/security/dashboard routes are removed.
     - `php artisan make:test DatabaseSchemaTest --pest --no-interaction`: `Schema::hasTable` true for `sessions`, `cache`, `jobs`; false for `users`, `password_reset_tokens`, `passkeys`.
   - Covers: FR-02, FR-03, FR-04, FR-06 (controller → service), FR-07, FR-08 (external URLs removed)
 
-- [ ] **T4 — Tiptap editor renders in the Workspace (A2)**
+- [x] **T4 — Tiptap editor renders in the Workspace (A2)**
   - Command: `npm install @tiptap/vue-3@^3.31.3 @tiptap/pm@^3.31.3 @tiptap/starter-kit@^3.31.3`. All three must resolve to the same version. `@floating-ui/dom` (peer) is already present via reka-ui.
   - New `resources/js/components/editor/TiptapEditor.vue` (new folder, A4):
     - `<script setup lang="ts">`, props `content: string`, `editable?: boolean` (default `true`).
@@ -273,7 +273,7 @@ All Fortify/passkey/profile/security/dashboard routes are removed.
   - `resources/js/pages/Workspace.vue`: replace the placeholder in `<main>` with `<TiptapEditor :content="demoContent" />`. `demoContent` is a constant HTML string: `<h1>Welcome to MDVault</h1>`, a paragraph saying this is a preview editor and changes are not saved yet, and a 3-item bullet list.
   - Covers: FR-05
 
-- [ ] **T5 — Quality gates & handover**
+- [x] **T5 — Quality gates & handover**
   - `vendor/bin/pint --dirty --format agent`
   - `php artisan test --compact`
   - `vendor/bin/phpstan analyse`
@@ -345,3 +345,4 @@ All Fortify/passkey/profile/security/dashboard routes are removed.
 | Revision | Date | Reason | Changes |
 |---|---|---|---|
 | 1 | 2026-09-26 | Initial plan | — |
+| 1.1 | 2026-09-27 | Analyst sign-off | No design change. Plan erratum: `route:list --except-vendor` hides `Route::inertia` and `/up` routes (expect `/`, `settings` only; verify the rest via plain `route:list`). NativeAppServiceProviderTest requires `Http::fake()` alongside `Window::fake()`. Deferred: QA-01 → Phase 1 first task; QA-02 + QA-03 → Level 2 tooling chore before Phase 1 QA; QA-04 → Phase 2 (AppSidebar) / Phase 1 (Appearance page). |
