@@ -50,6 +50,7 @@ The user explicitly requests subagent use in this repo; this counts as the user 
 - Always pass `subagent_type` with one of those names. Never omit it and never pass a `model` override.
 - Only Level 1 mechanical edits may be done directly in the main session.
 
+
 # For implementation:
 Agent(subagent_type="senior-developer", prompt="Implement tasks from .ai/features/active/<feature-name>/plan.md")
 
