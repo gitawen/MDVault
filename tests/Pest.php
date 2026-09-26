@@ -1,5 +1,6 @@
 <?php
 
+use App\Contracts\UserDirectories;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +48,21 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Bind a fake UserDirectories so storage-related tests never touch the
+ * real Documents folder.
+ */
+function fakeDocumentsDirectory(?string $path): void
+{
+    app()->instance(UserDirectories::class, new class($path) implements UserDirectories
+    {
+        public function __construct(private ?string $path) {}
+
+        public function documentsPath(): ?string
+        {
+            return $this->path;
+        }
+    });
 }

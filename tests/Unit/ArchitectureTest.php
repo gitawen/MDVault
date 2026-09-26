@@ -28,3 +28,15 @@ arch('HTTP layer does not touch the filesystem directly')
         'scandir',
     ])
     ->not->toBeUsedIn('App\Http');
+
+arch('settings are only accessed through SettingsService')
+    ->expect('App\Models\Setting')
+    ->toOnlyBeUsedIn('App\Services\SettingsService');
+
+arch('enums folder only contains enums')
+    ->expect('App\Enums')
+    ->toBeEnums();
+
+arch('native dialogs only via NativeDialogService')
+    ->expect('Native\Desktop\Dialog')
+    ->toOnlyBeUsedIn('App\Services\NativeDialogService');

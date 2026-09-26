@@ -14,7 +14,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { edit as editAppearance } from '@/routes/appearance';
+import { index as settingsIndex } from '@/routes/settings';
 import { workspace } from '@/routes';
 import type { NavItem } from '@/types';
 
@@ -56,7 +56,7 @@ const mainNavItems: NavItem[] = [
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child tooltip="Settings">
-                        <Link :href="editAppearance()">
+                        <Link :href="settingsIndex()">
                             <Settings />
                             <span>Settings</span>
                         </Link>

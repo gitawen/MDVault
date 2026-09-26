@@ -1,5 +1,7 @@
+import { router } from '@inertiajs/vue3';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, onMounted, ref } from 'vue';
+import { update } from '@/actions/App/Http/Controllers/Settings/AppearanceController';
 import type { Appearance, ResolvedAppearance } from '@/types';
 
 export type { Appearance, ResolvedAppearance };
@@ -30,30 +32,12 @@ export function updateTheme(value: Appearance): void {
     }
 }
 
-const setCookie = (name: string, value: string, days = 365) => {
-    if (typeof document === 'undefined') {
-        return;
-    }
-
-    const maxAge = days * 24 * 60 * 60;
-
-    document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
-};
-
 const mediaQuery = () => {
     if (typeof window === 'undefined') {
         return null;
     }
 
     return window.matchMedia('(prefers-color-scheme: dark)');
-};
-
-const getStoredAppearance = () => {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    return localStorage.getItem('appearance') as Appearance | null;
 };
 
 const prefersDark = (): boolean => {
@@ -64,10 +48,20 @@ const prefersDark = (): boolean => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
-const handleSystemThemeChange = () => {
-    const currentAppearance = getStoredAppearance();
+function readServerAppearance(): Appearance {
+    if (typeof document === 'undefined') {
+        return 'system';
+    }
 
-    updateTheme(currentAppearance || 'system');
+    const value = document.documentElement.dataset.appearance;
+
+    return value === 'light' || value === 'dark' || value === 'system'
+        ? value
+        : 'system';
+}
+
+const handleSystemThemeChange = () => {
+    updateTheme(appearance.value);
 };
 
 export function initializeTheme(): void {
@@ -75,25 +69,17 @@ export function initializeTheme(): void {
         return;
     }
 
-    // Initialize theme from saved preference or default to system...
-    const savedAppearance = getStoredAppearance();
-    updateTheme(savedAppearance || 'system');
+    updateTheme(readServerAppearance());
 
     // Set up system theme change listener...
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);
 }
 
-const appearance = ref<Appearance>('system');
+const appearance = ref<Appearance>(readServerAppearance());
 
 export function useAppearance(): UseAppearanceReturn {
     onMounted(() => {
-        const savedAppearance = localStorage.getItem(
-            'appearance',
-        ) as Appearance | null;
-
-        if (savedAppearance) {
-            appearance.value = savedAppearance;
-        }
+        appearance.value = readServerAppearance();
     });
 
     const resolvedAppearance = computed<ResolvedAppearance>(() => {
@@ -105,15 +91,25 @@ export function useAppearance(): UseAppearanceReturn {
     });
 
     function updateAppearance(value: Appearance) {
+        const previous = appearance.value;
+
         appearance.value = value;
-
-        // Store in localStorage for client-side persistence...
-        localStorage.setItem('appearance', value);
-
-        // Store in cookie for SSR...
-        setCookie('appearance', value);
-
+        document.documentElement.dataset.appearance = value;
         updateTheme(value);
+
+        router.patch(
+            update.url(),
+            { theme: value },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onError: () => {
+                    appearance.value = previous;
+                    document.documentElement.dataset.appearance = previous;
+                    updateTheme(previous);
+                },
+            },
+        );
     }
 
     return {

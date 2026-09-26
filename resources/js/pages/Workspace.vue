@@ -3,10 +3,11 @@ import { Head } from '@inertiajs/vue3';
 import StatusBar from '@/components/StatusBar.vue';
 import TiptapEditor from '@/components/editor/TiptapEditor.vue';
 import { workspace } from '@/routes';
-import type { SystemStatus } from '@/types';
+import type { EditorPreferences, SystemStatus } from '@/types';
 
 defineProps<{
     status: SystemStatus;
+    editor: EditorPreferences;
 }>();
 
 defineOptions({
@@ -31,7 +32,7 @@ const demoContent = `
         <Head title="Workspace" />
 
         <main class="flex-1 overflow-auto p-4">
-            <TiptapEditor :content="demoContent" />
+            <TiptapEditor :content="demoContent" :preferences="editor" />
         </main>
 
         <StatusBar :status="status" />

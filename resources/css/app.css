@@ -219,4 +219,9 @@
     .tiptap-content hr {
         @apply my-6 border-border;
     }
+
+    .tiptap-nowrap .tiptap-content {
+        white-space: pre;
+        overflow-x: auto;
+    }
 }
