@@ -1,0 +1,6 @@
+# MDVault — Cursor Rules
+
+- Follow `AGENTS.md`: the Laravel Boost guidelines (Laravel 13, PHP 8.4, Inertia v3 + Vue 3, Tailwind v4, Wayfinder, Fortify, Pest 5) and the `<multi-agent-workflow>` section.
+- The multi-agent workflow for Cursor is in `.cursor/rules/multi-agent.mdc`. Classify every request (Level 1–4) before starting and adopt the System Analyst, Senior Developer or Senior QA role as the level requires.
+- Shared workflow artifacts live in `.ai/` (see `.ai/README.md`); templates in `.ai/templates/`.
+- After modifying PHP run `vendor/bin/pint --dirty --format agent`; run the narrowest affected tests with `php artisan test --compact <path>`.

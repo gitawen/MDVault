@@ -1,0 +1,14 @@
+{
+    "context": {
+        "fileName": ["AGENTS.md", "GEMINI.md"]
+    },
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "php",
+            "args": [
+                "artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
