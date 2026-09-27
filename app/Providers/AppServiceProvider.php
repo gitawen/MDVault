@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Contracts\Trash;
 use App\Contracts\UserDirectories;
 use App\Services\SettingsService;
+use App\Support\NativeTrash;
 use App\Support\SystemUserDirectories;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Foundation\Application;
@@ -28,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
             getenv(),
             PHP_OS_FAMILY,
         ));
+
+        $this->app->bind(Trash::class, NativeTrash::class);
     }
 
     /**

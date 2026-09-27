@@ -8,7 +8,7 @@
 - **Created Date**: 2026-09-27
 - **Task Complexity**: Level 3, Complex Development
 - **Requirements**: `requirements.md`
-- **Status**: APPROVED (user approved C1–C10 as recommended on 2026-09-27)
+- **Status**: COMPLETE (C1–C10 approved 2026-09-27; Revision 2 D1/D2 approved; QA rounds 1 and 2 PASS; user desktop-verified 2026-09-28)
 
 ---
 
@@ -37,7 +37,7 @@ This plan adds a `vaults` registry (per §11, UUIDv7 in `uuid`) behind a new `Va
   2. **Removal and rename** (ADR `vault-removal-and-rename-semantics`):
      - Unregister is the default.
      - Optional OS trash (desktop only), protected by safety guards and checked afterwards. There is never a permanent delete.
-     - Rename is display-only. Folder rename and move are deferred.
+     - Rename is display-only. Folder rename and move are deferred. (Superseded by Revision 2, §8: rename also renames the folder.)
   3. **Filesystem boundary**:
      - `FileStorageService` (§41; the Phase 2 subset: directory creation, the empty check, the write probe, empty-dir removal, path comparison, trash) depends on `Illuminate\Filesystem\Filesystem` and the `Trash` contract.
      - `Trash` follows the `UserDirectories` precedent: an OS boundary that tests must substitute. `FileStorageService` is `final`, so it can't be mocked, which is why the contract sits underneath it.
@@ -652,25 +652,25 @@ Register the static routes (`close`, `existing`, `existing/browse`) **before** t
 ---
 
 ## 6. Open Questions (user approvals; recommended answers in bold)
-- [ ] **C1: Delete semantics.** Options:
+- [x] **C1: Delete semantics.** Options:
   - (a) unregister only;
   - (b) permanently delete the folder;
   - (c) move the folder to the OS Recycle Bin / Trash;
   - (d) (a) by default, plus an optional (c).
 
   NativePHP 2.3 offers `Shell::trashFile()` (Electron `shell.trashItem`). It is desktop-only and reports no failure, so MDVault checks afterwards that the folder is gone. **Recommended: (d). "Remove vault" unregisters and leaves the files. On desktop an optional checkbox also moves the folder to the Recycle Bin / Trash, checked afterwards and behind safety guards. Permanent deletion is never offered in v1.** If you choose (a) instead, drop the `Trash` contract, `NativeTrash`, the trash tests and the checkbox.
-- [ ] **C2: Rename.** Display name only, or also rename the folder on disk. A folder rename can fail when other programs have the folder open (Explorer, VS Code, OneDrive), breaks external shortcuts, and needs DB/FS compensation; it is really a "move". **Recommended: display name and description only in Phase 2. The folder keeps the name it was created with, and the UI shows the real path. Folder rename is deferred together with C4.**
-- [ ] **C3: "Add existing folder" in Phase 2?** It is cheap because it reuses the Phase 1 folder picker, and it is the only way to re-add a removed vault (C1) or use folders of Markdown you already have. **Recommended: yes, in Phase 2 (T6), with safety checks: no drive roots, not the storage root or Documents or any folder containing them, no nesting, and the folder must be writable.**
-- [ ] **C4: Change vault location / move (§7)**, and "relink a missing vault to a new folder". A move means copying, checking and removing across volumes, handling partial failures and locked files, and none of it is in the §51 acceptance criteria. **Recommended: defer both to a dedicated "vault relocation" item before Phase 6 (backups rely on stable UUID-to-path identity). Until then, a moved folder shows as Missing; "Add existing folder" can re-add it, but under a new UUID.**
-- [ ] **C5: `path` vs `relative_path`.** **Recommended:**
+- [x] **C2: Rename.** Display name only, or also rename the folder on disk. A folder rename can fail when other programs have the folder open (Explorer, VS Code, OneDrive), breaks external shortcuts, and needs DB/FS compensation; it is really a "move". **Recommended: display name and description only in Phase 2. The folder keeps the name it was created with, and the UI shows the real path. Folder rename is deferred together with C4.** **Reversed by the user 2026-09-27; see §8.**
+- [x] **C3: "Add existing folder" in Phase 2?** It is cheap because it reuses the Phase 1 folder picker, and it is the only way to re-add a removed vault (C1) or use folders of Markdown you already have. **Recommended: yes, in Phase 2 (T6), with safety checks: no drive roots, not the storage root or Documents or any folder containing them, no nesting, and the folder must be writable.**
+- [x] **C4: Change vault location / move (§7)**, and "relink a missing vault to a new folder". A move means copying, checking and removing across volumes, handling partial failures and locked files, and none of it is in the §51 acceptance criteria. **Recommended: defer both to a dedicated "vault relocation" item before Phase 6 (backups rely on stable UUID-to-path identity). Until then, a moved folder shows as Missing; "Add existing folder" can re-add it, but under a new UUID.**
+- [x] **C5: `path` vs `relative_path`.** **Recommended:**
   - `path` = canonical absolute path, the only thing used to locate a vault.
   - `relative_path` = forward-slash path relative to the storage root when the vault was created or registered (null if outside it). It is kept for future backup/restore and never used to locate the vault.
   - Changing or resetting the storage root never moves, rewrites or re-resolves existing vaults. They stay where they are and keep working; only new vaults go under the new root. This is consistent with ADR `storage-root-resolution`.
-- [ ] **C6: Where "current vault" lives.** **Recommended: the setting `app.current_vault` = vault UUID (group general), through `SettingsService`, not a `vaults.is_current` column.** A single value can't end up with two "current" vaults, and it survives restarts. A stale UUID self-heals to "no vault open".
-- [ ] **C7: Vault name rules.** **Recommended: 1–100 characters, valid as a portable folder name (the same rules as the storage folder name, including Windows reserved names on every OS), and unique regardless of letter case.**
-- [ ] **C8: Creating over an existing folder.** **Recommended: reuse an existing *empty* folder of the same name (for example one left over by an interrupted create), and refuse a non-empty folder or a file with a message pointing to "Add existing folder".**
-- [ ] **C9: After creating or adding a vault.** **Recommended: open it immediately and go to the Workspace.**
-- [ ] **C10: New folders and dependencies.** New folders:
+- [x] **C6: Where "current vault" lives.** **Recommended: the setting `app.current_vault` = vault UUID (group general), through `SettingsService`, not a `vaults.is_current` column.** A single value can't end up with two "current" vaults, and it survives restarts. A stale UUID self-heals to "no vault open".
+- [x] **C7: Vault name rules.** **Recommended: 1–100 characters, valid as a portable folder name (the same rules as the storage folder name, including Windows reserved names on every OS), and unique regardless of letter case.**
+- [x] **C8: Creating over an existing folder.** **Recommended: reuse an existing *empty* folder of the same name (for example one left over by an interrupted create), and refuse a non-empty folder or a file with a message pointing to "Add existing folder".**
+- [x] **C9: After creating or adding a vault.** **Recommended: open it immediately and go to the Workspace.**
+- [x] **C10: New folders and dependencies.** New folders:
   - `app/Http/Requests/Vaults/`
   - `resources/js/pages/vaults/`
   - `resources/js/components/vaults/`
@@ -687,3 +687,252 @@ Register the static routes (`close`, `existing`, `existing/browse`) **before** t
 | Revision | Date | Reason | Changes |
 |---|---|---|---|
 | 1 | 2026-09-27 | Initial plan | — |
+| 2 | 2026-09-27 | User reversed C2: renaming a vault must also rename its folder on disk | Added §8 (FR-09 revised, FR-09a/b; tasks R0–R6; QA scope; risks). ADR `vault-removal-and-rename-semantics` Rename section superseded. `FileStorageService` gains `exists`/`siblingPath`/`isSameDirectory`/`renameDirectory`; `VaultService::rename()` rewritten (checks → rename → verify → DB, rename-back compensation); 4 new `VaultOperationException` constructors; `VaultController::update` toast; `RenameVaultDialog` copy; `failFolderRenames()` test helper. D1 = (a) folder always takes the new name; D2 = refuse (user, 2026-09-27). |
+
+---
+
+## 8. Revision 2 — Rename also renames the folder on disk
+
+- **Date**: 2026-09-27
+- **Trigger**: user decision reversing C2. This is a new requirement, not a QA defect; QA round 1 passed.
+- **Status**: APPROVED (user confirmed D1 = (a) folder always takes the new name, D2 = refuse, on 2026-09-27)
+- **ADR**: `.ai/decisions/vault-removal-and-rename-semantics.md`, whose Rename section is superseded (Revision 2).
+- **Unchanged**: create, register, remove, open, close, current, the status logic, routes, the schema and `UpdateVaultRequest`. No migration, no new dependency, no new folders.
+
+### 8.1 Requirement change
+- **FR-09 (revised)**: Renaming a vault changes its display name **and** renames its folder on disk to the new name, in the same parent folder.
+  - The record's `name`, `path` (canonical) and `relative_path` are updated to match. The UUID and `app.current_vault` are unchanged.
+  - If the name is unchanged (a description-only edit), the disk is never touched.
+- **FR-09a**: A failed folder rename leaves the record and the folder unchanged and gives a clear error. A DB failure after a successful folder rename renames the folder back. If renaming it back also fails, the error is reported and the user is told which folder to rename back.
+- **FR-09b**: A rename that needs a folder rename is refused when:
+  - the folder is missing;
+  - anything already exists at the target path, unless it is the same folder (a case-only change);
+  - the target would overlap another registered vault;
+  - the vault folder is unsafe (`assertSafeFolder`).
+- **C2 (revised 2026-09-27, user)**: the folder is renamed together with the vault. Move, relocate and relink (C4) are still deferred.
+- **D1 (user-approved 2026-09-27: (a))**: when the name changes and the folder's basename is not already exactly the new name, the folder is renamed to the new name, whatever it was called before.
+- **D2 (user-approved 2026-09-27)**: an existing empty directory at the target is refused, not reused.
+
+### 8.2 Design
+
+**Order: checks → folder rename → check it worked → DB update. On a DB failure, rename the folder back.**
+- There is no DB write before the folder rename. The only DB-side failure that could happen at that point is a unique-`path` clash, and `assertNoOverlap` checks for it beforehand.
+- The DB update happens last, so the compensation only has one direction: rename back.
+- Create keeps §7's DB-first order. §7 prescribes that order for create only.
+
+**`VaultService::rename(Vault $vault, string $name, ?string $description): Vault`**, in this exact order:
+1. `assertValidName($name)`, then `assertNameAvailable($name, $vault)`. Unchanged.
+2. If `$name === $vault->name` (exact comparison): `update(['description' => $description])` and return. **No filesystem calls.**
+3. `$from = $vault->path`, `$to = $this->files->siblingPath($from, $name)`.
+4. If `basename($from) === $name` (exact), the folder already has the new name (only possible under D1 for a folder added with "Add existing folder"). Update `name` and `description` only and return. No filesystem calls.
+5. `refreshStatus($vault)`. If it is Missing → `VaultOperationException::folderMissing($from, 'name')`.
+6. `assertSafeFolder($from, 'name')`.
+7. If `$this->files->exists($to) && ! $this->files->isSameDirectory($from, $to)` → `renameTargetExists($to)`. This covers a file, an empty directory (D2), a non-empty directory, and a folder whose name differs only in case on a case-sensitive disk.
+8. `assertNoOverlap($to, 'name', $vault)`. This covers a missing registered vault whose recorded path is `$to`.
+9. `if (! $this->files->renameDirectory($from, $to))`:
+   - if `$this->files->isDirectory($from)` → `renameFailed($from, $to)`. Nothing has changed.
+   - otherwise → `renameInterrupted($from, $to)`. This is the rare case where step 2 of a two-step rename failed and the folder could not be put back.
+10. `$newPath = $this->files->canonical($to)`. `$newRelative = $vault->relative_path === null ? null : $this->replaceLastSegment($vault->relative_path, $name)`, where `replaceLastSegment` is a private helper: `strrpos` on `/`, then keep the prefix plus the new name.
+11. Save the original values with `$original = $vault->only(['name', 'description', 'path', 'relative_path'])`, then:
+    ```php
+    try {
+        $this->database->connection()->transaction(fn () => $vault->update([
+            'name' => $name, 'description' => $description,
+            'path' => $newPath, 'relative_path' => $newRelative,
+        ]));
+    } catch (\Throwable $e) {
+        $vault->fill($original);                                   // restore in-memory state
+        if ($this->files->renameDirectory($newPath, $from)) {      // FS compensation
+            throw $e;                                              // DB error surfaces as-is (500), folder is back
+        }
+        report($e);
+        throw VaultOperationException::renameRollbackFailed($from, $newPath);
+    }
+    ```
+12. Return `$vault`.
+- Update the PHPDoc on `rename()` to describe this order and the compensation, replacing "the folder on disk is never touched".
+
+**New `FileStorageService` methods** (the service stays `final`):
+- `exists(string $path): bool` returns `file_exists($path)` after `clearstatcache()`.
+- `siblingPath(string $path, string $name): string` returns `dirname($path).DIRECTORY_SEPARATOR.$name`.
+- `isSameDirectory(string $a, string $b): bool`:
+  - `samePath($a, $b)` returns true; **or**
+  - both are directories and `@stat` succeeds for both, and `ino !== 0 && ino === ino && dev === dev`.
+  - The inode comparison catches case-insensitive disks that `key()` doesn't lower-case, such as macOS.
+- `renameDirectory(string $from, string $to): bool`:
+  1. Never overwrites anything. If `exists($to) && ! isSameDirectory($from, $to)` → false. Rationale: POSIX `rename()` silently replaces an empty target directory.
+  2. **Case-only change** (`isSameDirectory($from, $to)` and `$from !== $to`), done in two steps:
+     - `$tmp = siblingPath($from, '.mdvault-rename-'.Str::random(12))`.
+     - Step 1: move `$from` to `$tmp`. If that fails → false.
+     - Step 2: move `$tmp` to `$to`. If that fails, move `$tmp` back to `$from` and return false.
+  3. **Otherwise**: a single move of `$from` to `$to`.
+  4. Every move uses `$this->files->moveDirectory($x, $y, false)` inside `try/catch \Throwable → false`. **`$overwrite` is always `false`.**
+  5. The return value is the check afterwards, which is the only source of truth (the same approach as `moveToTrash`): `clearstatcache()`, then `is_dir($to) && ($caseOnly || ! file_exists($from))`.
+  - Add a PHPDoc noting that on Windows a lock (Explorer, VS Code, a terminal, sync tools) makes this return false with nothing changed.
+
+**New `VaultOperationException` constructors** (all use field `name`):
+
+| Constructor | Message |
+|---|---|
+| `renameTargetExists(string $path)` | "Something named “{basename}” already exists at {path}. Choose another name." (`{basename}` = `basename($path)`) |
+| `renameFailed(string $from, string $to)` | "The vault folder couldn't be renamed to {to}. Close any programs using it (File Explorer / Finder, VS Code, a terminal or sync tools such as OneDrive) and try again. Nothing was changed." |
+| `renameRollbackFailed(string $from, string $to)` | "The folder was renamed to {to}, but MDVault couldn't save the change or rename the folder back. Rename the folder back to {from} yourself; the vault will then be available again." |
+| `renameInterrupted(string $from, string $to)` | "The folder couldn't be renamed and is no longer at {from}. Look next to it for a folder named “{basename(to)}” or starting with “.mdvault-rename-”, and rename it back to {from}." |
+
+Existing constructors reused with field `name`: `folderMissing($path, 'name')`, `unsafeFolder('name')`, `overlapsVault($vaultName, 'name')`.
+
+**Folders outside the storage root** (added with "Add existing folder"):
+- The folder is renamed in place, in the same parent folder. `relative_path` stays `null`.
+- Inside the root, only its last segment changes (`Team/Work` → `Team/Office`).
+- `relative_path` is **not** recomputed against the current storage root, which keeps its "as created or registered" meaning (ADR `vault-registry-and-consistency`).
+
+**Current vault**: nothing extra to do. The setting holds the UUID, and `path` is re-read from the record. In Phase 2 MDVault holds no handles inside vault folders. Phase 3 must release any file watchers or handles before renaming (ADR follow-up).
+
+### 8.3 Tasks (Revision 2)
+*Same conventions as §3: after each task, run pint and that task's tests; tests use a temp dir plus `fakeDocumentsDirectory`.*
+
+- [x] **R0 (orchestrator, before the developer starts)**
+  - Save the updated ADR `vault-removal-and-rename-semantics.md`.
+  - In ADR `vault-registry-and-consistency.md` → Follow-ups, change "A vault-relocation item (move, relink, folder rename)" to "A vault-relocation item (move, relink); folder rename was delivered in Phase 2 Revision 2".
+  - Record the user's D1/D2 answers here.
+
+- [ ] **R1: `FileStorageService` rename primitives**
+  - Add `exists`, `siblingPath`, `isSameDirectory` and `renameDirectory`, as specified in 8.2.
+  - `tests/Pest.php`: add a helper
+    ```php
+    /** Substitute Filesystem so moveDirectory() returns false on the given 1-based call numbers (simulates an OS lock); other calls behave normally. Resolve services AFTER calling this. */
+    function failFolderRenames(array $failOnCalls = [1]): object
+    {
+        $fake = new class($failOnCalls) extends \Illuminate\Filesystem\Filesystem {
+            public int $calls = 0;
+            public function __construct(private array $failOnCalls) {}
+            public function moveDirectory($from, $to, $overwrite = false): bool
+            {
+                return in_array(++$this->calls, $this->failOnCalls, true) ? false : parent::moveDirectory($from, $to, $overwrite);
+            }
+        };
+        app()->instance(\Illuminate\Filesystem\Filesystem::class, $fake);
+        return $fake;
+    }
+    ```
+    - Check that `app(FileStorageService::class)` receives the fake. `files` is aliased to `Filesystem::class`. If `instance()` on the class name doesn't take effect, also bind `app()->instance('files', $fake)` and record this in `implementation.md`.
+  - Tests to add to `tests/Feature/Services/FileStorageServiceTest.php`:
+    1. `renameDirectory` moves a directory with content (`a.md` intact) → true; the source is gone.
+    2. It refuses when the target is a non-empty directory, an **empty** directory, or a file → false; both sides are intact.
+    3. A case-only rename `Work` → `work` → true; `scandir(parent)` contains `work` and not `Work`; there is no `.mdvault-rename-*` left behind. Runs on every OS.
+    4. With `failFolderRenames([1])` → false; the source is intact.
+    5. A case-only rename with `failFolderRenames([2])` (step 2 fails) → false; the folder still exists as `Work` exactly; no temp folder is left.
+    6. `isSameDirectory`:
+       - a trailing separator → true;
+       - two different directories → false;
+       - an upper-case variant → true (`->onlyOnWindows()`).
+    7. `siblingPath` gives `<parent><SEP>Office`.
+  - Covers: FR-09, FR-09a, FR-09b
+
+- [ ] **R2: `VaultOperationException` constructors**
+  - Add the four constructors in 8.2, all with field `name`.
+  - Covers: FR-09a, FR-09b
+
+- [ ] **R3: `VaultService::rename()` rewrite**
+  - Implement 8.2 steps 1–12 exactly, plus the private `replaceLastSegment()`. Update the class and method PHPDoc.
+  - Tests in `tests/Feature/Services/VaultServiceTest.php`. **Replace** the existing test "rename: updates name and description without touching the folder" and **extend** the other two rename tests. Every scenario asserts that the UUID is unchanged, and every failure scenario asserts that `$vault->fresh()` equals the original values and the original folder and `a.md` are intact.
+    1. Happy path: `Work` → `Office`:
+       - `<root>/Office/a.md` is intact and `<root>/Work` is gone;
+       - `path === realpath(<root>/Office)`;
+       - `relative_path === 'Office'`;
+       - the status is active and the description is updated.
+    2. A duplicate name (another vault) → `duplicateName`; nothing is touched.
+    3. Case-only `Work` → `WORK`:
+       - `name === 'WORK'`;
+       - `scandir($root)` contains `WORK` and not `Work`;
+       - `a.md` is intact;
+       - `glob(<root>/.mdvault-rename-*) === []`.
+    4. Description only (same name):
+       - `path` is unchanged and the folder is still `Work`;
+       - it also succeeds when the folder has been deleted first, which proves the disk is not touched.
+    5. A missing folder plus a name change → `folderMissing`, field `name`; the record is unchanged.
+    6. The target exists: dataset of a non-empty dir `<root>/Office/x.md`, an empty dir `<root>/Office`, and a file `<root>/Office` → `renameTargetExists`, field `name`; both sides are intact.
+    7. A different directory whose name differs only in case: `<root>/work` exists next to vault `Work`; rename to `work` → `renameTargetExists` (`->onlyOnLinux()`).
+    8. The target path is recorded by a missing vault: `Vault::factory()->missing()->create(['name' => 'Other', 'path' => <root>/Office])` → `overlapsVault`; `Work` is intact.
+    9. Unsafe: a factory vault whose `path` is the fake Documents dir (created on disk) → `unsafeFolder`, field `name`; the Documents dir is intact.
+    10. Lock simulation:
+        - `failFolderRenames([1])`, then re-resolve `app(VaultService::class)`, then rename → `renameFailed`, field `name`;
+        - the message contains "Close any programs using it";
+        - the record and the folder are unchanged.
+    11. DB failure after the folder rename:
+        - after `create`, register `Vault::saving(fn () => throw new RuntimeException('db down'))`;
+        - rename → `RuntimeException 'db down'`;
+        - `<root>/Work/a.md` is back and `<root>/Office` is gone;
+        - `fresh()` shows name `Work` and the old path;
+        - the in-memory `$vault->name === 'Work'`.
+    12. Rename-back failure:
+        - `failFolderRenames([2])` plus the `saving` listener that throws, plus `Exceptions::fake()`;
+        - → `renameRollbackFailed`, field `name`;
+        - `<root>/Office/a.md` still exists (no data loss);
+        - `fresh()->path` is the old path;
+        - `refreshStatus($vault->fresh())->status === Missing`;
+        - `Exceptions::assertReported(RuntimeException::class)`.
+    13. Folder added with "Add existing folder", outside the root (D1 = a):
+        - `register(<tmp>/Existing, 'Work')` → `rename('Office')`;
+        - the folder is `<tmp>/Office` and `n.md` is intact;
+        - `relative_path` stays `null`.
+    14. Added inside the root: `register(<root>/Old, 'Legacy')` → `rename('New')` → `<root>/New`, `relative_path === 'New'`.
+    15. The basename already equals the new name: `register(<tmp>/Office, 'Work')` → `rename('Office')` → `path` is unchanged, the folder is unchanged and the name is `Office`.
+    16. The current vault: `open(Work)` → rename → the setting still equals the UUID; `current()->path === realpath(<root>/Office)`.
+    17. An invalid name (dataset `CON`, `a/b`, `Work.`) → `invalidName`; the folder is unchanged.
+    18. **(Optional, `->onlyOnWindows()`)** A real lock: hold `$h = opendir($vault->path)` (or `fopen(a.md)`) during the rename → `renameFailed`; `closedir`/`fclose` in `finally`. If the lock can't be reproduced reliably, delete this test and note it in `implementation.md`; the manual step M2 covers it.
+  - Covers: FR-09, FR-09a, FR-09b, FR-17
+
+- [ ] **R4: HTTP toast**
+  - `VaultController::update`: keep `$before = $vault->path` before the call.
+  - Toast: `"Vault renamed. Its folder is now {$vault->path}."` if the path changed, otherwise `'Vault updated.'`.
+  - No filesystem calls. `UpdateVaultRequest` is unchanged.
+  - Tests in `tests/Feature/Vaults/VaultManagementTest.php`. Extend "updating a vault changes its name…":
+    - after the PATCH to `Office`: `<root>/Office` exists, `<root>/Work` does not, `fresh()->path` is the new realpath, and `assertInertiaFlash('toast.message', 'Vault renamed. Its folder is now '.realpath(...).'.')`;
+    - the duplicate case is kept.
+  - Add:
+    - a description-only PATCH (same name) → toast `Vault updated.`; the folder is unchanged;
+    - a PATCH to a name whose folder already exists → `assertSessionHasErrors('name')`;
+    - a PATCH of a name for a vault whose folder was deleted → `assertSessionHasErrors('name')`.
+  - Covers: FR-09, FR-09b
+
+- [ ] **R5: `RenameVaultDialog.vue` copy and missing state**
+  - `DialogDescription`: "Renaming also renames the vault's folder on disk. Close any programs using the folder first (File Explorer / Finder, VS Code, sync tools). Current folder: {{ vault.path }}"
+  - Under the name input, when `vault.status === 'missing'`: muted text "The folder is missing, so only the description can be changed." Also add `:disabled="vault.status === 'missing'"` on the name `Input`. The server enforces this too.
+  - Change the submit button label to "Save".
+  - No path logic in Vue. Keep the single root.
+  - Covers: FR-09, FR-14
+
+- [ ] **R6: Quality gates and handover**
+  - Run pint, the **full** `php artisan test --compact`, `phpstan analyse`, `npm run types:check`, `npm run build` and `npm run check`.
+  - Greps:
+    - `rg -n "moveDirectory|rename\(" app` → only `FileStorageService`;
+    - `rg -n "moveDirectory\([^)]*true" app` → no matches;
+    - `rg -n "deleteDirectory|rmdir|unlink" app/Services` → unchanged from Revision 1.
+  - Record everything in `implementation.md` §6 "Revision 2".
+  - Replace T10 manual step 4 with these **desktop checks (user)**:
+    - **M1**: Rename "Work" to "Office". In Explorer the folder is now `Office` and the notes are intact. The Workspace header and the sidebar show "Office" and the new path.
+    - **M2**: Open `Office` in Explorer or VS Code, then rename it to "Work" → error "Close any programs using it…"; the name and the folder are unchanged. Close them and retry → it succeeds.
+    - **M3**: Rename "Work" to "work" (letter case only) → the Explorer folder shows `work`.
+    - **M4**: Create a folder `Docs` next to the vault and try renaming the vault to "Docs" (or "docs") → "already exists" error.
+    - **M5**: Edit only the description of a vault whose folder is missing → saves; the name field is disabled.
+  - Covers: all Revision 2 FRs (verification)
+
+### 8.4 Test scope for QA (Revision 2)
+- `php artisan test --compact tests/Feature/Services/FileStorageServiceTest.php tests/Feature/Services/VaultServiceTest.php tests/Feature/Vaults/VaultManagementTest.php tests/Unit/ArchitectureTest.php`, then the **full suite**, because `tests/Pest.php` changes.
+- `vendor/bin/phpstan analyse`, `npm run types:check`, `npm run build`, `npm run check`, plus the greps in R6.
+- Code review:
+  - `rename()` follows the order in 8.2 (no filesystem work before step 5; the DB update is last);
+  - compensation renames back and never deletes;
+  - `renameDirectory` never overwrites and is verified afterwards;
+  - a description-only edit makes no filesystem calls;
+  - there are no filesystem calls in the controller or in Vue;
+  - the UUID and `app.current_vault` are untouched.
+- M1–M5 are **user-verified manual checks**, not defects.
+
+### 8.5 Risks (Revision 2)
+- **Windows locks** (Explorer, VS Code, OneDrive, antivirus). A same-parent directory rename is atomic, so it either fully succeeds or fails with nothing changed. We check afterwards and show a clear error.
+- **A crash between the folder rename and the DB commit.** The record still points to the old path, so the vault shows as Missing. Renaming the folder back by hand, or "Add existing folder" (new UUID), recovers it. We accept this, as with create's "empty orphan" case; the window is milliseconds.
+- **External references** (shortcuts, VS Code workspaces, OneDrive paths) break after a rename. This is the user's explicit choice, and the dialog copy warns about it.
+- **POSIX `rename()` replacing an empty target directory.** Prevented by the pre-check in both `VaultService` and `renameDirectory`.
+- **Phase 3 file watchers holding handles.** Phase 3 must release them before a rename (ADR follow-up).

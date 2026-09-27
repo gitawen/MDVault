@@ -40,3 +40,11 @@ arch('enums folder only contains enums')
 arch('native dialogs only via NativeDialogService')
     ->expect('Native\Desktop\Dialog')
     ->toOnlyBeUsedIn('App\Services\NativeDialogService');
+
+arch('the OS shell is only used via NativeTrash')
+    ->expect(['Native\Desktop\Facades\Shell', 'Native\Desktop\Shell'])
+    ->toOnlyBeUsedIn('App\Support\NativeTrash');
+
+arch('vault records are only used by services, controllers and the factory')
+    ->expect('App\Models\Vault')
+    ->toOnlyBeUsedIn(['App\Services', 'App\Http\Controllers', 'Database\Factories']);

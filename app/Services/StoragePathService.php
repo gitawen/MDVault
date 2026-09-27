@@ -197,6 +197,33 @@ final class StoragePathService
     }
 
     /**
+     * Ensure the effective root exists and is writable, creating it if
+     * missing. Never writes settings; returns the canonical path.
+     *
+     * @throws InvalidStorageRootException
+     */
+    public function ensureRootReady(): string
+    {
+        $root = $this->rootPath();
+
+        if ($this->files->exists($root) && ! $this->files->isDirectory($root)) {
+            throw InvalidStorageRootException::isFile();
+        }
+
+        if (! $this->files->isDirectory($root)) {
+            $created = $this->files->makeDirectory($root, 0755, true, true);
+
+            if (! $created || ! is_dir($root)) {
+                throw InvalidStorageRootException::cannotCreate();
+            }
+        }
+
+        $this->probeWritable($root);
+
+        return realpath($root) ?: $root;
+    }
+
+    /**
      * Reject an invalid folder name. Portable across every OS: the check
      * always includes the Windows-reserved characters and device names,
      * regardless of which OS is currently running.

@@ -1,4 +1,5 @@
 import type { Directive } from 'vue';
+import type { VaultSummary } from '@/types/vaults';
 
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {
@@ -18,6 +19,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             sidebarOpen: boolean;
+            vaults: VaultSummary[];
             [key: string]: unknown;
         };
     }

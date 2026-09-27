@@ -1,7 +1,10 @@
 <?php
 
+use App\Contracts\Trash;
 use App\Contracts\UserDirectories;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /*
@@ -65,4 +68,55 @@ function fakeDocumentsDirectory(?string $path): void
             return $this->path;
         }
     });
+}
+
+/**
+ * Substitute Filesystem so moveDirectory() returns false on the given
+ * 1-based call numbers (simulates an OS lock); other calls behave
+ * normally. Resolve services AFTER calling this.
+ */
+function failFolderRenames(array $failOnCalls = [1]): object
+{
+    $fake = new class($failOnCalls) extends Filesystem
+    {
+        public int $calls = 0;
+
+        public function __construct(private array $failOnCalls) {}
+
+        public function moveDirectory($from, $to, $overwrite = false): bool
+        {
+            return in_array(++$this->calls, $this->failOnCalls, true) ? false : parent::moveDirectory($from, $to, $overwrite);
+        }
+    };
+    app()->instance(Filesystem::class, $fake);
+
+    return $fake;
+}
+
+/** Bind a fake Trash. $deletes=true simulates success (deletes the directory); false simulates a silent OS failure. */
+function fakeTrash(bool $available = true, bool $deletes = true): object
+{
+    $fake = new class($available, $deletes) implements Trash
+    {
+        /** @var list<string> */
+        public array $trashed = [];
+
+        public function __construct(private bool $available, private bool $deletes) {}
+
+        public function isAvailable(): bool
+        {
+            return $this->available;
+        }
+
+        public function moveToTrash(string $path): void
+        {
+            $this->trashed[] = $path;
+            if ($this->deletes) {
+                File::deleteDirectory($path);
+            }
+        }
+    };
+    app()->instance(Trash::class, $fake);
+
+    return $fake;
 }

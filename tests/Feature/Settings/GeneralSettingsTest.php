@@ -10,7 +10,8 @@ test('the general page shows settings and status', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('settings/General')
         ->where('settings.check_external_changes', true)
-        ->where('status.database.driver', 'sqlite'));
+        ->where('status.database.driver', 'sqlite')
+        ->missing('settings.current_vault'));
 });
 
 test('patching check_external_changes persists it', function () {

@@ -16,11 +16,12 @@ enum SettingKey: string
     case EditorWordWrap = 'editor.word_wrap';
     case EditorShowLineNumbers = 'editor.show_line_numbers';
     case CheckExternalChanges = 'app.check_external_changes';
+    case CurrentVault = 'app.current_vault';
 
     public function type(): SettingType
     {
         return match ($this) {
-            self::StorageRootPath, self::StorageFolderName, self::AppearanceTheme, self::EditorFontFamily => SettingType::String,
+            self::StorageRootPath, self::StorageFolderName, self::AppearanceTheme, self::EditorFontFamily, self::CurrentVault => SettingType::String,
             self::EditorFontSize => SettingType::Integer,
             self::EditorLineHeight => SettingType::Float,
             self::EditorWordWrap, self::EditorShowLineNumbers, self::CheckExternalChanges => SettingType::Boolean,
@@ -33,7 +34,7 @@ enum SettingKey: string
             self::StorageRootPath, self::StorageFolderName => SettingGroup::Storage,
             self::AppearanceTheme => SettingGroup::Appearance,
             self::EditorFontSize, self::EditorFontFamily, self::EditorLineHeight, self::EditorWordWrap, self::EditorShowLineNumbers => SettingGroup::Editor,
-            self::CheckExternalChanges => SettingGroup::General,
+            self::CheckExternalChanges, self::CurrentVault => SettingGroup::General,
         };
     }
 
@@ -49,6 +50,7 @@ enum SettingKey: string
             self::EditorWordWrap => true,
             self::EditorShowLineNumbers => false,
             self::CheckExternalChanges => true,
+            self::CurrentVault => null,
         };
     }
 

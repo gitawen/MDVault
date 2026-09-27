@@ -328,6 +328,41 @@ test('a valid custom name is not persisted when the location is invalid', functi
     expect(app(SettingsService::class)->has(SettingKey::StorageFolderName))->toBeFalse();
 });
 
+test('ensureRootReady creates a missing default root and returns its realpath without writing settings', function () {
+    $service = app(StoragePathService::class);
+    $expected = $this->tmp.DIRECTORY_SEPARATOR.'Documents'.DIRECTORY_SEPARATOR.'MDVault';
+
+    $result = $service->ensureRootReady();
+
+    expect(is_dir($expected))->toBeTrue()
+        ->and($result)->toBe(realpath($expected))
+        ->and($service->isUsingDefault())->toBeTrue();
+});
+
+test('ensureRootReady returns an existing root unchanged', function () {
+    $service = app(StoragePathService::class);
+    $custom = $this->tmp.DIRECTORY_SEPARATOR.'custom';
+    $service->changeRoot($custom);
+
+    $result = $service->ensureRootReady();
+
+    expect($result)->toBe(realpath($custom.DIRECTORY_SEPARATOR.'MDVault'));
+});
+
+test('ensureRootReady throws when a file sits at the root path', function () {
+    $service = app(StoragePathService::class);
+    $blocker = $this->tmp.DIRECTORY_SEPARATOR.'blocker.txt';
+    File::makeDirectory($this->tmp, 0755, true);
+    File::put($blocker, 'x');
+    $service->changeRoot($this->tmp.DIRECTORY_SEPARATOR.'custom');
+
+    // Force the effective root onto the file path directly via settings.
+    app(SettingsService::class)->set(SettingKey::StorageRootPath, $blocker);
+
+    expect(fn () => $service->ensureRootReady())
+        ->toThrow(InvalidStorageRootException::class);
+});
+
 test('resetToDefault keeps the custom folder name', function () {
     $service = app(StoragePathService::class);
     $custom = $this->tmp.DIRECTORY_SEPARATOR.'custom';

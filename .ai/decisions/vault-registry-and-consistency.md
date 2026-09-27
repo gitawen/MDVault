@@ -82,5 +82,5 @@
   - The write-probe logic now exists in both `StoragePathService` and `FileStorageService`.
 - **Follow-ups**:
   - Phase 3: `StoragePathService` delegates its probe and mkdir to `FileStorageService`; `notes.vault_id` references `vaults.id`, and exports use `uuid`.
-  - A vault-relocation item (move, relink, folder rename) before Phase 6.
+  - A vault-relocation item (move, relink) before Phase 6; folder rename was delivered in Phase 2 Revision 2.
   - Phase 7 adds a `Locked` status.

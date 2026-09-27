@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Settings;
 
-use App\Enums\SettingGroup;
 use App\Enums\SettingKey;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateGeneralSettingsRequest;
@@ -17,7 +16,7 @@ class GeneralController extends Controller
     public function edit(SettingsService $settings, SystemStatusService $status): Response
     {
         return Inertia::render('settings/General', [
-            'settings' => $settings->group(SettingGroup::General),
+            'settings' => ['check_external_changes' => $settings->boolean(SettingKey::CheckExternalChanges)],
             'status' => $status->summary(),
         ]);
     }

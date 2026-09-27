@@ -3,12 +3,11 @@ import { Link } from '@inertiajs/vue3';
 import { NotebookPen, Settings } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
+import NavVaults from '@/components/NavVaults.vue';
 import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
-    SidebarGroup,
-    SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
@@ -44,12 +43,7 @@ const mainNavItems: NavItem[] = [
         <SidebarContent>
             <NavMain label="Workspace" :items="mainNavItems" />
 
-            <SidebarGroup class="px-2 py-0">
-                <SidebarGroupLabel>Vaults</SidebarGroupLabel>
-                <div class="px-2 py-1 text-xs text-muted-foreground">
-                    No vaults yet
-                </div>
-            </SidebarGroup>
+            <NavVaults />
         </SidebarContent>
 
         <SidebarFooter>
@@ -65,5 +59,4 @@ const mainNavItems: NavItem[] = [
             </SidebarMenu>
         </SidebarFooter>
     </Sidebar>
-    <slot />
 </template>
