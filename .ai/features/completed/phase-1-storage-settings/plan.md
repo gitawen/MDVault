@@ -8,7 +8,7 @@
 - **Created Date**: 2026-09-27
 - **Task Complexity**: Level 3 — Complex Development
 - **Requirements**: `requirements.md`
-- **Status**: APPROVED (user approved B1–B4 as recommended on 2026-09-27)
+- **Status**: COMPLETE (B1–B4 approved 2026-09-27; QA round 1 PASS; post-QA user-requested storage changes 1–4 in implementation.md §7, user-verified in desktop)
 
 ---
 
