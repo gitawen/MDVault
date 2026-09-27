@@ -2,11 +2,13 @@
 
 namespace App\Enums;
 
+use App\Services\StoragePathService;
 use Illuminate\Support\Str;
 
 enum SettingKey: string
 {
     case StorageRootPath = 'storage.root_path';
+    case StorageFolderName = 'storage.folder_name';
     case AppearanceTheme = 'appearance.theme';
     case EditorFontSize = 'editor.font_size';
     case EditorFontFamily = 'editor.font_family';
@@ -18,7 +20,7 @@ enum SettingKey: string
     public function type(): SettingType
     {
         return match ($this) {
-            self::StorageRootPath, self::AppearanceTheme, self::EditorFontFamily => SettingType::String,
+            self::StorageRootPath, self::StorageFolderName, self::AppearanceTheme, self::EditorFontFamily => SettingType::String,
             self::EditorFontSize => SettingType::Integer,
             self::EditorLineHeight => SettingType::Float,
             self::EditorWordWrap, self::EditorShowLineNumbers, self::CheckExternalChanges => SettingType::Boolean,
@@ -28,7 +30,7 @@ enum SettingKey: string
     public function group(): SettingGroup
     {
         return match ($this) {
-            self::StorageRootPath => SettingGroup::Storage,
+            self::StorageRootPath, self::StorageFolderName => SettingGroup::Storage,
             self::AppearanceTheme => SettingGroup::Appearance,
             self::EditorFontSize, self::EditorFontFamily, self::EditorLineHeight, self::EditorWordWrap, self::EditorShowLineNumbers => SettingGroup::Editor,
             self::CheckExternalChanges => SettingGroup::General,
@@ -39,6 +41,7 @@ enum SettingKey: string
     {
         return match ($this) {
             self::StorageRootPath => null,
+            self::StorageFolderName => StoragePathService::FOLDER_NAME,
             self::AppearanceTheme => Theme::System->value,
             self::EditorFontSize => 16,
             self::EditorFontFamily => EditorFontFamily::Sans->value,

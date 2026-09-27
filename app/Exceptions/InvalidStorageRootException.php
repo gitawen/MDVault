@@ -8,6 +8,20 @@ namespace App\Exceptions;
  */
 final class InvalidStorageRootException extends \RuntimeException
 {
+    private function __construct(string $message, private readonly string $field = 'location')
+    {
+        parent::__construct($message);
+    }
+
+    /**
+     * The request field this failure should be reported against
+     * ('location' or 'folder_name').
+     */
+    public function field(): string
+    {
+        return $this->field;
+    }
+
     public static function notAbsolute(): self
     {
         return new self('Enter a full (absolute) folder path.');
@@ -31,5 +45,13 @@ final class InvalidStorageRootException extends \RuntimeException
     public static function invalid(): self
     {
         return new self('The folder path is invalid.');
+    }
+
+    public static function invalidFolderName(): self
+    {
+        return new self(
+            'Enter a valid folder name: no path separators, no reserved characters (< > : " / \\ | ? *), no leading or trailing spaces, no trailing dot, not "." or "..", not a reserved system name (e.g. CON, NUL, COM1), and 100 characters or fewer.',
+            'folder_name',
+        );
     }
 }

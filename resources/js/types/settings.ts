@@ -4,6 +4,8 @@ export type StorageSettings = {
     is_default: boolean;
     exists: boolean;
     writable: boolean;
+    location: string;
+    folder_name: string;
 };
 
 export type EditorFontFamily = 'sans' | 'serif' | 'mono';

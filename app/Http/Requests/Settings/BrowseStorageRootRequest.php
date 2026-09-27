@@ -3,29 +3,42 @@
 namespace App\Http\Requests\Settings;
 
 use App\Exceptions\InvalidStorageRootException;
+use App\Services\NativeDialogService;
 use App\Services\StoragePathService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateStorageRootRequest extends FormRequest
+class BrowseStorageRootRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Only available while the native folder picker can actually be shown
+     * (the desktop runtime); matches the pre-existing 404 outside it.
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->container->make(NativeDialogService::class)->isAvailable();
+    }
+
+    /**
+     * A 404 (not the default 403) when the dialog can't be shown, so the
+     * route continues to look "not found" outside the desktop runtime.
+     */
+    protected function failedAuthorization(): never
+    {
+        abort(404);
     }
 
     /**
      * Get the validation rules that apply to the request.
+     *
+     * The typed folder name is validated (and must fail) before the native
+     * dialog is ever opened.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(StoragePathService $paths): array
     {
         return [
-            'location' => ['required', 'string', 'max:1024'],
             'folder_name' => $this->folderNameRules($paths),
         ];
     }
