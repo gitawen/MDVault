@@ -124,5 +124,15 @@ The user explicitly requests subagent use in this repo; this counts as the user 
 14. **Offline-first:** normal operation needs no internet, accounts or remote servers.
 15. **Scope control:** no sync, sharing, collaboration, devices or remote-account tables or infrastructure in v1 without explicit approval.
 
+### Phase Briefing to the User (required)
+At the start of every Master Plan phase, and before any implementation, the orchestrator gives the user a concise briefing:
+- **Phase**: number, name, Master Plan section and level.
+- **What we're building**: the features in this phase, as short bullets.
+- **Plan**: the task list from `plan.md` (one line per task).
+- **Decisions needed**: open approvals, each with a recommended answer.
+- **Out of scope**: what is deliberately left for later phases.
+
+Keep it short: the aim is that the user always knows what is being built and why. Post a brief status update when the phase moves to implementation, QA, or completion.
+
 ### Pre-Implementation Checklist (Master Plan §67)
 Before implementing a feature, answer: Is it in v1? Does it keep Markdown as the source of truth and keep the filesystem portable? Does the logic sit in a service? Does it need a migration? Does it add premature sync complexity? How does it behave with external edits, offline, and on a DB/filesystem mismatch? How will it be tested?
