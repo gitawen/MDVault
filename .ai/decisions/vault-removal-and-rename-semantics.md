@@ -94,7 +94,7 @@
   - Real OS-lock behaviour and the trash behaviour are verified manually on desktop; automated tests cover the logic through substitutable boundaries.
 - **Follow-ups**:
   - Vault relocation (move, relink), before Phase 6.
-  - Phase 3: release file watchers and open handles on a vault before renaming it.
+  - Phase 3 (delivered): MDVault holds no watchers or persistent handles; every handle is closed in `finally` (ADR `note-file-operations`). Phase 5 must stop its watcher for a vault before renaming or trashing that vault.
   - Phase 6 backups may offer "back up before removing".
 
 ## Revision History
