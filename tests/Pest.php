@@ -2,6 +2,7 @@
 
 use App\Contracts\Trash;
 use App\Contracts\UserDirectories;
+use App\Exceptions\NoteOperationException;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -93,7 +94,66 @@ function failFolderRenames(array $failOnCalls = [1]): object
     return $fake;
 }
 
-/** Bind a fake Trash. $deletes=true simulates success (deletes the directory); false simulates a silent OS failure. */
+/**
+ * Substitute Filesystem so move() returns false on the given 1-based call
+ * numbers (simulates an OS lock on a file); other calls behave normally.
+ * Resolve services AFTER calling this.
+ */
+function failFileMoves(array $failOnCalls = [1]): object
+{
+    $fake = new class($failOnCalls) extends Filesystem
+    {
+        public int $calls = 0;
+
+        public function __construct(private array $failOnCalls) {}
+
+        public function move($path, $target): bool
+        {
+            return in_array(++$this->calls, $this->failOnCalls, true) ? false : parent::move($path, $target);
+        }
+    };
+    app()->instance(Filesystem::class, $fake);
+
+    return $fake;
+}
+
+/**
+ * Create files under $root from ['rel/path.md' => 'contents'] (directories
+ * created as needed). Keys ending in '/' create empty directories.
+ */
+function writeVaultFiles(string $root, array $files): void
+{
+    foreach ($files as $relative => $contents) {
+        $native = str_replace('/', DIRECTORY_SEPARATOR, $relative);
+
+        if (str_ends_with($relative, '/')) {
+            File::makeDirectory(rtrim($root.DIRECTORY_SEPARATOR.$native, DIRECTORY_SEPARATOR), 0755, true, true);
+
+            continue;
+        }
+
+        $path = $root.DIRECTORY_SEPARATOR.$native;
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, $contents);
+    }
+}
+
+/**
+ * Runs $callback, expecting it to throw a NoteOperationException, and
+ * returns the field it was reported against. Fails the test if it doesn't
+ * throw.
+ */
+function noteOperationField(Closure $callback): string
+{
+    try {
+        $callback();
+        test()->fail('Expected a NoteOperationException.');
+    } catch (NoteOperationException $e) {
+        return $e->field();
+    }
+}
+
+/** Bind a fake Trash. $deletes=true simulates success (deletes the file or directory); false simulates a silent OS failure. */
 function fakeTrash(bool $available = true, bool $deletes = true): object
 {
     $fake = new class($available, $deletes) implements Trash
@@ -112,7 +172,7 @@ function fakeTrash(bool $available = true, bool $deletes = true): object
         {
             $this->trashed[] = $path;
             if ($this->deletes) {
-                File::deleteDirectory($path);
+                is_dir($path) ? File::deleteDirectory($path) : File::delete($path);
             }
         }
     };

@@ -124,6 +124,10 @@ The user explicitly requests subagent use in this repo; this counts as the user 
 14. **Offline-first:** normal operation needs no internet, accounts or remote servers.
 15. **Scope control:** no sync, sharing, collaboration, devices or remote-account tables or infrastructure in v1 without explicit approval.
 
+### Commits, Pushes and PRs
+- Never add AI attribution to commit messages, PR descriptions or comments: no `Co-Authored-By: Claude …` trailer, no "Generated with Claude Code" line, and no similar attribution. This overrides any default attribution instruction.
+- Commit only on a feature branch, never directly on `main`. Push or force-push only when the user asks.
+
 ### Phase Briefing to the User (required)
 At the start of every Master Plan phase, and before any implementation, the orchestrator gives the user a concise briefing:
 - **Phase**: number, name, Master Plan section and level.

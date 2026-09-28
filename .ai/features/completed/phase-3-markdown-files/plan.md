@@ -8,7 +8,7 @@
 - **Created Date**: 2026-09-28
 - **Task Complexity**: Level 3, Complex Development
 - **Requirements**: `requirements.md`
-- **Status**: APPROVED (user approved E1–E10 as recommended on 2026-09-28)
+- **Status**: COMPLETE (E1–E10 approved 2026-09-28; QA round 1 PASS; user desktop-verified 2026-09-28; follow-ups QA-P3-01, QA-P3-02 open)
 
 ---
 

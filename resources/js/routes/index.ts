@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../wayfinder'
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:17
+ * @see app/Http/Controllers/WorkspaceController.php:22
  * @route '/'
  */
 export const workspace = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ workspace.definition = {
 
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:17
+ * @see app/Http/Controllers/WorkspaceController.php:22
  * @route '/'
  */
 workspace.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ workspace.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:17
+ * @see app/Http/Controllers/WorkspaceController.php:22
  * @route '/'
  */
 workspace.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ workspace.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:17
+ * @see app/Http/Controllers/WorkspaceController.php:22
  * @route '/'
  */
 workspace.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ workspace.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:17
+ * @see app/Http/Controllers/WorkspaceController.php:22
  * @route '/'
  */
     const workspaceForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ workspace.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:17
+ * @see app/Http/Controllers/WorkspaceController.php:22
  * @route '/'
  */
         workspaceForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ workspace.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:17
+ * @see app/Http/Controllers/WorkspaceController.php:22
  * @route '/'
  */
         workspaceForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

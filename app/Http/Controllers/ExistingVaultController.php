@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\NoteOperationException;
 use App\Exceptions\VaultOperationException;
 use App\Http\Requests\Vaults\RegisterVaultRequest;
 use App\Models\Vault;
 use App\Services\NativeDialogService;
 use App\Services\StoragePathService;
+use App\Services\VaultIndexService;
 use App\Services\VaultService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -14,7 +16,7 @@ use Inertia\Inertia;
 
 class ExistingVaultController extends Controller
 {
-    public function store(RegisterVaultRequest $request, VaultService $vaults): RedirectResponse
+    public function store(RegisterVaultRequest $request, VaultService $vaults, VaultIndexService $index): RedirectResponse
     {
         $vault = $this->attempt(fn (): Vault => $vaults->register(
             $request->validated('path'),
@@ -24,7 +26,16 @@ class ExistingVaultController extends Controller
 
         $vaults->open($vault);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => "Vault \u{201c}{$vault->name}\u{201d} added."]);
+        $suffix = '';
+
+        try {
+            $result = $index->reindex($vault);
+            $suffix = " {$result->added} note(s) indexed.";
+        } catch (NoteOperationException) {
+            // Nothing to index if the folder can't be read right now.
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Vault \u{201c}{$vault->name}\u{201d} added.{$suffix}"]);
 
         return to_route('workspace');
     }

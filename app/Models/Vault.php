@@ -5,9 +5,11 @@ namespace App\Models;
 use App\Enums\VaultStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\VaultFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -20,6 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property VaultStatus $status
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
+ * @property-read Collection<int, Note> $notes
  */
 class Vault extends Model
 {
@@ -62,5 +65,13 @@ class Vault extends Model
             'is_encrypted' => 'boolean',
             'status' => VaultStatus::class,
         ];
+    }
+
+    /**
+     * @return HasMany<Note, $this>
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(Note::class);
     }
 }

@@ -45,6 +45,31 @@ arch('the OS shell is only used via NativeTrash')
     ->expect(['Native\Desktop\Facades\Shell', 'Native\Desktop\Shell'])
     ->toOnlyBeUsedIn('App\Support\NativeTrash');
 
-arch('vault records are only used by services, controllers and the factory')
+arch('vault records are only used by services, controllers, models and factories')
     ->expect('App\Models\Vault')
-    ->toOnlyBeUsedIn(['App\Services', 'App\Http\Controllers', 'Database\Factories']);
+    ->toOnlyBeUsedIn(['App\Services', 'App\Http\Controllers', 'App\Models', 'Database\Factories']);
+
+arch('note records are only used by services, controllers, models and factories')
+    ->expect('App\Models\Note')
+    ->toOnlyBeUsedIn(['App\Services', 'App\Http\Controllers', 'App\Models', 'Database\Factories']);
+
+arch('files are hashed only in FileHashService')
+    ->expect('hash_file')
+    ->toOnlyBeUsedIn('App\Services\FileHashService');
+
+arch('index and note services use no raw filesystem functions')
+    ->expect([
+        'file_get_contents',
+        'file_put_contents',
+        'fopen',
+        'unlink',
+        'rmdir',
+        'mkdir',
+        'rename',
+        'copy',
+        'scandir',
+        'hash_file',
+        'Illuminate\Support\Facades\File',
+        'Illuminate\Support\Facades\Storage',
+    ])
+    ->not->toBeUsedIn(['App\Services\VaultIndexService', 'App\Services\NoteService']);

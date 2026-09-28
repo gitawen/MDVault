@@ -4,15 +4,27 @@ import StatusBar from '@/components/StatusBar.vue';
 import TiptapEditor from '@/components/editor/TiptapEditor.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import NoteTree from '@/components/notes/NoteTree.vue';
+import NoteViewer from '@/components/notes/NoteViewer.vue';
 import VaultStatusBadge from '@/components/vaults/VaultStatusBadge.vue';
 import { workspace } from '@/routes';
 import { close, index } from '@/routes/vaults';
-import type { EditorPreferences, SystemStatus, VaultSummary } from '@/types';
+import type {
+    EditorPreferences,
+    NoteDetail,
+    NoteTreeNode,
+    SystemStatus,
+    VaultSummary,
+} from '@/types';
 
 defineProps<{
     status: SystemStatus;
     editor: EditorPreferences;
     currentVault: VaultSummary | null;
+    tree: NoteTreeNode[] | null;
+    folders: string[];
+    note: NoteDetail | null;
+    canTrash: boolean;
 }>();
 
 function closeVault() {
@@ -82,7 +94,36 @@ const demoContent = `
             >
         </div>
 
-        <main class="flex-1 overflow-auto p-4">
+        <div
+            v-if="
+                currentVault &&
+                currentVault.status === 'active' &&
+                tree !== null
+            "
+            class="flex min-h-0 flex-1"
+        >
+            <aside class="w-64 shrink-0 overflow-auto border-r">
+                <NoteTree
+                    :vault-uuid="currentVault.uuid"
+                    :tree="tree"
+                    :folders="folders"
+                    :selected-uuid="note?.uuid ?? null"
+                    :can-trash="canTrash"
+                />
+            </aside>
+            <main class="flex-1 overflow-auto p-4">
+                <NoteViewer
+                    v-if="note"
+                    :note="note"
+                    :vault-uuid="currentVault.uuid"
+                />
+                <p v-else class="text-sm text-muted-foreground">
+                    Select a note from the list, or create a new one.
+                </p>
+            </main>
+        </div>
+
+        <main v-else class="flex-1 overflow-auto p-4">
             <TiptapEditor :content="demoContent" :preferences="editor" />
         </main>
 

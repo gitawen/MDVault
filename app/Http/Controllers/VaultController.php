@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\NoteOperationException;
 use App\Exceptions\VaultOperationException;
 use App\Http\Requests\Vaults\DestroyVaultRequest;
 use App\Http\Requests\Vaults\StoreVaultRequest;
@@ -9,6 +10,7 @@ use App\Http\Requests\Vaults\UpdateVaultRequest;
 use App\Models\Vault;
 use App\Services\NativeDialogService;
 use App\Services\StoragePathService;
+use App\Services\VaultIndexService;
 use App\Services\VaultService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -26,11 +28,17 @@ class VaultController extends Controller
         ]);
     }
 
-    public function store(StoreVaultRequest $request, VaultService $vaults): RedirectResponse
+    public function store(StoreVaultRequest $request, VaultService $vaults, VaultIndexService $index): RedirectResponse
     {
         $vault = $this->attempt(fn (): Vault => $vaults->create($request->validated('name'), $request->validated('description')));
 
         $vaults->open($vault);
+
+        try {
+            $index->reindex($vault);
+        } catch (NoteOperationException) {
+            // The vault was just created; nothing to reindex yet.
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Vault \u{201c}{$vault->name}\u{201d} created."]);
 
@@ -70,7 +78,7 @@ class VaultController extends Controller
         return to_route('vaults.index');
     }
 
-    public function open(Vault $vault, VaultService $vaults): RedirectResponse
+    public function open(Vault $vault, VaultService $vaults, VaultIndexService $index): RedirectResponse
     {
         try {
             $vaults->open($vault);
@@ -78,6 +86,16 @@ class VaultController extends Controller
             Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
 
             return back();
+        }
+
+        try {
+            $result = $index->reindex($vault);
+
+            if ($result->hasChanges() || $result->skipped > 0) {
+                Inertia::flash('toast', ['type' => 'success', 'message' => $result->summary()]);
+            }
+        } catch (NoteOperationException $e) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
         }
 
         return to_route('workspace');

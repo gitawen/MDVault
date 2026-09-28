@@ -239,3 +239,163 @@ test('siblingPath gives the parent directory plus the new name', function () {
 
     expect(app(FileStorageService::class)->siblingPath($path, 'Office'))->toBe($this->tmp.DIRECTORY_SEPARATOR.'Office');
 });
+
+test('createFile creates a file with its contents and refuses an existing one', function () {
+    $path = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    $service = app(FileStorageService::class);
+
+    expect($service->createFile($path, 'hello'))->toBeTrue()
+        ->and(File::get($path))->toBe('hello');
+
+    expect($service->createFile($path, 'overwritten'))->toBeFalse()
+        ->and(File::get($path))->toBe('hello');
+});
+
+test('deleteNewEmptyFile removes a 0-byte file and refuses a non-empty one', function () {
+    $service = app(FileStorageService::class);
+
+    $empty = $this->tmp.DIRECTORY_SEPARATOR.'empty.md';
+    File::put($empty, '');
+    expect($service->deleteNewEmptyFile($empty))->toBeTrue()
+        ->and(file_exists($empty))->toBeFalse();
+
+    $full = $this->tmp.DIRECTORY_SEPARATOR.'full.md';
+    File::put($full, 'content');
+    expect($service->deleteNewEmptyFile($full))->toBeFalse()
+        ->and(File::get($full))->toBe('content');
+});
+
+test('renameFile moves a file with its content and the source is gone', function () {
+    $from = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    $to = $this->tmp.DIRECTORY_SEPARATOR.'b.md';
+    File::put($from, 'hi');
+
+    expect(app(FileStorageService::class)->renameFile($from, $to))->toBeTrue()
+        ->and(File::get($to))->toBe('hi')
+        ->and(file_exists($from))->toBeFalse();
+});
+
+test('renameFile refuses an existing target file, leaving both intact', function () {
+    $from = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    $to = $this->tmp.DIRECTORY_SEPARATOR.'b.md';
+    File::put($from, 'hi');
+    File::put($to, 'there');
+
+    expect(app(FileStorageService::class)->renameFile($from, $to))->toBeFalse()
+        ->and(File::get($from))->toBe('hi')
+        ->and(File::get($to))->toBe('there');
+});
+
+test('renameFile: a case-only rename gives scandir containing the new case and no temp file', function () {
+    $from = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    $to = $this->tmp.DIRECTORY_SEPARATOR.'A.md';
+    File::put($from, 'hi');
+
+    expect(app(FileStorageService::class)->renameFile($from, $to))->toBeTrue()
+        ->and(scandir($this->tmp))->toContain('A.md')
+        ->and(scandir($this->tmp))->not->toContain('a.md')
+        ->and(glob($this->tmp.DIRECTORY_SEPARATOR.'.mdvault-rename-*'))->toBe([]);
+});
+
+test('renameFile returns false and the source is intact when the first move fails', function () {
+    $from = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    $to = $this->tmp.DIRECTORY_SEPARATOR.'b.md';
+    File::put($from, 'hi');
+    failFileMoves([1]);
+
+    expect(app(FileStorageService::class)->renameFile($from, $to))->toBeFalse()
+        ->and(File::get($from))->toBe('hi')
+        ->and(file_exists($to))->toBeFalse();
+});
+
+test('renameFile: a case-only rename whose second step fails is restored, with no temp file left', function () {
+    $from = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    $to = $this->tmp.DIRECTORY_SEPARATOR.'A.md';
+    File::put($from, 'hi');
+    failFileMoves([2]);
+
+    expect(app(FileStorageService::class)->renameFile($from, $to))->toBeFalse()
+        ->and(scandir($this->tmp))->toContain('a.md')
+        ->and(File::get($from))->toBe('hi')
+        ->and(glob($this->tmp.DIRECTORY_SEPARATOR.'.mdvault-rename-*'))->toBe([]);
+})->onlyOnWindows();
+
+test('isSameFile is true for an upper-case variant', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    File::put($target, 'hi');
+
+    expect(app(FileStorageService::class)->isSameFile($target, strtoupper($target)))->toBeTrue();
+})->onlyOnWindows();
+
+test('joinRelative joins with the native separator', function () {
+    expect(app(FileStorageService::class)->joinRelative($this->tmp, 'Projects/HRMIS.md'))
+        ->toBe($this->tmp.DIRECTORY_SEPARATOR.'Projects'.DIRECTORY_SEPARATOR.'HRMIS.md');
+
+    expect(app(FileStorageService::class)->joinRelative($this->tmp, ''))->toBe($this->tmp);
+});
+
+test('scan walks nested files, lists an empty directory, uses forward slashes and sorts', function () {
+    writeVaultFiles($this->tmp, [
+        'Readme.md' => 'root',
+        'Projects/HRMIS.md' => 'a',
+        'Projects/Sub/Deep.md' => 'b',
+        'Archive/' => '',
+    ]);
+
+    $seen = [];
+    $result = app(FileStorageService::class)->scan($this->tmp, function (string $relative, string $name, bool $isDir) use (&$seen): bool {
+        $seen[] = $relative;
+
+        return true;
+    });
+
+    expect($result['files'])->toHaveCount(3)
+        ->and(array_column($result['files'], 'path'))->toBe(['Projects/HRMIS.md', 'Projects/Sub/Deep.md', 'Readme.md'])
+        ->and($result['directories'])->toContain('Archive')
+        ->and($result['unreadable'])->toBe([]);
+});
+
+test('scan prunes a rejected directory and never visits its children', function () {
+    writeVaultFiles($this->tmp, [
+        'node_modules/e.md' => 'x',
+        'Projects/HRMIS.md' => 'a',
+    ]);
+
+    $seen = [];
+    app(FileStorageService::class)->scan($this->tmp, function (string $relative, string $name, bool $isDir) use (&$seen): bool {
+        $seen[] = $relative;
+
+        return $name !== 'node_modules';
+    });
+
+    expect($seen)->not->toContain('node_modules/e.md');
+});
+
+test('scan skips a symlinked directory and a symlinked file', function () {
+    $real = $this->tmp.DIRECTORY_SEPARATOR.'RealDir';
+    File::makeDirectory($real);
+    File::put($real.DIRECTORY_SEPARATOR.'inside.md', 'x');
+    File::put($this->tmp.DIRECTORY_SEPARATOR.'real.md', 'y');
+
+    symlink($real, $this->tmp.DIRECTORY_SEPARATOR.'LinkedDir');
+    symlink($this->tmp.DIRECTORY_SEPARATOR.'real.md', $this->tmp.DIRECTORY_SEPARATOR.'linked.md');
+
+    $result = app(FileStorageService::class)->scan($this->tmp, fn (): bool => true);
+
+    expect($result['directories'])->not->toContain('LinkedDir')
+        ->and(array_column($result['files'], 'path'))->not->toContain('linked.md');
+})->skipOnWindows();
+
+test('scan of a missing root gives unreadable === [""]', function () {
+    $result = app(FileStorageService::class)->scan($this->tmp.DIRECTORY_SEPARATOR.'missing', fn (): bool => true);
+
+    expect($result['unreadable'])->toBe(['']);
+});
+
+test('read of a missing file gives null; size of a missing file gives null', function () {
+    $service = app(FileStorageService::class);
+    $missing = $this->tmp.DIRECTORY_SEPARATOR.'missing.md';
+
+    expect($service->read($missing))->toBeNull()
+        ->and($service->size($missing))->toBeNull();
+});

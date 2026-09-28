@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\VaultController::index
- * @see app/Http/Controllers/VaultController.php:20
+ * @see app/Http/Controllers/VaultController.php:22
  * @route '/vaults'
  */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\VaultController::index
- * @see app/Http/Controllers/VaultController.php:20
+ * @see app/Http/Controllers/VaultController.php:22
  * @route '/vaults'
  */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\VaultController::index
- * @see app/Http/Controllers/VaultController.php:20
+ * @see app/Http/Controllers/VaultController.php:22
  * @route '/vaults'
  */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\VaultController::index
- * @see app/Http/Controllers/VaultController.php:20
+ * @see app/Http/Controllers/VaultController.php:22
  * @route '/vaults'
  */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\VaultController::index
- * @see app/Http/Controllers/VaultController.php:20
+ * @see app/Http/Controllers/VaultController.php:22
  * @route '/vaults'
  */
     const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\VaultController::index
- * @see app/Http/Controllers/VaultController.php:20
+ * @see app/Http/Controllers/VaultController.php:22
  * @route '/vaults'
  */
         indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\VaultController::index
- * @see app/Http/Controllers/VaultController.php:20
+ * @see app/Http/Controllers/VaultController.php:22
  * @route '/vaults'
  */
         indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     index.form = indexForm
 /**
 * @see \App\Http\Controllers\VaultController::store
- * @see app/Http/Controllers/VaultController.php:29
+ * @see app/Http/Controllers/VaultController.php:31
  * @route '/vaults'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -94,7 +94,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\VaultController::store
- * @see app/Http/Controllers/VaultController.php:29
+ * @see app/Http/Controllers/VaultController.php:31
  * @route '/vaults'
  */
 store.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\VaultController::store
- * @see app/Http/Controllers/VaultController.php:29
+ * @see app/Http/Controllers/VaultController.php:31
  * @route '/vaults'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -113,7 +113,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\VaultController::store
- * @see app/Http/Controllers/VaultController.php:29
+ * @see app/Http/Controllers/VaultController.php:31
  * @route '/vaults'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -123,7 +123,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\VaultController::store
- * @see app/Http/Controllers/VaultController.php:29
+ * @see app/Http/Controllers/VaultController.php:31
  * @route '/vaults'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -134,7 +134,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\VaultController::close
- * @see app/Http/Controllers/VaultController.php:86
+ * @see app/Http/Controllers/VaultController.php:104
  * @route '/vaults/close'
  */
 export const close = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -149,7 +149,7 @@ close.definition = {
 
 /**
 * @see \App\Http\Controllers\VaultController::close
- * @see app/Http/Controllers/VaultController.php:86
+ * @see app/Http/Controllers/VaultController.php:104
  * @route '/vaults/close'
  */
 close.url = (options?: RouteQueryOptions) => {
@@ -158,7 +158,7 @@ close.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\VaultController::close
- * @see app/Http/Controllers/VaultController.php:86
+ * @see app/Http/Controllers/VaultController.php:104
  * @route '/vaults/close'
  */
 close.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -168,7 +168,7 @@ close.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\VaultController::close
- * @see app/Http/Controllers/VaultController.php:86
+ * @see app/Http/Controllers/VaultController.php:104
  * @route '/vaults/close'
  */
     const closeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -178,7 +178,7 @@ close.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\VaultController::close
- * @see app/Http/Controllers/VaultController.php:86
+ * @see app/Http/Controllers/VaultController.php:104
  * @route '/vaults/close'
  */
         closeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -189,7 +189,7 @@ close.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     close.form = closeForm
 /**
 * @see \App\Http\Controllers\VaultController::update
- * @see app/Http/Controllers/VaultController.php:40
+ * @see app/Http/Controllers/VaultController.php:48
  * @route '/vaults/{vault}'
  */
 export const update = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -204,7 +204,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\VaultController::update
- * @see app/Http/Controllers/VaultController.php:40
+ * @see app/Http/Controllers/VaultController.php:48
  * @route '/vaults/{vault}'
  */
 update.url = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions) => {
@@ -237,7 +237,7 @@ update.url = (args: { vault: string | { uuid: string } } | [vault: string | { uu
 
 /**
 * @see \App\Http\Controllers\VaultController::update
- * @see app/Http/Controllers/VaultController.php:40
+ * @see app/Http/Controllers/VaultController.php:48
  * @route '/vaults/{vault}'
  */
 update.patch = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -247,7 +247,7 @@ update.patch = (args: { vault: string | { uuid: string } } | [vault: string | { 
 
     /**
 * @see \App\Http\Controllers\VaultController::update
- * @see app/Http/Controllers/VaultController.php:40
+ * @see app/Http/Controllers/VaultController.php:48
  * @route '/vaults/{vault}'
  */
     const updateForm = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -262,7 +262,7 @@ update.patch = (args: { vault: string | { uuid: string } } | [vault: string | { 
 
             /**
 * @see \App\Http\Controllers\VaultController::update
- * @see app/Http/Controllers/VaultController.php:40
+ * @see app/Http/Controllers/VaultController.php:48
  * @route '/vaults/{vault}'
  */
         updateForm.patch = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -278,7 +278,7 @@ update.patch = (args: { vault: string | { uuid: string } } | [vault: string | { 
     update.form = updateForm
 /**
 * @see \App\Http\Controllers\VaultController::destroy
- * @see app/Http/Controllers/VaultController.php:55
+ * @see app/Http/Controllers/VaultController.php:63
  * @route '/vaults/{vault}'
  */
 export const destroy = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -293,7 +293,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\VaultController::destroy
- * @see app/Http/Controllers/VaultController.php:55
+ * @see app/Http/Controllers/VaultController.php:63
  * @route '/vaults/{vault}'
  */
 destroy.url = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions) => {
@@ -326,7 +326,7 @@ destroy.url = (args: { vault: string | { uuid: string } } | [vault: string | { u
 
 /**
 * @see \App\Http\Controllers\VaultController::destroy
- * @see app/Http/Controllers/VaultController.php:55
+ * @see app/Http/Controllers/VaultController.php:63
  * @route '/vaults/{vault}'
  */
 destroy.delete = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -336,7 +336,7 @@ destroy.delete = (args: { vault: string | { uuid: string } } | [vault: string | 
 
     /**
 * @see \App\Http\Controllers\VaultController::destroy
- * @see app/Http/Controllers/VaultController.php:55
+ * @see app/Http/Controllers/VaultController.php:63
  * @route '/vaults/{vault}'
  */
     const destroyForm = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -351,7 +351,7 @@ destroy.delete = (args: { vault: string | { uuid: string } } | [vault: string | 
 
             /**
 * @see \App\Http\Controllers\VaultController::destroy
- * @see app/Http/Controllers/VaultController.php:55
+ * @see app/Http/Controllers/VaultController.php:63
  * @route '/vaults/{vault}'
  */
         destroyForm.delete = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -367,7 +367,7 @@ destroy.delete = (args: { vault: string | { uuid: string } } | [vault: string | 
     destroy.form = destroyForm
 /**
 * @see \App\Http\Controllers\VaultController::open
- * @see app/Http/Controllers/VaultController.php:73
+ * @see app/Http/Controllers/VaultController.php:81
  * @route '/vaults/{vault}/open'
  */
 export const open = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -382,7 +382,7 @@ open.definition = {
 
 /**
 * @see \App\Http\Controllers\VaultController::open
- * @see app/Http/Controllers/VaultController.php:73
+ * @see app/Http/Controllers/VaultController.php:81
  * @route '/vaults/{vault}/open'
  */
 open.url = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions) => {
@@ -415,7 +415,7 @@ open.url = (args: { vault: string | { uuid: string } } | [vault: string | { uuid
 
 /**
 * @see \App\Http\Controllers\VaultController::open
- * @see app/Http/Controllers/VaultController.php:73
+ * @see app/Http/Controllers/VaultController.php:81
  * @route '/vaults/{vault}/open'
  */
 open.post = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -425,7 +425,7 @@ open.post = (args: { vault: string | { uuid: string } } | [vault: string | { uui
 
     /**
 * @see \App\Http\Controllers\VaultController::open
- * @see app/Http/Controllers/VaultController.php:73
+ * @see app/Http/Controllers/VaultController.php:81
  * @route '/vaults/{vault}/open'
  */
     const openForm = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -435,7 +435,7 @@ open.post = (args: { vault: string | { uuid: string } } | [vault: string | { uui
 
             /**
 * @see \App\Http\Controllers\VaultController::open
- * @see app/Http/Controllers/VaultController.php:73
+ * @see app/Http/Controllers/VaultController.php:81
  * @route '/vaults/{vault}/open'
  */
         openForm.post = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

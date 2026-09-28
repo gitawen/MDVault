@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\SettingKey;
+use App\Models\Note;
 use App\Models\Vault;
 use App\Services\SettingsService;
 use App\Services\VaultService;
@@ -162,6 +163,18 @@ test('opening a vault redirects to the workspace, and opening a missing one flas
 
     $response->assertRedirect();
     $response->assertInertiaFlash('toast.type', 'error');
+});
+
+test('opening a vault indexes its Markdown files', function () {
+    $this->post(route('vaults.store'), ['name' => 'Work']);
+    $vault = Vault::query()->sole();
+    File::put($vault->path.DIRECTORY_SEPARATOR.'n.md', 'hi');
+
+    $response = $this->post(route('vaults.open', $vault->uuid));
+
+    $response->assertRedirect(route('workspace'));
+    expect(Note::query()->count())->toBe(1);
+    expect(session('inertia.flash_data')['toast']['message'])->toContain('1 added');
 });
 
 test('closing clears the current vault', function () {

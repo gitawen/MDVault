@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\SettingKey;
+use App\Models\Note;
 use App\Models\Vault;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\File;
@@ -25,11 +26,13 @@ test('registering an existing folder succeeds and opens it', function () {
 
     $response->assertRedirect(route('workspace'));
     $response->assertInertiaFlash('toast.type', 'success');
+    $response->assertInertiaFlash('toast.message', "Vault \u{201c}Existing\u{201d} added. 1 note(s) indexed.");
 
     $vault = Vault::query()->sole();
 
     expect(File::get($existing.DIRECTORY_SEPARATOR.'n.md'))->toBe('hi')
-        ->and(app(SettingsService::class)->string(SettingKey::CurrentVault))->toBe($vault->uuid);
+        ->and(app(SettingsService::class)->string(SettingKey::CurrentVault))->toBe($vault->uuid)
+        ->and(Note::query()->count())->toBe(1);
 });
 
 test('registering rejects a relative path', function () {

@@ -20,6 +20,9 @@ test('a guest can open the workspace with system status', function () {
         ->where('editor.font_size', 16)
         ->where('editor.word_wrap', true)
         ->where('currentVault', null)
+        ->where('tree', null)
+        ->where('note', null)
+        ->where('folders', [])
     );
 });
 
@@ -38,7 +41,26 @@ test('the current vault persists across a restart', function () {
 
         $response->assertInertia(fn ($page) => $page
             ->where('currentVault.uuid', $vault->uuid)
-            ->where('currentVault.name', $vault->name));
+            ->where('currentVault.name', $vault->name)
+            ->has('tree'));
+    } finally {
+        File::deleteDirectory($tmp);
+    }
+});
+
+test('a missing current vault folder gives a null tree', function () {
+    $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mdvault-workspace-'.Str::random(8);
+
+    try {
+        fakeDocumentsDirectory($tmp.DIRECTORY_SEPARATOR.'Documents');
+
+        $vault = app(VaultService::class)->create('Work');
+        app(VaultService::class)->open($vault);
+        File::deleteDirectory($vault->path);
+
+        $response = $this->get(route('workspace'));
+
+        $response->assertInertia(fn ($page) => $page->where('tree', null));
     } finally {
         File::deleteDirectory($tmp);
     }
