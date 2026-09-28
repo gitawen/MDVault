@@ -38,7 +38,8 @@
   - every create uses `fopen('x')`;
   - every rename pre-checks the target (`exists` and not the same file) and checks afterwards;
   - no API accepts an overwrite flag.
-- **Compensation** never deletes content. It either renames back, or unlinks a 0-byte file created by the same call. `unlink` appears only in `FileStorageService::deleteNewEmptyFile`.
+  - Sole exception: `FileStorageService::replaceFile`, used only by `NoteService::save` behind a base-hash guard (ADR `note-save-atomic-replace`).
+- **Compensation** never deletes content. It either renames back, or unlinks a 0-byte file created by the same call. `unlink` appears only in `FileStorageService::deleteNewEmptyFile` and in the private `FileStorageService::discardTempFile`, which accepts only MDVault's own `.mdvault-save-*` temp files (ADR `note-save-atomic-replace`).
 - **Delete note**:
   - if the file is already missing → delete the record only;
   - otherwise the trash must be available;
@@ -66,6 +67,6 @@
   - A restored note gets a new UUID after re-index.
   - Folder rename/move is unavailable until a follow-up.
 - **Follow-ups**:
-  - Phase 4 save: write to a temp sibling `.mdvault-save-*`, then replace atomically, then re-hash. This needs its own ADR because it is the one place where replacing a file is intended.
+  - Phase 4 (delivered): atomic save via `replaceFile`; see ADR `note-save-atomic-replace`.
   - Phase 5: the watcher must be paused or stopped for a vault before a vault rename or trash, and must ignore `.mdvault-*` names.
   - Follow-up item: folder rename/move and non-empty folder delete (to the Recycle Bin).

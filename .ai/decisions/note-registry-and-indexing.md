@@ -66,6 +66,7 @@
   - Empty folders are visible without a table.
 - **Negative / trade-offs**:
   - An external rename plus an edit, or a duplicated-content ambiguity, gives a new UUID.
+  - The narrower case of an external **case-only** rename combined with an edit keeps the UUID: the case-insensitive path step pairs on the path alone (no hash check) and adopts the new hash and size.
   - A vault open re-hashes every file (cost grows linearly with vault size, and it is synchronous).
   - Every Workspace full render walks the directory tree.
   - Stale records (files deleted externally) remain until the next open or re-index; the viewer shows a "missing" state.
