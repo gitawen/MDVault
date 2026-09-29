@@ -50,3 +50,4 @@ PHPStan runs at level 7. Settings must survive restarts and must never make the 
   - Phase 5 consumes `app.check_external_changes`.
   - Phase 6 adds `backup.*`, and Phase 7 `security.*`.
   - If settings export/backup is added, it should read through `SettingsService`.
+- Phase 4 Revision 4 adds `editor.new_note_template_enabled` (boolean, default true) and `editor.new_note_template` (string, default in code). An empty template is refused while enabled, because `null` means "revert to default".

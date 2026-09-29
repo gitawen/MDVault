@@ -28,6 +28,7 @@ class StoreNoteRequest extends FormRequest
         return [
             'name' => $this->noteNameRules($notes),
             'folder' => ['nullable', 'string', 'max:1024'],
+            'timezone' => ['nullable', 'string', 'timezone:all'],
         ];
     }
 }

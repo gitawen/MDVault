@@ -35,6 +35,7 @@ const open = defineModel<boolean>('open', { default: false });
 const form = useForm({
     name: '',
     folder: props.defaultFolder === '' ? ROOT : props.defaultFolder,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 });
 
 watch(open, (isOpen) => {

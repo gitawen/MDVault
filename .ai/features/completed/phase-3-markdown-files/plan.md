@@ -763,7 +763,7 @@ Re-index runs when a vault is opened and on demand. The Workspace gets a note-tr
   - new note and folder names use the vault-name rules (portable on every OS, 1–100 characters), must not start with `.`, and folders can't be named `node_modules`;
   - `.md` is added automatically, and a typed `.md` is stripped;
   - names are unique ignoring letter case within the folder;
-  - new notes are created as empty files.
+  - new notes are created as empty files. (Amended in Phase 4 Revision 4: when the new-note template setting is on, which is the default, new notes start with a rendered frontmatter block; existing notes are never touched.)
 - [x] **E5: When indexing runs.** **Recommended:**
   - a full re-index when a vault is opened, created or added, and on a manual "Re-index" button with a result toast;
   - MDVault's own operations update only their record;

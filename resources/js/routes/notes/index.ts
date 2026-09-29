@@ -1,4 +1,5 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import content from './content'
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
  * @see app/Http/Controllers/WorkspaceController.php:22
@@ -361,6 +362,7 @@ destroy.delete = (args: { note: string | { uuid: string } } | [note: string | { 
 const notes = {
     show: Object.assign(show, show),
 update: Object.assign(update, update),
+content: Object.assign(content, content),
 move: Object.assign(move, move),
 destroy: Object.assign(destroy, destroy),
 }

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { PanelLeft } from '@lucide/vue';
+import { ref } from 'vue';
 import StatusBar from '@/components/StatusBar.vue';
-import TiptapEditor from '@/components/editor/TiptapEditor.vue';
+import NoteEditor from '@/components/editor/NoteEditor.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import NoteTree from '@/components/notes/NoteTree.vue';
-import NoteViewer from '@/components/notes/NoteViewer.vue';
 import VaultStatusBadge from '@/components/vaults/VaultStatusBadge.vue';
 import { workspace } from '@/routes';
 import { close, index } from '@/routes/vaults';
@@ -31,21 +32,16 @@ function closeVault() {
     router.post(close.url());
 }
 
+// Below `md`, the note tree starts collapsed behind this toggle so the
+// editor gets the full width on a phone; from `md` up it is always shown
+// (the toggle button itself is hidden there via `md:hidden`).
+const treeOpen = ref(false);
+
 defineOptions({
     layout: {
         breadcrumbs: [{ title: 'Workspace', href: workspace() }],
     },
 });
-
-const demoContent = `
-    <h1>Welcome to MDVault</h1>
-    <p>This is a preview editor. Changes here are not saved yet.</p>
-    <ul>
-        <li>Local-first notes, stored on your device</li>
-        <li>Rich-text editing powered by Tiptap</li>
-        <li>Markdown and saving arrive in a later phase</li>
-    </ul>
-`;
 </script>
 
 <template>
@@ -56,9 +52,21 @@ const demoContent = `
             v-if="currentVault && currentVault.status === 'active'"
             class="flex items-center gap-2 border-b p-2 px-4"
         >
-            <span class="font-medium">{{ currentVault.name }}</span>
+            <Button
+                v-if="tree !== null"
+                variant="ghost"
+                size="icon-sm"
+                class="shrink-0 md:hidden"
+                :aria-pressed="treeOpen"
+                title="Toggle note list"
+                aria-label="Toggle note list"
+                @click="treeOpen = !treeOpen"
+            >
+                <PanelLeft />
+            </Button>
+            <span class="shrink-0 font-medium">{{ currentVault.name }}</span>
             <span
-                class="truncate text-xs text-muted-foreground"
+                class="min-w-0 flex-1 truncate text-xs text-muted-foreground"
                 :title="currentVault.path"
             >
                 {{ currentVault.path }}
@@ -67,7 +75,7 @@ const demoContent = `
             <Button
                 variant="ghost"
                 size="sm"
-                class="ml-auto"
+                class="shrink-0"
                 @click="closeVault"
             >
                 Close vault
@@ -100,9 +108,12 @@ const demoContent = `
                 currentVault.status === 'active' &&
                 tree !== null
             "
-            class="flex min-h-0 flex-1"
+            class="flex min-h-0 flex-1 flex-col md:flex-row"
         >
-            <aside class="w-64 shrink-0 overflow-auto border-r">
+            <aside
+                class="shrink-0 overflow-auto md:block md:w-64 md:border-r md:border-b-0"
+                :class="treeOpen ? 'block max-h-64 border-b' : 'hidden'"
+            >
                 <NoteTree
                     :vault-uuid="currentVault.uuid"
                     :tree="tree"
@@ -111,11 +122,16 @@ const demoContent = `
                     :can-trash="canTrash"
                 />
             </aside>
-            <main class="flex-1 overflow-auto p-4">
-                <NoteViewer
+            <main
+                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto p-4"
+            >
+                <NoteEditor
                     v-if="note"
+                    :key="`${note.uuid}:${note.base_hash ?? note.state}`"
                     :note="note"
                     :vault-uuid="currentVault.uuid"
+                    :preferences="editor"
+                    :runtime="status.runtime"
                 />
                 <p v-else class="text-sm text-muted-foreground">
                     Select a note from the list, or create a new one.
@@ -123,8 +139,14 @@ const demoContent = `
             </main>
         </div>
 
-        <main v-else class="flex-1 overflow-auto p-4">
-            <TiptapEditor :content="demoContent" :preferences="editor" />
+        <main
+            v-else
+            class="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground"
+        >
+            <p>
+                Open or create a vault to start writing.
+                <Link :href="index()" class="underline">Go to Vaults</Link>
+            </p>
         </main>
 
         <StatusBar :status="status" />

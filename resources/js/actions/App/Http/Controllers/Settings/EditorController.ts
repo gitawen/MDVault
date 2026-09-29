@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\EditorController::edit
- * @see app/Http/Controllers/Settings/EditorController.php:16
+ * @see app/Http/Controllers/Settings/EditorController.php:17
  * @route '/settings/editor'
  */
 export const edit = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\EditorController::edit
- * @see app/Http/Controllers/Settings/EditorController.php:16
+ * @see app/Http/Controllers/Settings/EditorController.php:17
  * @route '/settings/editor'
  */
 edit.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ edit.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\EditorController::edit
- * @see app/Http/Controllers/Settings/EditorController.php:16
+ * @see app/Http/Controllers/Settings/EditorController.php:17
  * @route '/settings/editor'
  */
 edit.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ edit.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\Settings\EditorController::edit
- * @see app/Http/Controllers/Settings/EditorController.php:16
+ * @see app/Http/Controllers/Settings/EditorController.php:17
  * @route '/settings/editor'
  */
 edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\Settings\EditorController::edit
- * @see app/Http/Controllers/Settings/EditorController.php:16
+ * @see app/Http/Controllers/Settings/EditorController.php:17
  * @route '/settings/editor'
  */
     const editForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\Settings\EditorController::edit
- * @see app/Http/Controllers/Settings/EditorController.php:16
+ * @see app/Http/Controllers/Settings/EditorController.php:17
  * @route '/settings/editor'
  */
         editForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\Settings\EditorController::edit
- * @see app/Http/Controllers/Settings/EditorController.php:16
+ * @see app/Http/Controllers/Settings/EditorController.php:17
  * @route '/settings/editor'
  */
         editForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     edit.form = editForm
 /**
 * @see \App\Http\Controllers\Settings\EditorController::update
- * @see app/Http/Controllers/Settings/EditorController.php:23
+ * @see app/Http/Controllers/Settings/EditorController.php:25
  * @route '/settings/editor'
  */
 export const update = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -94,7 +94,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\EditorController::update
- * @see app/Http/Controllers/Settings/EditorController.php:23
+ * @see app/Http/Controllers/Settings/EditorController.php:25
  * @route '/settings/editor'
  */
 update.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ update.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\EditorController::update
- * @see app/Http/Controllers/Settings/EditorController.php:23
+ * @see app/Http/Controllers/Settings/EditorController.php:25
  * @route '/settings/editor'
  */
 update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -113,7 +113,7 @@ update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
 
     /**
 * @see \App\Http\Controllers\Settings\EditorController::update
- * @see app/Http/Controllers/Settings/EditorController.php:23
+ * @see app/Http/Controllers/Settings/EditorController.php:25
  * @route '/settings/editor'
  */
     const updateForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -128,7 +128,7 @@ update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
 
             /**
 * @see \App\Http\Controllers\Settings\EditorController::update
- * @see app/Http/Controllers/Settings/EditorController.php:23
+ * @see app/Http/Controllers/Settings/EditorController.php:25
  * @route '/settings/editor'
  */
         updateForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

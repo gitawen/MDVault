@@ -176,48 +176,165 @@
         @apply min-h-40 outline-none;
     }
 
+    /* GitHub-style Markdown rendering. Sizes are em-relative so the
+       font_size editor preference (set inline on the wrapper element in
+       TiptapEditor.vue) scales the whole document, headings included. */
+
+    .tiptap-content > :first-child {
+        @apply mt-0;
+    }
+
+    .tiptap-content h1,
+    .tiptap-content h2,
+    .tiptap-content h3,
+    .tiptap-content h4,
+    .tiptap-content h5,
+    .tiptap-content h6 {
+        @apply font-semibold;
+        line-height: 1.25;
+    }
+
     .tiptap-content h1 {
-        @apply mt-2 mb-4 text-2xl font-bold;
+        @apply mt-8 mb-4 border-b border-border pb-2 text-[2em];
     }
 
     .tiptap-content h2 {
-        @apply mt-6 mb-3 text-xl font-semibold;
+        @apply mt-6 mb-4 border-b border-border pb-2 text-[1.5em];
     }
 
     .tiptap-content h3 {
-        @apply mt-4 mb-2 text-lg font-semibold;
+        @apply mt-6 mb-3 text-[1.25em];
+    }
+
+    .tiptap-content h4 {
+        @apply mt-6 mb-3 text-[1em];
+    }
+
+    .tiptap-content h5 {
+        @apply mt-6 mb-3 text-[0.875em];
+    }
+
+    .tiptap-content h6 {
+        @apply mt-6 mb-3 text-[0.85em] text-muted-foreground;
     }
 
     .tiptap-content p {
         @apply my-3 leading-relaxed;
     }
 
+    .tiptap-content a {
+        @apply cursor-pointer text-blue-600 underline decoration-blue-600/40 underline-offset-2 transition-colors hover:decoration-blue-600 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:decoration-blue-400;
+    }
+
+    .tiptap-content strong {
+        @apply font-semibold;
+    }
+
+    .tiptap-content s {
+        @apply text-muted-foreground;
+    }
+
+    .tiptap-content ul,
+    .tiptap-content ol {
+        @apply my-3 list-outside pl-6;
+    }
+
     .tiptap-content ul {
-        @apply my-3 list-disc pl-6;
+        @apply list-disc;
     }
 
     .tiptap-content ol {
-        @apply my-3 list-decimal pl-6;
+        @apply list-decimal;
+    }
+
+    .tiptap-content li {
+        @apply my-1;
+    }
+
+    .tiptap-content li > p {
+        @apply my-1;
+    }
+
+    .tiptap-content li > ul,
+    .tiptap-content li > ol {
+        @apply my-1;
+    }
+
+    .tiptap-content ul ul {
+        list-style-type: circle;
+    }
+
+    .tiptap-content ul ul ul {
+        list-style-type: square;
+    }
+
+    .tiptap-content ul[data-type='taskList'] {
+        @apply list-none pl-0;
+    }
+
+    .tiptap-content ul[data-type='taskList'] li {
+        @apply flex items-start gap-2;
+    }
+
+    .tiptap-content ul[data-type='taskList'] li > label {
+        @apply mt-1 flex-none select-none;
+    }
+
+    .tiptap-content ul[data-type='taskList'] li > div {
+        @apply flex-1;
+    }
+
+    .tiptap-content ul[data-type='taskList'] input[type='checkbox'] {
+        @apply size-4 cursor-pointer;
     }
 
     .tiptap-content blockquote {
-        @apply my-3 border-l-2 border-border pl-4 text-muted-foreground;
+        @apply my-3 border-l-4 border-border pl-4 text-muted-foreground;
+    }
+
+    .tiptap-content blockquote > :first-child {
+        @apply mt-0;
+    }
+
+    .tiptap-content blockquote > :last-child {
+        @apply mb-0;
     }
 
     .tiptap-content code {
-        @apply rounded bg-muted px-1 py-0.5 font-mono text-sm;
+        @apply rounded bg-muted px-1 py-0.5 font-mono text-[0.875em];
     }
 
     .tiptap-content pre {
-        @apply my-3 overflow-x-auto rounded-lg bg-muted p-3 font-mono text-sm;
+        @apply my-3 overflow-x-auto rounded-lg bg-muted p-3 font-mono text-[0.875em] leading-normal;
     }
 
     .tiptap-content pre code {
-        @apply bg-transparent p-0;
+        @apply bg-transparent p-0 text-inherit;
     }
 
     .tiptap-content hr {
         @apply my-6 border-border;
+    }
+
+    .tiptap-content img {
+        @apply my-3 max-w-full rounded-md;
+    }
+
+    /* Table styling is included for when the schema gains table support;
+       StarterKit doesn't register a table node today (`assess.ts` routes
+       any note containing one to source mode), so this has no live effect
+       yet. */
+    .tiptap-content table {
+        @apply my-3 w-full border-collapse text-[0.875em];
+    }
+
+    .tiptap-content th,
+    .tiptap-content td {
+        @apply border border-border px-3 py-2 text-left;
+    }
+
+    .tiptap-content th {
+        @apply bg-muted font-semibold;
     }
 
     .tiptap-nowrap .tiptap-content {

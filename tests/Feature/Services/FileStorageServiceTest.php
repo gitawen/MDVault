@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\FileReplaceResult;
 use App\Services\FileStorageService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -265,6 +266,35 @@ test('deleteNewEmptyFile removes a 0-byte file and refuses a non-empty one', fun
         ->and(File::get($full))->toBe('content');
 });
 
+test('deleteNewFileWithContents deletes only when the bytes exactly match', function () {
+    $service = app(FileStorageService::class);
+
+    $exact = $this->tmp.DIRECTORY_SEPARATOR.'exact.md';
+    File::put($exact, 'template content');
+    expect($service->deleteNewFileWithContents($exact, 'template content'))->toBeTrue()
+        ->and(file_exists($exact))->toBeFalse();
+
+    $differentSize = $this->tmp.DIRECTORY_SEPARATOR.'different-size.md';
+    File::put($differentSize, 'template content plus more');
+    expect($service->deleteNewFileWithContents($differentSize, 'template content'))->toBeFalse()
+        ->and(File::exists($differentSize))->toBeTrue();
+
+    $differentBytes = $this->tmp.DIRECTORY_SEPARATOR.'different-bytes.md';
+    File::put($differentBytes, 'template CONTENT!');
+    expect($service->deleteNewFileWithContents($differentBytes, 'template content!'))->toBeFalse()
+        ->and(File::exists($differentBytes))->toBeTrue();
+});
+
+test('deleteNewFileWithContents refuses a symlink even with matching bytes', function () {
+    $real = $this->tmp.DIRECTORY_SEPARATOR.'real.md';
+    File::put($real, 'content');
+    $link = $this->tmp.DIRECTORY_SEPARATOR.'link.md';
+    symlink($real, $link);
+
+    expect(app(FileStorageService::class)->deleteNewFileWithContents($link, 'content'))->toBeFalse();
+    expect(File::exists($real))->toBeTrue();
+})->skipOnWindows();
+
 test('renameFile moves a file with its content and the source is gone', function () {
     $from = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
     $to = $this->tmp.DIRECTORY_SEPARATOR.'b.md';
@@ -398,4 +428,126 @@ test('read of a missing file gives null; size of a missing file gives null', fun
 
     expect($service->read($missing))->toBeNull()
         ->and($service->size($missing))->toBeNull();
+});
+
+test('replaceFile replaces the content and returns Replaced, leaving no temp file', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($target, 'old');
+
+    $result = app(FileStorageService::class)->replaceFile($target, 'new content');
+
+    expect($result)->toBe(FileReplaceResult::Replaced)
+        ->and(File::get($target))->toBe('new content')
+        ->and(glob($this->tmp.DIRECTORY_SEPARATOR.'.mdvault-save-*'))->toBe([]);
+});
+
+test('replaceFile aborts with GuardFailed when beforeReplace returns false, leaving the target intact', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($target, 'old');
+
+    $result = app(FileStorageService::class)->replaceFile($target, 'new content', fn (): bool => false);
+
+    expect($result)->toBe(FileReplaceResult::GuardFailed)
+        ->and(File::get($target))->toBe('old')
+        ->and(glob($this->tmp.DIRECTORY_SEPARATOR.'.mdvault-save-*'))->toBe([]);
+});
+
+test('replaceFile gives ReplaceFailed after 3 failed rename attempts, leaving the target intact', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($target, 'old');
+    failFileMoves([1, 2, 3]);
+
+    $result = app(FileStorageService::class)->replaceFile($target, 'new content');
+
+    expect($result)->toBe(FileReplaceResult::ReplaceFailed)
+        ->and(File::get($target))->toBe('old')
+        ->and(glob($this->tmp.DIRECTORY_SEPARATOR.'.mdvault-save-*'))->toBe([]);
+});
+
+test('replaceFile succeeds after one failed rename attempt (retry)', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($target, 'old');
+    failFileMoves([1]);
+
+    $result = app(FileStorageService::class)->replaceFile($target, 'new content');
+
+    expect($result)->toBe(FileReplaceResult::Replaced)
+        ->and(File::get($target))->toBe('new content');
+});
+
+test('replaceFile gives WriteFailed on a short write, leaving the target intact', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($target, 'old');
+    fakeFilePuts(truncateTo: 3);
+
+    $result = app(FileStorageService::class)->replaceFile($target, 'new content');
+
+    expect($result)->toBe(FileReplaceResult::WriteFailed)
+        ->and(File::get($target))->toBe('old')
+        ->and(glob($this->tmp.DIRECTORY_SEPARATOR.'.mdvault-save-*'))->toBe([]);
+});
+
+test('replaceFile gives TargetInvalid for a missing target and creates nothing', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'missing.md';
+
+    $result = app(FileStorageService::class)->replaceFile($target, 'new content');
+
+    expect($result)->toBe(FileReplaceResult::TargetInvalid)
+        ->and(File::exists($target))->toBeFalse()
+        ->and(glob($this->tmp.DIRECTORY_SEPARATOR.'.mdvault-save-*'))->toBe([]);
+});
+
+test('replaceFile gives TargetInvalid for a symlinked target', function () {
+    $real = $this->tmp.DIRECTORY_SEPARATOR.'real.md';
+    File::put($real, 'old');
+    $link = $this->tmp.DIRECTORY_SEPARATOR.'link.md';
+    symlink($real, $link);
+
+    $result = app(FileStorageService::class)->replaceFile($link, 'new content');
+
+    expect($result)->toBe(FileReplaceResult::TargetInvalid);
+})->skipOnWindows();
+
+test('replaceFile preserves the target permission bits', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($target, 'old');
+    chmod($target, 0640);
+
+    app(FileStorageService::class)->replaceFile($target, 'new content');
+
+    expect(fileperms($target) & 0777)->toBe(0640);
+})->skipOnWindows();
+
+test('isWritableFile is true for a normal file and false for a read-only one', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($target, 'x');
+    $service = app(FileStorageService::class);
+
+    try {
+        expect($service->isWritableFile($target))->toBeTrue();
+
+        chmod($target, 0444);
+
+        expect($service->isWritableFile($target))->toBeFalse();
+    } finally {
+        @chmod($target, 0644);
+    }
+});
+
+test('discardTempFile (through replaceFile) never removes the target on any failure path', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+
+    File::put($target, 'a');
+    app(FileStorageService::class)->replaceFile($target, 'b', fn (): bool => false);
+    expect(File::exists($target))->toBeTrue();
+
+    File::put($target, 'a');
+    failFileMoves([1, 2, 3]);
+    app(FileStorageService::class)->replaceFile($target, 'b');
+    expect(File::exists($target))->toBeTrue();
+
+    File::put($target, 'a');
+    fakeFilePuts(truncateTo: 0);
+    app(FileStorageService::class)->replaceFile($target, 'b');
+    expect(File::exists($target))->toBeTrue();
 });

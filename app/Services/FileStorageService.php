@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Trash;
+use App\Enums\FileReplaceResult;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 
@@ -12,6 +13,14 @@ use Illuminate\Support\Str;
  */
 final class FileStorageService
 {
+    /**
+     * Prefix of the temp sibling `replaceFile()` writes to before renaming
+     * it over its target. Dot-prefixed so the indexer ignores it.
+     */
+    public const SAVE_TEMP_PREFIX = '.mdvault-save-';
+
+    public const REPLACE_ATTEMPTS = 3;
+
     public function __construct(
         private readonly Filesystem $files,
         private readonly Trash $trash,
@@ -220,7 +229,9 @@ final class FileStorageService
 
     /**
      * Exclusive create: never overwrites an existing file. The result is
-     * checked afterwards (`is_file`), the only source of truth.
+     * checked afterwards (`is_file`), the only source of truth. A short
+     * write (disk full, mid-write) is never left as a partial file: it is
+     * truncated to empty and then removed (Phase 4 Revision 4).
      */
     public function createFile(string $path, string $contents = ''): bool
     {
@@ -231,9 +242,19 @@ final class FileStorageService
         }
 
         try {
-            fwrite($handle, $contents);
+            $written = fwrite($handle, $contents);
         } finally {
+            if (($written ?? false) !== strlen($contents)) {
+                @ftruncate($handle, 0);
+            }
+
             fclose($handle);
+        }
+
+        if ($written !== strlen($contents)) {
+            $this->deleteNewEmptyFile($path);
+
+            return false;
         }
 
         clearstatcache();
@@ -242,14 +263,150 @@ final class FileStorageService
     }
 
     /**
+     * Compensation only: removes $path only if it is a regular file whose
+     * entire contents still exactly equal $contents, i.e. this call's own
+     * write (Phase 4 Revision 4: `createFile`'s template content, not just
+     * an empty file). Never deletes anything else.
+     */
+    public function deleteNewFileWithContents(string $path, string $contents): bool
+    {
+        clearstatcache();
+
+        if (! is_file($path) || is_link($path) || filesize($path) !== strlen($contents)) {
+            return false;
+        }
+
+        $actual = $this->read($path);
+
+        if ($actual === null || ! hash_equals($contents, $actual)) {
+            return false;
+        }
+
+        @unlink($path);
+
+        clearstatcache();
+
+        return ! file_exists($path);
+    }
+
+    /**
      * Compensation only: removes $path only if it is a regular file of size
      * 0. Never deletes user content.
      */
     public function deleteNewEmptyFile(string $path): bool
     {
+        return $this->deleteNewFileWithContents($path, '');
+    }
+
+    public function isWritableFile(string $path): bool
+    {
         clearstatcache();
 
-        if (! is_file($path) || filesize($path) !== 0) {
+        return is_file($path) && ! is_link($path) && is_writable($path);
+    }
+
+    /**
+     * The ONLY method that replaces an existing file (ADR
+     * `note-save-atomic-replace`). Writes a full temp sibling first, so a
+     * crash or a full disk mid-write never truncates the target. $beforeReplace
+     * runs after the temp file is complete and immediately before the
+     * rename; returning false aborts, leaving the target untouched.
+     *
+     * A Windows lock held by another program (antivirus, a sync tool, an
+     * editor without share-delete) makes the rename fail with the original
+     * file intact. A crash between the temp write and the rename may leave
+     * a hidden `.mdvault-save-*` orphan holding the user's new text; it is
+     * never auto-deleted.
+     */
+    public function replaceFile(string $path, string $contents, ?callable $beforeReplace = null): FileReplaceResult
+    {
+        if (! is_file($path) || is_link($path)) {
+            return FileReplaceResult::TargetInvalid;
+        }
+
+        $tmp = $this->siblingPath($path, self::SAVE_TEMP_PREFIX.Str::random(12));
+
+        if (! $this->createFile($tmp)) {
+            return FileReplaceResult::WriteFailed;
+        }
+
+        try {
+            $written = $this->files->put($tmp, $contents);
+        } catch (\Throwable) {
+            $written = false;
+        }
+
+        if ($written !== strlen($contents) || $this->size($tmp) !== strlen($contents)) {
+            $this->discardTempFile($tmp);
+
+            return FileReplaceResult::WriteFailed;
+        }
+
+        $this->flushToDisk($tmp);
+
+        $perms = @fileperms($path);
+
+        if ($perms !== false) {
+            @chmod($tmp, $perms & 0777);
+        }
+
+        if ($beforeReplace !== null && ! $beforeReplace()) {
+            $this->discardTempFile($tmp);
+
+            return FileReplaceResult::GuardFailed;
+        }
+
+        $moved = false;
+
+        for ($attempt = 1; $attempt <= self::REPLACE_ATTEMPTS; $attempt++) {
+            if ($this->attemptFileMove($tmp, $path)) {
+                $moved = true;
+
+                break;
+            }
+
+            if ($attempt < self::REPLACE_ATTEMPTS) {
+                usleep(100_000);
+            }
+        }
+
+        clearstatcache();
+
+        if (! $moved || file_exists($tmp)) {
+            $this->discardTempFile($tmp);
+
+            return FileReplaceResult::ReplaceFailed;
+        }
+
+        return FileReplaceResult::Replaced;
+    }
+
+    /**
+     * Best-effort fsync of a just-written temp file. Failures are ignored:
+     * this is a durability improvement, not a correctness requirement.
+     */
+    private function flushToDisk(string $path): void
+    {
+        $handle = @fopen($path, 'r+');
+
+        if ($handle === false) {
+            return;
+        }
+
+        try {
+            @fsync($handle);
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    /**
+     * Compensation only: removes $path only if it is one of MDVault's own
+     * `.mdvault-save-*` temp files. Never touches a user's file.
+     */
+    private function discardTempFile(string $path): bool
+    {
+        if (! str_starts_with(basename($path), self::SAVE_TEMP_PREFIX) || ! is_file($path) || is_link($path)) {
             return false;
         }
 

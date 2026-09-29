@@ -101,4 +101,39 @@ final class NoteOperationException extends \RuntimeException
     {
         return new self("The folder \u{201c}{$relative}\u{201d} could not be deleted. Close any programs using it and try again.", 'path');
     }
+
+    public static function saveLocked(string $relative): self
+    {
+        return new self("\u{201c}{$relative}\u{201d} couldn't be saved because another program is using it. Close that program and try again. Your text is still in the editor; the file on disk wasn't changed.", 'content');
+    }
+
+    public static function saveWriteFailed(string $relative): self
+    {
+        return new self("\u{201c}{$relative}\u{201d} couldn't be saved: MDVault couldn't write the new version (the disk may be full, or the folder isn't writable). Your text is still in the editor; the file on disk wasn't changed.", 'content');
+    }
+
+    public static function readOnlyFile(string $relative): self
+    {
+        return new self("\u{201c}{$relative}\u{201d} is read-only, so MDVault won't change it. Make it writable in your file manager and try again. Your text is still in the editor.", 'content');
+    }
+
+    public static function contentTooLarge(): self
+    {
+        return new self("This note is larger than 1 MB, which the editor can't save. The file on disk wasn't changed. Copy your text, or split the note.", 'content');
+    }
+
+    public static function notEditable(string $relative): self
+    {
+        return new self("\u{201c}{$relative}\u{201d} can't be edited in MDVault (it is larger than 1 MB, isn't valid UTF-8, or isn't a regular file). Nothing was changed.", 'content');
+    }
+
+    public static function saveUnreadable(string $relative): self
+    {
+        return new self("MDVault couldn't read \u{201c}{$relative}\u{201d} to check it before saving. Close any programs that may be locking it and try again. Your text is still in the editor.", 'content');
+    }
+
+    public static function invalidFrontmatter(): self
+    {
+        return new self("The frontmatter can't contain a line of three dashes (---), because that would end it early and change the note. Remove that line and try again. Nothing on disk was changed.", 'frontmatter');
+    }
 }

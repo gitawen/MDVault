@@ -17,7 +17,7 @@ class NoteController extends Controller
 {
     public function store(StoreNoteRequest $request, Vault $vault, NoteService $notes): RedirectResponse
     {
-        $note = $this->attempt(fn (): Note => $notes->create($vault, $request->validated('folder'), $request->validated('name')));
+        $note = $this->attempt(fn (): Note => $notes->create($vault, $request->validated('folder'), $request->validated('name'), $request->validated('timezone')));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Note \u{201c}{$note->title}\u{201d} created."]);
 

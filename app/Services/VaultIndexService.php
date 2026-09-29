@@ -289,6 +289,7 @@ final class VaultIndexService
                 'uuid' => $note->uuid,
                 'title' => $note->title,
                 'path' => $note->relative_path,
+                'folder' => $parent,
             ];
         }
 

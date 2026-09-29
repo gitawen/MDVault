@@ -57,6 +57,10 @@ arch('files are hashed only in FileHashService')
     ->expect('hash_file')
     ->toOnlyBeUsedIn('App\Services\FileHashService');
 
+arch('only FileStorageService deletes, writes or syncs files')
+    ->expect(['unlink', 'file_put_contents', 'fsync'])
+    ->toOnlyBeUsedIn('App\Services\FileStorageService');
+
 arch('index and note services use no raw filesystem functions')
     ->expect([
         'file_get_contents',
@@ -72,4 +76,4 @@ arch('index and note services use no raw filesystem functions')
         'Illuminate\Support\Facades\File',
         'Illuminate\Support\Facades\Storage',
     ])
-    ->not->toBeUsedIn(['App\Services\VaultIndexService', 'App\Services\NoteService']);
+    ->not->toBeUsedIn(['App\Services\VaultIndexService', 'App\Services\NoteService', 'App\Services\MarkdownService']);

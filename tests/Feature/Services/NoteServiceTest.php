@@ -1,9 +1,16 @@
 <?php
 
+use App\Enums\NoteSaveMode;
+use App\Enums\SettingKey;
+use App\Exceptions\NoteSaveConflictException;
 use App\Models\Note;
+use App\Services\MarkdownService;
 use App\Services\NoteService;
+use App\Services\SettingsService;
 use App\Services\VaultIndexService;
 use App\Services\VaultService;
+use App\Support\FrontmatterEdit;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -21,7 +28,9 @@ afterEach(function () {
 
 // --- Create -----------------------------------------------------------
 
-test('create makes an empty file at the vault root and a matching record', function () {
+test('create makes an empty file at the vault root and a matching record (template off)', function () {
+    app(SettingsService::class)->set(SettingKey::EditorNewNoteTemplateEnabled, false);
+
     $note = $this->service->create($this->vault, null, 'Meeting');
 
     $path = $this->vault->path.DIRECTORY_SEPARATOR.'Meeting.md';
@@ -118,6 +127,83 @@ test('create refuses when the vault folder is missing', function () {
     $field = noteOperationField(fn () => $this->service->create($this->vault, null, 'Meeting'));
 
     expect($field)->toBe('vault');
+});
+
+// --- Revision 4: new-note frontmatter template ---------------------------
+
+test('with the template on (the default), the new file equals the rendered template and the DB matches the disk', function () {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-29 12:00:00'));
+
+    $note = $this->service->create($this->vault, null, 'Meeting');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'Meeting.md';
+
+    $expected = "---\ntitle: \"Meeting\"\ncreated: 2026-09-29\n# tags: []\n# aliases: []\n---\n\n";
+    expect(File::get($path))->toBe($expected);
+    expect($note->file_hash)->toBe(hash_file('sha256', $path));
+    expect($note->file_size)->toBe(filesize($path));
+
+    CarbonImmutable::setTestNow();
+});
+
+test('preview() of a newly created note gives the rendered frontmatter_yaml and an empty body', function () {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-29 12:00:00'));
+
+    $note = $this->service->create($this->vault, null, 'Meeting');
+    $preview = $this->service->preview($note->fresh());
+
+    expect($preview['frontmatter_yaml'])->toBe("title: \"Meeting\"\ncreated: 2026-09-29\n# tags: []\n# aliases: []");
+    expect($preview['body'])->toBe('');
+
+    CarbonImmutable::setTestNow();
+});
+
+test('the client timezone decides the local created date, even near midnight UTC', function () {
+    // 23:00 UTC on the 28th is already 13:00 on the 29th in
+    // Pacific/Kiritimati (UTC+14), the earliest timezone in the world.
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-28 23:00:00', 'UTC'));
+
+    $note = $this->service->create($this->vault, null, 'Meeting', 'Pacific/Kiritimati');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'Meeting.md';
+
+    expect(File::get($path))->toContain('created: 2026-09-29');
+    expect($note->file_hash)->toBe(hash_file('sha256', $path));
+
+    CarbonImmutable::setTestNow();
+});
+
+test('a DB failure removes the new templated file only when its bytes are still exactly what was written', function () {
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'Meeting.md';
+
+    Note::creating(function () use ($path): void {
+        // Something else appended to the file before the DB write failed.
+        file_put_contents($path, 'external', FILE_APPEND);
+
+        throw new RuntimeException('db down');
+    });
+
+    expect(fn () => $this->service->create($this->vault, null, 'Meeting'))->toThrow(RuntimeException::class, 'db down');
+
+    Note::flushEventListeners();
+
+    // The file survives because it no longer matches exactly what create()
+    // wrote: the compensation only ever deletes an unchanged new file.
+    expect(File::exists($path))->toBeTrue();
+    expect(File::get($path))->toEndWith('external');
+    expect(Note::query()->count())->toBe(0);
+});
+
+test('creating a note never touches an existing note file in the same vault', function () {
+    $existing = $this->service->create($this->vault, null, 'Existing');
+    $existingPath = $this->vault->path.DIRECTORY_SEPARATOR.'Existing.md';
+    File::put($existingPath, 'Some existing content');
+    $hashBefore = hash_file('sha256', $existingPath);
+    $mtimeBefore = filemtime($existingPath);
+
+    $this->service->create($this->vault, null, 'Meeting');
+
+    expect(hash_file('sha256', $existingPath))->toBe($hashBefore);
+    expect(filemtime($existingPath))->toBe($mtimeBefore);
+    expect(File::get($existingPath))->toBe('Some existing content');
 });
 
 // --- Rename -------------------------------------------------------------
@@ -453,6 +539,431 @@ test('present has the exact keys and no id or vault_id', function () {
         ->not->toHaveKey('id')
         ->not->toHaveKey('vault_id');
     expect($presented['folder'])->toBe('Projects');
+});
+
+test('preview of an ok note has base_hash, body and frontmatter and is editable', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    File::put($this->vault->path.DIRECTORY_SEPARATOR.'a.md', "---\ntitle: X\n---\n\n# H\n");
+
+    $result = $this->service->preview($note->fresh());
+
+    expect($result['state'])->toBe('ok');
+    expect($result['frontmatter'])->toBe("---\ntitle: X\n---\n\n");
+    expect($result['body'])->toBe("# H\n");
+    expect($result['base_hash'])->toBe(hash('sha256', "---\ntitle: X\n---\n\n# H\n"));
+    expect($result['editable'])->toBeTrue();
+    expect($result['read_only_reason'])->toBeNull();
+});
+
+test('preview of a missing, too_large or unreadable note is never editable', function () {
+    $missing = $this->service->create($this->vault, null, 'missing-note');
+    unlink($this->vault->path.DIRECTORY_SEPARATOR.'missing-note.md');
+    $missingResult = $this->service->preview($missing->fresh());
+    expect($missingResult['editable'])->toBeFalse();
+    expect($missingResult['read_only_reason'])->toBeNull();
+
+    $tooLarge = $this->service->create($this->vault, null, 'big-note');
+    File::put($this->vault->path.DIRECTORY_SEPARATOR.'big-note.md', str_repeat('x', 1_048_577));
+    $tooLargeResult = $this->service->preview($tooLarge->fresh());
+    expect($tooLargeResult['editable'])->toBeFalse();
+    expect($tooLargeResult['read_only_reason'])->toBe('too_large');
+});
+
+test('preview of an invalid UTF-8 note is not editable with reason invalid_utf8', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    File::put($this->vault->path.DIRECTORY_SEPARATOR.'a.md', "a\xFFb");
+
+    $result = $this->service->preview($note->fresh());
+
+    expect($result['editable'])->toBeFalse();
+    expect($result['read_only_reason'])->toBe('invalid_utf8');
+});
+
+test('preview base_hash reflects a stale DB hash reconciled to the disk hash', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    File::put($this->vault->path.DIRECTORY_SEPARATOR.'a.md', 'edited content');
+
+    $result = $this->service->preview($note->fresh());
+
+    expect($result['base_hash'])->toBe(hash('sha256', 'edited content'));
+});
+
+// --- Save (ADR note-save-atomic-replace) --------------------------------
+
+test('a Rich save composes the current frontmatter with the new body', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "---\ntitle: X\n---\n\n# Old\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "---\ntitle: X\n---\n\n# Old\n");
+
+    $result = $this->service->save($note, "# New\n", $baseHash, NoteSaveMode::Rich);
+
+    expect(File::get($path))->toBe("---\ntitle: X\n---\n\n# New\n");
+    expect($result->written)->toBeTrue();
+    expect($result->fileHash)->toBe(hash_file('sha256', $path));
+    expect($note->fresh()->file_hash)->toBe($result->fileHash);
+    expect($note->fresh()->relative_path)->toBe('a.md');
+    expect($note->fresh()->uuid)->toBe($note->uuid);
+});
+
+test('a Source save is verbatim', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "---\ntitle: X\n---\n\nOld body\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "---\ntitle: X\n---\n\nOld body\n");
+
+    $result = $this->service->save($note, "raw text\nverbatim\n", $baseHash, NoteSaveMode::Source);
+
+    expect(File::get($path))->toBe("raw text\nverbatim\n");
+    expect($result->written)->toBeTrue();
+});
+
+test('a Rich save on a CRLF+BOM file produces CRLF+BOM bytes', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    $original = MarkdownService::BOM."# Old\r\n";
+    File::put($path, $original);
+    $note = $note->fresh();
+    $baseHash = hash('sha256', $original);
+
+    $this->service->save($note, "# New\n", $baseHash, NoteSaveMode::Rich);
+
+    $bytes = File::get($path);
+    expect($bytes)->toStartWith(MarkdownService::BOM);
+    expect(substr_count($bytes, "\n"))->toBe(substr_count($bytes, "\r\n"));
+    expect($bytes)->toEndWith("\r\n");
+});
+
+test('saving unchanged content is a no-op that leaves the modification time untouched', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Same\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Same\n");
+    $before = $note->updated_at;
+
+    $fake = failFileMoves([1, 2, 3]);
+    $result = $this->service->save($note, "# Same\n", $baseHash, NoteSaveMode::Rich);
+
+    expect($result->written)->toBeFalse();
+    expect($fake->calls)->toBe(0);
+    expect($note->fresh()->updated_at->equalTo($before))->toBeTrue();
+});
+
+test('a stale base hash gives a changed conflict and leaves the external content intact', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $note = $note->fresh();
+    $staleHash = hash('sha256', '# Something else entirely');
+
+    File::put($path, "# Changed externally\n");
+
+    try {
+        $this->service->save($note, "# My edit\n", $staleHash, NoteSaveMode::Rich);
+        test()->fail('Expected a NoteSaveConflictException.');
+    } catch (NoteSaveConflictException $e) {
+        expect($e->reason())->toBe('changed');
+        expect($e->currentHash())->toBe(hash('sha256', "# Changed externally\n"));
+    }
+
+    expect(File::get($path))->toBe("# Changed externally\n");
+});
+
+test('saving a note whose file was deleted externally gives a missing conflict', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Original\n");
+    unlink($path);
+
+    try {
+        $this->service->save($note, "# My edit\n", $baseHash, NoteSaveMode::Rich);
+        test()->fail('Expected a NoteSaveConflictException.');
+    } catch (NoteSaveConflictException $e) {
+        expect($e->reason())->toBe('missing');
+    }
+
+    expect(File::exists($path))->toBeFalse();
+});
+
+test('a locked rename gives a content-field error and leaves the file intact', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Original\n");
+    failFileMoves([1, 2, 3]);
+    $service = app(NoteService::class);
+
+    $field = noteOperationField(fn () => $service->save($note, "# New\n", $baseHash, NoteSaveMode::Rich));
+
+    expect($field)->toBe('content');
+    expect(File::get($path))->toBe("# Original\n");
+});
+
+test('a short write gives a content-field error and leaves the file intact', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Original\n");
+    fakeFilePuts(truncateTo: 1);
+    $service = app(NoteService::class);
+
+    $field = noteOperationField(fn () => $service->save($note, "# New\n", $baseHash, NoteSaveMode::Rich));
+
+    expect($field)->toBe('content');
+    expect(File::get($path))->toBe("# Original\n");
+});
+
+test('a read-only file is refused and left untouched', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Original\n");
+    chmod($path, 0444);
+
+    try {
+        $field = noteOperationField(fn () => $this->service->save($note, "# New\n", $baseHash, NoteSaveMode::Rich));
+        expect($field)->toBe('content');
+    } finally {
+        @chmod($path, 0644);
+    }
+
+    expect(File::get($path))->toBe("# Original\n");
+});
+
+test('content over the edit limit is refused', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Original\n");
+
+    $field = noteOperationField(fn () => $this->service->save(
+        $note,
+        str_repeat('x', NoteService::EDIT_LIMIT + 1),
+        $baseHash,
+        NoteSaveMode::Source,
+    ));
+
+    expect($field)->toBe('content');
+    expect(File::get($path))->toBe("# Original\n");
+});
+
+test('a current file over the edit limit is not editable', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, str_repeat('x', 1_048_577));
+    $note = $note->fresh();
+    $baseHash = hash('sha256', str_repeat('x', 1_048_577));
+
+    $field = noteOperationField(fn () => $this->service->save($note, 'y', $baseHash, NoteSaveMode::Source));
+
+    expect($field)->toBe('content');
+});
+
+test('a current file with invalid UTF-8 is not editable', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "a\xFFb");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "a\xFFb");
+
+    $field = noteOperationField(fn () => $this->service->save($note, 'y', $baseHash, NoteSaveMode::Source));
+
+    expect($field)->toBe('content');
+});
+
+test('a write raced by an external writer at put-time gives a changed conflict', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Original\n");
+
+    fakeFilePuts(onPut: function () use ($path): void {
+        file_put_contents($path, 'external');
+    });
+    $service = app(NoteService::class);
+
+    try {
+        $service->save($note, "# New\n", $baseHash, NoteSaveMode::Rich);
+        test()->fail('Expected a NoteSaveConflictException.');
+    } catch (NoteSaveConflictException $e) {
+        expect($e->reason())->toBe('changed');
+    }
+
+    expect(File::get($path))->toBe('external');
+});
+
+test('a DB failure after a successful write still reports the save as written', function () {
+    Exceptions::fake();
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $this->service->preview($note->fresh());
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Original\n");
+
+    Note::saving(function (Note $saving): void {
+        if ($saving->exists) {
+            throw new RuntimeException('DB is down');
+        }
+    });
+
+    $result = $this->service->save($note, "# New\n", $baseHash, NoteSaveMode::Rich);
+
+    expect($result->written)->toBeTrue();
+    expect(File::get($path))->toBe("# New\n");
+    Exceptions::assertReported(RuntimeException::class);
+
+    Note::flushEventListeners();
+    expect($note->fresh()->file_hash)->toBe(hash('sha256', "# Original\n"));
+
+    $reconciled = $this->service->preview($note->fresh());
+    expect($reconciled['base_hash'])->toBe(hash('sha256', "# New\n"));
+    expect($note->fresh()->file_hash)->toBe(hash('sha256', "# New\n"));
+});
+
+test('saving into a missing vault fails with field vault', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $note = $note->fresh();
+    $baseHash = hash('sha256', '');
+    File::deleteDirectory($this->vault->path);
+
+    $field = noteOperationField(fn () => $this->service->save($note, 'x', $baseHash, NoteSaveMode::Rich));
+
+    expect($field)->toBe('vault');
+});
+
+test('two chained saves each succeed using the previous result hash as the next base', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# Original\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# Original\n");
+
+    $first = $this->service->save($note, "# First\n", $baseHash, NoteSaveMode::Rich);
+    expect($first->written)->toBeTrue();
+
+    $second = $this->service->save($note->fresh(), "# Second\n", $first->fileHash, NoteSaveMode::Rich);
+    expect($second->written)->toBeTrue();
+    expect(File::get($path))->toBe("# Second\n");
+});
+
+// --- Revision 3: editable frontmatter (save) -----------------------------
+
+test('a Rich save adds a frontmatter block via FrontmatterEdit', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "# H\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "# H\n");
+
+    $result = $this->service->save($note, "# H\n", $baseHash, NoteSaveMode::Rich, new FrontmatterEdit(true, 'a: 1'));
+
+    expect(File::get($path))->toBe("---\na: 1\n---\n\n# H\n");
+    expect($result->written)->toBeTrue();
+    expect($result->fileHash)->toBe(hash_file('sha256', $path));
+    expect($note->fresh()->file_hash)->toBe($result->fileHash);
+
+    $preview = $this->service->preview($note->fresh());
+    expect($preview['frontmatter_yaml'])->toBe('a: 1');
+    expect($preview['body'])->toBe("# H\n");
+});
+
+test('a Rich save changes an existing frontmatter value', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "---\ntitle: X\n---\n\n# H\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "---\ntitle: X\n---\n\n# H\n");
+
+    $result = $this->service->save($note, "# H\n", $baseHash, NoteSaveMode::Rich, new FrontmatterEdit(true, 'title: Y'));
+
+    expect(File::get($path))->toBe("---\ntitle: Y\n---\n\n# H\n");
+    expect($result->written)->toBeTrue();
+
+    $preview = $this->service->preview($note->fresh());
+    expect($preview['frontmatter_yaml'])->toBe('title: Y');
+    expect($preview['body'])->toBe("# H\n");
+});
+
+test('a Rich save removes the frontmatter block', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "---\ntitle: X\n---\n\n# H\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "---\ntitle: X\n---\n\n# H\n");
+
+    $result = $this->service->save($note, "# H\n", $baseHash, NoteSaveMode::Rich, new FrontmatterEdit(false, ''));
+
+    expect(File::get($path))->toBe("# H\n");
+    expect($result->written)->toBeTrue();
+
+    $preview = $this->service->preview($note->fresh());
+    expect($preview['frontmatter_yaml'])->toBeNull();
+    expect($preview['body'])->toBe("# H\n");
+});
+
+test('a CRLF+BOM note with a frontmatter change is preserved', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    $original = MarkdownService::BOM."---\r\ntitle: X\r\n---\r\n\r\n# H\r\n";
+    File::put($path, $original);
+    $note = $note->fresh();
+    $baseHash = hash('sha256', $original);
+
+    $this->service->save($note, "# H\n", $baseHash, NoteSaveMode::Rich, new FrontmatterEdit(true, 'title: Y'));
+
+    $bytes = File::get($path);
+    expect($bytes)->toStartWith(MarkdownService::BOM);
+    expect(substr_count($bytes, "\n"))->toBe(substr_count($bytes, "\r\n"));
+    expect($bytes)->toBe(MarkdownService::BOM."---\r\ntitle: Y\r\n---\r\n\r\n# H\r\n");
+});
+
+test('an invalid --- line in the frontmatter edit throws field frontmatter and leaves the file and DB unchanged', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "---\ntitle: X\n---\n\n# H\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "---\ntitle: X\n---\n\n# H\n");
+    $hashBefore = $note->file_hash;
+
+    $field = noteOperationField(fn () => $this->service->save(
+        $note,
+        "# H\n",
+        $baseHash,
+        NoteSaveMode::Rich,
+        new FrontmatterEdit(true, "a\n---\nb"),
+    ));
+
+    expect($field)->toBe('frontmatter');
+    expect(File::get($path))->toBe("---\ntitle: X\n---\n\n# H\n");
+    expect($note->fresh()->file_hash)->toBe($hashBefore);
+});
+
+test('an unchanged frontmatter and body is a no-op that never attempts a replace', function () {
+    $note = $this->service->create($this->vault, null, 'a');
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, "---\ntitle: X\n---\n\n# H\n");
+    $note = $note->fresh();
+    $baseHash = hash('sha256', "---\ntitle: X\n---\n\n# H\n");
+
+    $fake = failFileMoves([1, 2, 3]);
+    $service = app(NoteService::class);
+
+    $result = $service->save($note, "# H\n", $baseHash, NoteSaveMode::Rich, new FrontmatterEdit(true, 'title: X'));
+
+    expect($result->written)->toBeFalse();
+    expect($fake->calls)->toBe(0);
+    expect(File::get($path))->toBe("---\ntitle: X\n---\n\n# H\n");
 });
 
 // --- Vault interplay (FR-20) --------------------------------------------

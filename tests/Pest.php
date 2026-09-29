@@ -118,6 +118,42 @@ function failFileMoves(array $failOnCalls = [1]): object
 }
 
 /**
+ * Substitute Filesystem so put() writes only the first $truncateTo bytes
+ * (null = normal) and returns false when truncated; $onPut runs before each
+ * put (e.g. to simulate an external writer). Resolve services AFTER calling
+ * this.
+ */
+function fakeFilePuts(?int $truncateTo = null, ?Closure $onPut = null): object
+{
+    $fake = new class($truncateTo, $onPut) extends Filesystem
+    {
+        public int $calls = 0;
+
+        public function __construct(private ?int $truncateTo, private ?Closure $onPut) {}
+
+        public function put($path, $contents, $lock = false)
+        {
+            $this->calls++;
+
+            if ($this->onPut !== null) {
+                ($this->onPut)();
+            }
+
+            if ($this->truncateTo === null) {
+                return parent::put($path, $contents, $lock);
+            }
+
+            parent::put($path, substr((string) $contents, 0, $this->truncateTo), $lock);
+
+            return false;
+        }
+    };
+    app()->instance(Filesystem::class, $fake);
+
+    return $fake;
+}
+
+/**
  * Create files under $root from ['rel/path.md' => 'contents'] (directories
  * created as needed). Keys ending in '/' create empty directories.
  */

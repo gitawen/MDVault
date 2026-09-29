@@ -48,6 +48,29 @@ test('creating a note in an invalid folder fails validation', function () {
         ->assertSessionHasErrors('folder');
 });
 
+test('creating a note with an invalid timezone fails validation', function () {
+    $this->post(route('vaults.notes.store', $this->vault->uuid), [
+        'name' => 'Meeting',
+        'folder' => '',
+        'timezone' => 'Not/AZone',
+    ])->assertSessionHasErrors('timezone');
+});
+
+test('a valid store writes the default frontmatter template using the given timezone', function () {
+    $this->post(route('vaults.notes.store', $this->vault->uuid), [
+        'name' => 'Meeting',
+        'folder' => '',
+        'timezone' => 'UTC',
+    ])->assertRedirect();
+
+    $note = Note::query()->sole();
+    $content = File::get($this->vault->path.DIRECTORY_SEPARATOR.'Meeting.md');
+
+    expect($content)->toStartWith("---\ntitle: \"Meeting\"\ncreated: ");
+    expect($content)->toContain("# tags: []\n# aliases: []\n---\n\n");
+    expect($note->file_hash)->toBe(hash_file('sha256', $this->vault->path.DIRECTORY_SEPARATOR.'Meeting.md'));
+});
+
 test('renaming a note through HTTP keeps the UUID and redirects to it', function () {
     $note = app(NoteService::class)->create($this->vault, null, 'a');
 

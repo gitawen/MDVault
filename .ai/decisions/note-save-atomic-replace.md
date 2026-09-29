@@ -1,6 +1,6 @@
 # ADR: Saving a note (atomic replace, stale-write protection, failure handling)
 
-- **Status**: Proposed (Phase 4 plan; pending user approvals F4, F5, F6)
+- **Status**: Accepted (F4, F5, F6 approved; delivered in Phase 4, 2026-09-29)
 - **Date**: 2026-09-29
 - **Phase**: Master Plan Phase 4, Tiptap Editor (§17, §18, §22, §24, §41, §43, §44; Rules 1, 5, 8, 9, 10)
 
@@ -33,7 +33,7 @@
    - (b) **JSON `PUT` through Inertia v3 `useHttp` (chosen)**.
 
 ## Decision
-- **Endpoint**: `PUT /notes/{note:uuid}/content` with `{content, base_hash, mode: rich|source}`. Responses:
+- **Endpoint**: `PUT /notes/{note:uuid}/content` with `{content, base_hash, mode: rich|source}` plus, for Rich saves, `has_frontmatter` and `frontmatter` (raw YAML between the delimiters). An absent field keeps the current block. A value equal to the current YAML keeps its bytes exactly. Otherwise the block is replaced with the existing delimiter lines and separator (new blocks use `---`), or it is removed. A `---` line inside is refused, and a decode self-check confirms the frontmatter/body split is stable. Responses:
   - 200 `{saved, file_hash, file_size, updated_at}`;
   - 409 `{reason: changed|missing, message, current_hash}`;
   - 422 for validation and operation errors (field `content`, or `vault`).
@@ -66,6 +66,7 @@
   - Autosave 1.5 s after the last change, 10 s max wait; explicit save with Ctrl/Cmd+S and a button.
   - A conflict pauses autosave and offers Reload from disk / Keep my version (confirmed; re-sent with `current_hash`) / Copy my text.
   - Unsaved changes are saved before any navigation or window close.
+  - While a guarded navigation is in progress the editor is read-only (frozen until the visit finishes), so no keystroke can land after the final flush. A mode switch re-baselines the saver from the pristine props (full file for Source), never from the other mode's serialization.
 - **Boundaries**: `unlink`, `file_put_contents` and `fsync` may appear only in `FileStorageService` (Pest arch rule). `NoteService` and `MarkdownService` use no raw filesystem functions. The indexer ignores `.mdvault-save-*` (the dot-prefix rule).
 
 ## Consequences

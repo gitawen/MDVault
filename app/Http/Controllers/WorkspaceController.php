@@ -53,7 +53,15 @@ class WorkspaceController extends Controller
             'currentVault' => $current ? $vaults->present($current) : null,
             'tree' => fn () => $active ? $browse()['tree'] : null,
             'folders' => fn () => $active ? $browse()['folders'] : [],
-            'note' => fn () => ($note && $active) ? [...$notes->present($note), ...$notes->preview($note)] : null,
+            'note' => function () use ($note, $active, $notes): ?array {
+                if (! $note || ! $active) {
+                    return null;
+                }
+
+                $preview = $notes->preview($note);
+
+                return [...$notes->present($note), ...$preview];
+            },
             'canTrash' => $notes->canTrash(),
         ]);
     }

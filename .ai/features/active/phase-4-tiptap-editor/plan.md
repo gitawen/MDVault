@@ -8,7 +8,7 @@
 - **Created Date**: 2026-09-29
 - **Task Complexity**: Level 4, Architectural (analyst sign-off after QA)
 - **Requirements**: `requirements.md`
-- **Status**: APPROVED (user approved F1–F11 as recommended on 2026-09-29)
+- **Status**: SIGNED OFF (F1–F11 approved; Revisions 2–4 signed off 2026-09-29; QA round 4 PASS; R4-01 fixed; awaiting user desktop checks M1–M21)
 
 ---
 
@@ -611,6 +611,18 @@ Rules for every task:
     - **M11**: The Move dialog preselects the current folder.
     - **M12**: Each toolbar button, then close and reopen the note → the formatting is preserved (§53 "Reloading preserves formatting").
     - **M13**: Type `C++ and C++`, save, reopen → the text is unchanged.
+    - **M14**: Frontmatter note, Rich → Source, type one character → frontmatter byte-identical.
+    - **M15**: A reformat note, "Edit as source", type one character → the external diff shows only that character.
+    - **M16**: Click another note while typing → no input is accepted after the click, and everything typed before it is saved.
+    - **M17**: A note without frontmatter → "Add frontmatter" → type `tags: [a]` → wait 2 s. VS Code shows `---
+tags: [a]
+---
+
+` at the top, and the body is byte-identical.
+    - **M18**: A CRLF + BOM note with frontmatter → change one YAML value in the Rich panel. The file is still CRLF + BOM, and only that line differs. Then "Remove frontmatter" → the block is gone and the body is unchanged.
+    - **M19**: Type a `---` line in the panel. An inline hint appears, the save is refused with the frontmatter message, and the file is unchanged. Delete the line and the save goes through. Also, on a `reformat` note that hasn't been accepted, the panel is read-only.
+    - **M20**: With fresh settings, create the note "Plan #1". VS Code shows `title: "Plan #1"`, today's local `created`, and the commented `tags`/`aliases`. It opens in Rich mode with the panel filled and the body empty. Type a body → the frontmatter is byte-identical, followed by a blank line and then the body.
+    - **M21**: In Settings → Editor, edit the template to add `status: draft`, save, and create a note → the new note has it. Turn the toggle off → the next new note is 0 bytes. Existing notes' modified times are unchanged throughout. A `---` line in the template is refused with the message.
   - Covers: all FRs (verification)
 
 ---
@@ -731,3 +743,8 @@ Rules for every task:
 | Revision | Date | Reason | Changes |
 |---|---|---|---|
 | 1 | 2026-09-29 | Initial plan | — |
+| 2 | 2026-09-29 | Level 4 analyst review | Fix round 2: A1 (in-place mode switch re-baselines from props), A2 (serializeEditor on all serialization paths), R2-01 (editor frozen during guarded navigation), R2-02 (dispose stops the flush loop; no iteration cap); M14–M16 added; ADR addendum. |
+| 3 | 2026-09-29 | User request: editable frontmatter in Rich mode ("Raw YAML box") | Save contract gains `has_frontmatter`/`frontmatter` (FrontmatterEdit); `MarkdownDocument` exposes the frontmatter parts; `composeRich` keep/replace/add/remove with a `---` guard and a stability self-check; `invalidFrontmatter`; `preview` adds `frontmatter_yaml`; `FrontmatterPanel.vue` and `richContent.ts`; the saver's content encodes frontmatter + body; FR-23; M17–M19; ADR addenda. |
+| 4 | 2026-09-29 | User request: frontmatter template for new notes | SettingKey `editor.new_note_template_enabled` (default true) and `editor.new_note_template` (inner YAML, default in `MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE`); Editor settings section with Reset; `MarkdownService::renderNewNoteTemplate` (JSON-quoted `{{title}}`, local `{{date}}` from the client timezone) and `assertValidFrontmatterYaml`; `NoteService::create` writes the template in the exclusive create; `FileStorageService::deleteNewFileWithContents` (exact-bytes compensation) and short-write handling in `createFile`; Phase 3 tests pin template-off; FR-24; M20–M21; E4 and ADR amendments. |
+
+R4-01 (analyst review): composeRich reuses an existing block's separator when the body is empty; blank-line separator only dropped for new blocks.

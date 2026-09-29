@@ -18,6 +18,7 @@ import type { EditorPreferences } from '@/types';
 
 const props = defineProps<{
     preferences: EditorPreferences;
+    defaultNewNoteTemplate: string;
 }>();
 
 defineOptions({
@@ -42,6 +43,17 @@ const fontFamilies = [
 function save() {
     form.patch(update.url(), { preserveScroll: true });
 }
+
+function resetTemplate() {
+    form.new_note_template = props.defaultNewNoteTemplate;
+}
+
+// Kept as script constants (not inline template string literals): Vue's
+// template compiler treats a literal "{{" inside a mustache interpolation
+// as the start of a *nested* interpolation, so writing the placeholder text
+// directly in the template breaks parsing.
+const titlePlaceholder = '{{title}}';
+const datePlaceholder = '{{date}}';
 </script>
 
 <template>
@@ -118,8 +130,55 @@ function save() {
                 <InputError :message="form.errors.show_line_numbers" />
             </div>
             <p class="-mt-4 text-sm text-muted-foreground">
-                Saved for a future editor update.
+                Not used by the editor yet.
             </p>
+
+            <Heading
+                variant="small"
+                title="New notes"
+                description="A frontmatter template MDVault adds when it creates a note."
+            />
+
+            <div class="flex items-center gap-2">
+                <Checkbox
+                    id="new_note_template_enabled"
+                    v-model="form.new_note_template_enabled"
+                />
+                <Label for="new_note_template_enabled">
+                    Add frontmatter to new notes
+                </Label>
+                <InputError :message="form.errors.new_note_template_enabled" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="new_note_template">Template</Label>
+                <textarea
+                    id="new_note_template"
+                    v-model="form.new_note_template"
+                    :disabled="!form.new_note_template_enabled"
+                    spellcheck="false"
+                    rows="4"
+                    class="w-full max-w-xl resize-y rounded-md border bg-card p-2 font-mono text-sm outline-none disabled:opacity-50"
+                />
+                <InputError :message="form.errors.new_note_template" />
+                <p class="text-sm text-muted-foreground">
+                    Written between --- lines at the top of notes MDVault
+                    creates. {{ titlePlaceholder }} becomes the note&#8217;s
+                    name (quoted for you, so don&#8217;t add quotes).
+                    {{ datePlaceholder }} becomes today&#8217;s date
+                    (YYYY-MM-DD). Existing notes are never changed.
+                </p>
+                <div>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        @click="resetTemplate"
+                    >
+                        Reset to default
+                    </Button>
+                </div>
+            </div>
 
             <Button type="submit" :disabled="form.processing">Save</Button>
         </form>

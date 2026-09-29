@@ -1,6 +1,6 @@
 # ADR: Markdown conversion location, library and round-trip fidelity
 
-- **Status**: Proposed (Phase 4 plan; pending user approvals F1, F2, F3, F10)
+- **Status**: Accepted (F1, F2, F3, F10 approved; delivered in Phase 4, 2026-09-29)
 - **Date**: 2026-09-29
 - **Phase**: Master Plan Phase 4, Tiptap Editor (§2, §20, §21, §41, §42, §53; Rules 1, 5, 8; §61 item 16)
 
@@ -82,3 +82,10 @@
   - A line-numbers gutter in Source mode.
   - Opening links externally through the NativePHP shell.
   - Phase 5 may add a Compare view that reuses `firstDifference`.
+
+## Addendum (Phase 4 delivery, 2026-09-29)
+- **Canonical style** emitted by `@tiptap/markdown` 3.31.3: `-` bullets, `*em*`, `**strong**`, `~~strike~~`, 2-space nesting, ordered lists keep their start number, `- [ ]`/`- [x]`, backtick fences with the language kept, `---`, ATX headings only, runs of blank lines collapse to one, two-space hard breaks kept. Other syntax is `reformat`.
+- **Escaping**: literal `*`, `[` and `]` in text are always backslash-escaped. Notes containing them are `reformat` (document-equal), and wiki links and footnotes can never be `exact`, so check 3 is effectively always applied.
+- **Serializer override mechanism**: overrides are a string pass (`applyMarkdownOverrides`) over the finished Markdown, because mark-level `renderMarkdown` only sees a placeholder. Every serialization, in the visible editor and the headless converter alike, goes through `serializeEditor()`. Known limitation: the bare-URL pass also rewrites the literal text `[https://x](https://x)` inside code; existing notes with it fail doc-equality and open in Source mode.
+- **Flush loop**: `noteSaver.flush()` re-sends until the content matches the last save. It is bounded by user input, not by an iteration cap, and a disposed saver stops the loop.
+- **Frontmatter editing (Revision 3)**: Rich mode shows the leading YAML block as a raw plain-text panel (add, edit, remove). It is never parsed or reformatted, and it is excluded from the fidelity check, which assesses the body only. The panel is read-only while a `reformat` note has not been accepted.

@@ -89,6 +89,15 @@ Three constraints shape the design:
 | **FR-20** | Tree folder field (QA-P3-01) | Tree note nodes include `folder` (the `''` root or a relative folder path). `MoveNoteDialog` preselects it without client path logic. | Given `Projects/HRMIS.md`, Then its node has `folder === 'Projects'`, and the Move dialog opens with "Projects" selected. |
 | **FR-21** | ADR clarification (QA-P3-02) | Add a sentence to `note-registry-and-indexing.md`: a case-only external rename plus an edit keeps the UUID. | The ADR contains the sentence. |
 | **FR-22** | Security and privacy | No `v-html`. Note content is never logged. The save endpoint is CSRF-protected (web middleware). JSON responses expose no `id` or `vault_id`. | Greps pass. The HTTP test asserts that no ids appear. |
+| **FR-23** | Editable frontmatter (Revision 3) | Rich mode shows an expandable raw-YAML panel with Add, Remove and edit actions. It is saved byte-for-byte between the delimiters, keeping line endings, BOM, delimiter lines and separator. A `---` line inside is refused. It is excluded from the fidelity check. | Given `title: X` changed to `title: Y` in the panel, When saved, Then only that line differs on disk and the next open shows the same frontmatter and body. |
+| **FR-24** | New-note frontmatter template (Revision 4) | Settings → Editor has an on/off toggle (default on) and an inner-YAML template (default: quoted title, local `Y-m-d` created date, commented tags/aliases). `{{title}}` is inserted as a JSON-quoted YAML scalar and `{{date}}` as the local date; unknown placeholders are left unchanged. It is applied only when MDVault creates a note (LF, no BOM, `---` delimiters plus a blank line), with an exclusive create, the DB hash equal to the file, and compensation that deletes only an unchanged new file. Existing notes are never touched. It amends Phase 3 E4. | Given the template is on, When the note "Plan #1" is created, Then the file is `---
+title: "Plan #1"
+created: <today>
+# tags: []
+# aliases: []
+---
+
+`, and the note opens in Rich mode with the panel filled and an empty body. |
 
 ## 5. Non-Functional Requirements
 - **Security & Authorization**:

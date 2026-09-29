@@ -37,7 +37,7 @@ const form = useForm({
 
 watch(open, (isOpen) => {
     if (isOpen) {
-        form.folder = ROOT;
+        form.folder = props.note?.folder ? props.note.folder : ROOT;
         form.clearErrors();
     }
 });

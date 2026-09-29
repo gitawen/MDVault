@@ -14,7 +14,7 @@
 ## Options Considered
 - **Create order**:
   - (a) DB first inside a transaction, then the file (the vault-create pattern);
-  - (b) **exclusive file create → check → hash → DB insert; on a DB failure, remove the file only if it is still 0 bytes (chosen)**.
+  - (b) **exclusive file create → check → hash → DB insert; on a DB failure, remove the file only if its bytes still exactly equal what this call wrote (0 bytes, or the new-note template since Phase 4 Revision 4) (chosen)**.
 
   With (b), a crash leaves at most an orphan empty `.md` file, which the next re-index adopts. Nothing is lost, and there is only one compensation direction.
 - **Rename/move order**: **checks → no-overwrite rename (case-only via a hidden temp sibling) → check → DB update; on a DB failure, rename back (chosen)**. This mirrors vault rename (Phase 2 Revision 2). If renaming back fails, the user is told to re-index, and hash matching then re-adopts the file under the **same UUID**.
@@ -39,7 +39,7 @@
   - every rename pre-checks the target (`exists` and not the same file) and checks afterwards;
   - no API accepts an overwrite flag.
   - Sole exception: `FileStorageService::replaceFile`, used only by `NoteService::save` behind a base-hash guard (ADR `note-save-atomic-replace`).
-- **Compensation** never deletes content. It either renames back, or unlinks a 0-byte file created by the same call. `unlink` appears only in `FileStorageService::deleteNewEmptyFile` and in the private `FileStorageService::discardTempFile`, which accepts only MDVault's own `.mdvault-save-*` temp files (ADR `note-save-atomic-replace`).
+- **Compensation** never deletes content. It either renames back, or unlinks a file created by the same call whose bytes still exactly equal what that call wrote (`deleteNewFileWithContents`; `deleteNewEmptyFile` is its 0-byte case). `unlink` appears only in `FileStorageService::deleteNewEmptyFile` and in the private `FileStorageService::discardTempFile`, which accepts only MDVault's own `.mdvault-save-*` temp files (ADR `note-save-atomic-replace`).
 - **Delete note**:
   - if the file is already missing → delete the record only;
   - otherwise the trash must be available;
@@ -70,3 +70,4 @@
   - Phase 4 (delivered): atomic save via `replaceFile`; see ADR `note-save-atomic-replace`.
   - Phase 5: the watcher must be paused or stopped for a vault before a vault rename or trash, and must ignore `.mdvault-*` names.
   - Follow-up item: folder rename/move and non-empty folder delete (to the Recycle Bin).
+  - Phase 4 Revision 4 (delivered): new notes may start with a frontmatter template (setting `editor.new_note_template*`); E4's "new notes are created as empty files" now applies only when the template is off.

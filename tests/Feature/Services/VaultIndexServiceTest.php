@@ -56,6 +56,7 @@ test('ignore rules exclude dotfiles, node_modules and non-markdown files', funct
         'Node_Modules/f.md' => 'f',
         '.hidden.md' => 'h',
         '.mdvault-rename-abc' => 'r',
+        '.mdvault-save-abc123' => 's',
     ]);
 
     $result = $this->service->reindex($this->vault);
@@ -261,7 +262,13 @@ test('browse lists an empty folder, orders folders first and marks the open fold
     expect($topLevel[1]['type'])->toBe('folder')->and($topLevel[1]['name'])->toBe('Projects');
     expect($topLevel[1]['open'])->toBeTrue();
     expect($topLevel[2]['type'])->toBe('note')->and($topLevel[2]['title'])->toBe('B');
+    expect($topLevel[2]['folder'])->toBe('');
     expect($topLevel[3]['type'])->toBe('note')->and($topLevel[3]['title'])->toBe('Readme');
+    expect($topLevel[3]['folder'])->toBe('');
+
+    $projectsChildren = $topLevel[1]['children'];
+    $hrmis = collect($projectsChildren)->firstWhere('title', 'HRMIS');
+    expect($hrmis['folder'])->toBe('Projects');
 
     foreach ($topLevel as $node) {
         expect($node)->not->toHaveKey('id');
