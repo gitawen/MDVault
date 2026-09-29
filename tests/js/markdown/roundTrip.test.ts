@@ -45,7 +45,6 @@ function nameOf(path: string): string {
 }
 
 const unsupportedReasonByStem: Record<string, string> = {
-    table: 'tables',
     image: 'images',
     'html-block': 'html',
     'inline-html': 'html',

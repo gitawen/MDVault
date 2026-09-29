@@ -94,4 +94,13 @@ describe('tiptap markdown spike', () => {
         expect(r1).toContain("echo 'hi';");
         expect(r1).toContain('---');
     });
+
+    it('round-trips tables idempotently', () => {
+        const fixture = ['| A | B |', '| --- | --- |', '| 1 | 2 |'].join('\n');
+
+        const r1 = roundTrip(fixture);
+        const r2 = roundTrip(r1);
+
+        expect(trimEndNewlines(r2)).toBe(trimEndNewlines(r1));
+    });
 });

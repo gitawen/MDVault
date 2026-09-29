@@ -41,7 +41,11 @@ function allowedLinkHref(anchor: HTMLAnchorElement): string | null {
     return ALLOWED_LINK_PROTOCOLS.has(url.protocol) ? anchor.href : null;
 }
 
-function handleContentClick(view: EditorView, _pos: number, event: MouseEvent): boolean {
+function handleContentClick(
+    view: EditorView,
+    _pos: number,
+    event: MouseEvent,
+): boolean {
     if (event.button !== 0) {
         return false;
     }

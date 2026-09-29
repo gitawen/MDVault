@@ -269,23 +269,35 @@
     }
 
     .tiptap-content ul[data-type='taskList'] {
-        @apply list-none pl-0;
+        @apply my-2 list-none pl-0;
     }
 
     .tiptap-content ul[data-type='taskList'] li {
-        @apply flex items-start gap-2;
+        @apply my-1 flex items-start gap-2.5;
     }
 
     .tiptap-content ul[data-type='taskList'] li > label {
-        @apply mt-1 flex-none select-none;
+        @apply mt-[0.35em] flex flex-none items-center justify-center select-none;
+    }
+
+    .tiptap-content ul[data-type='taskList'] li > label input[type='checkbox'] {
+        @apply size-3.5 cursor-pointer rounded-xs accent-primary;
     }
 
     .tiptap-content ul[data-type='taskList'] li > div {
-        @apply flex-1;
+        @apply min-w-0 flex-1;
     }
 
-    .tiptap-content ul[data-type='taskList'] input[type='checkbox'] {
-        @apply size-4 cursor-pointer;
+    .tiptap-content ul[data-type='taskList'] li > div > p {
+        @apply my-0 leading-relaxed;
+    }
+
+    .tiptap-content ul[data-type='taskList'] li > div > p + p {
+        @apply mt-2;
+    }
+
+    .tiptap-content ul[data-type='taskList'] ul[data-type='taskList'] {
+        @apply my-1 pl-6;
     }
 
     .tiptap-content blockquote {
@@ -320,21 +332,22 @@
         @apply my-3 max-w-full rounded-md;
     }
 
-    /* Table styling is included for when the schema gains table support;
-       StarterKit doesn't register a table node today (`assess.ts` routes
-       any note containing one to source mode), so this has no live effect
-       yet. */
     .tiptap-content table {
-        @apply my-3 w-full border-collapse text-[0.875em];
+        @apply my-3 w-full table-auto border-collapse text-[0.875em];
     }
 
     .tiptap-content th,
     .tiptap-content td {
-        @apply border border-border px-3 py-2 text-left;
+        @apply border border-border px-3 py-2 text-left align-top;
     }
 
     .tiptap-content th {
         @apply bg-muted font-semibold;
+    }
+
+    .tiptap-content th > p,
+    .tiptap-content td > p {
+        @apply my-0;
     }
 
     .tiptap-nowrap .tiptap-content {

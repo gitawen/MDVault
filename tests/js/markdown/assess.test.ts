@@ -28,13 +28,11 @@ describe('assessMarkdown', () => {
         }
     });
 
-    it('treats a structural table as unsupported even surrounded by exact content', () => {
+    it('treats an unsupported image even surrounded by exact content as unsupported', () => {
         const body = [
             '# A heading',
             '',
-            '| A | B |',
-            '| - | - |',
-            '| 1 | 2 |',
+            '![alt text](https://example.com/image.png)',
             '',
             'A closing paragraph.',
         ].join('\n');
@@ -43,7 +41,7 @@ describe('assessMarkdown', () => {
 
         expect(assessment.status).toBe('unsupported');
         if (assessment.status === 'unsupported') {
-            expect(assessment.reasons).toContain('tables');
+            expect(assessment.reasons).toContain('images');
         }
     });
 

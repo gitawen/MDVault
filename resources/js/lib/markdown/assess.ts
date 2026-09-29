@@ -2,7 +2,6 @@ import { marked } from 'marked';
 import type { MarkdownConverter } from './converter';
 
 export type UnsupportedReason =
-    | 'tables'
     | 'images'
     | 'html'
     | 'reference-links'
@@ -23,7 +22,6 @@ export type MarkdownAssessment =
  * Markdown the rich-text editor can't preserve yet ({labels})" notice.
  */
 export const UNSUPPORTED_LABELS: Record<UnsupportedReason, string> = {
-    tables: 'tables',
     images: 'images',
     html: 'HTML',
     'reference-links': 'reference-style links',
@@ -65,9 +63,6 @@ function collectStructuralReasons(body: string): Set<UnsupportedReason> {
 
         for (const token of list) {
             switch (token.type) {
-                case 'table':
-                    reasons.add('tables');
-                    break;
                 case 'html':
                 case 'tag':
                     reasons.add('html');
