@@ -154,6 +154,7 @@
   - The inspection pass plus the restore pass read the archive twice.
   - A crash between the rename and the commit can leave an unregistered restored folder plus a staging folder (cleaned up later). No data is lost; the backup is intact.
   - Rename-back can fail under Windows locks, in which case the user is told which folder to handle.
+  - Amended in Phase 6 (ADR `database-reset-semantics`): registered-but-missing vaults block a same-UUID restore; the documented path is Settings → Backup → Reset database, then restore (ADR `database-reset-semantics`).
 - **Follow-ups**:
   - Phase 7: restoring encrypted vaults (`vault_encryption` rows from the manifest, locked state).
   - Optional later: replace-in-place with a Recycle Bin pre-step, per-note restore, restoring to a chosen location, progress and cancel.

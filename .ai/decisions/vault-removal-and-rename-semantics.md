@@ -51,6 +51,7 @@
     - If the folder still exists → a "close programs using it" error, and **the record is kept**.
   - **MDVault never permanently deletes a vault folder or any non-empty directory in v1.** The only directory removal is `FileStorageService::deleteEmptyDirectory()`, used to undo a folder the same create call just made.
   - Amended in Phase 6 (ADR `backup-restore-semantics`, H9): the only exception is `FileStorageService::deleteStagingDirectory()`, which removes MDVault's own `.mdvault-restore-*` staging folders (copies extracted from a backup archive that still exists).
+  - Amended in Phase 6 (ADR `database-reset-semantics`): **Bulk:** `VaultService::resetRegistry()` unregisters every vault in one transaction and never touches the filesystem (ADR `database-reset-semantics`).
 - **Rename** (`VaultService::rename(Vault, string $name, ?string $description)`), Revision 2:
   - **Name rules**: `assertValidFolderName` (portable, on every OS) and case-insensitive uniqueness among vaults (C7).
   - **No filesystem work when**:

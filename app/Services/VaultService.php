@@ -7,7 +7,9 @@ use App\Enums\SettingKey;
 use App\Enums\VaultStatus;
 use App\Exceptions\InvalidStorageRootException;
 use App\Exceptions\VaultOperationException;
+use App\Models\Note;
 use App\Models\Vault;
+use App\Support\RegistryResetResult;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
 
@@ -305,6 +307,36 @@ final class VaultService
     public function close(): void
     {
         $this->settings->forget(SettingKey::CurrentVault);
+    }
+
+    /**
+     * Resets MDVault's vault registry (ADR `database-reset-semantics`): every
+     * `notes` row, then every `vaults` row, is deleted, and `app.current_vault`
+     * is forgotten, all inside one DB transaction. Notes are deleted before
+     * vaults explicitly, so correctness never depends on the FK cascade being
+     * enabled.
+     *
+     * This never touches the filesystem (no vault folders, notes, other
+     * files, the storage root or staging folders), and never touches other
+     * settings, `backups`, `sessions`, `cache`, `jobs` or `migrations`. It is
+     * idempotent: an empty registry returns all-zero counts.
+     *
+     * @throws QueryException
+     */
+    public function resetRegistry(): RegistryResetResult
+    {
+        return $this->database->connection()->transaction(function (): RegistryResetResult {
+            $vaults = Vault::query()->count();
+            $missing = Vault::query()->where('status', VaultStatus::Missing)->count();
+            $notes = Note::query()->count();
+
+            Note::query()->delete();
+            Vault::query()->delete();
+
+            $this->settings->forget(SettingKey::CurrentVault);
+
+            return new RegistryResetResult($vaults, $missing, $notes);
+        });
     }
 
     /**

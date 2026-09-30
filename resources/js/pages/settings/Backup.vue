@@ -2,6 +2,7 @@
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import Heading from '@/components/Heading.vue';
+import ResetDatabaseDialog from '@/components/backups/ResetDatabaseDialog.vue';
 import RestoreBackupDialog from '@/components/backups/RestoreBackupDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,10 @@ defineOptions({
 const page = usePage();
 const activeVaultExists = computed(() =>
     page.props.vaults.some((vault) => vault.status === 'active'),
+);
+const missingVaultCount = computed(
+    () =>
+        page.props.vaults.filter((vault) => vault.status === 'missing').length,
 );
 
 const backingUp = ref(false);
@@ -129,6 +134,16 @@ function restoreBackup(record: BackupRecord): void {
         <div class="space-y-4">
             <Heading variant="small" title="Restore" />
 
+            <p
+                v-if="missingVaultCount > 0"
+                class="text-sm text-muted-foreground"
+            >
+                {{ missingVaultCount }} vault(s) are missing from disk. A backup
+                of them would be skipped or restored as copies. Reset the
+                database below (or remove them on the Vaults page) before
+                restoring.
+            </p>
+
             <div class="flex flex-wrap items-center gap-2">
                 <Button
                     v-if="canBrowse"
@@ -216,5 +231,15 @@ function restoreBackup(record: BackupRecord): void {
         </div>
 
         <RestoreBackupDialog v-model:open="dialogOpen" :path="dialogPath" />
+
+        <div class="space-y-4">
+            <Heading
+                variant="small"
+                title="Reset database"
+                description="Clear MDVault's list of vaults and notes so you can restore a backup from scratch. Files on disk are never deleted."
+            />
+
+            <ResetDatabaseDialog />
+        </div>
     </div>
 </template>

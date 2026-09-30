@@ -1,5 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
 import restore from './restore'
+import database from './database'
 /**
 * @see \App\Http\Controllers\Settings\BackupController::edit
  * @see app/Http/Controllers/Settings/BackupController.php:18
@@ -137,6 +138,7 @@ const backup = {
     edit: Object.assign(edit, edit),
 store: Object.assign(store, store),
 restore: Object.assign(restore, restore),
+database: Object.assign(database, database),
 }
 
 export default backup
