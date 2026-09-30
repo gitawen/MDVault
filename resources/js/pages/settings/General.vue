@@ -65,7 +65,10 @@ function onCheckExternalChangesChange(value: boolean | 'indeterminate') {
                 </Label>
             </div>
             <p class="text-sm text-muted-foreground">
-                Takes effect once vaults are available.
+                When on, MDVault checks the open vault for changes made by other
+                programs whenever its window is focused and every few seconds
+                while it is visible. Opening and saving a note always checks the
+                file, even when this is off.
             </p>
         </form>
 

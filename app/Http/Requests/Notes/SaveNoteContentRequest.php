@@ -4,13 +4,14 @@ namespace App\Http\Requests\Notes;
 
 use App\Enums\NoteSaveMode;
 use App\Services\NoteService;
-use App\Support\FrontmatterEdit;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class SaveNoteContentRequest extends FormRequest
 {
+    use InteractsWithNoteContent;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -42,28 +43,5 @@ class SaveNoteContentRequest extends FormRequest
             'has_frontmatter' => ['sometimes', 'boolean', 'prohibited_unless:mode,rich'],
             'frontmatter' => ['nullable', 'string'],
         ];
-    }
-
-    public function contentText(): string
-    {
-        return (string) ($this->validated('content') ?? '');
-    }
-
-    /**
-     * The Rich-mode frontmatter panel's edit (Phase 4 Revision 3), or null
-     * when `has_frontmatter` is absent (the field is kept as-is, today's
-     * behaviour). `ConvertEmptyStringsToNull` turns an empty `frontmatter`
-     * string into `null`, so that is mapped back to `''` here.
-     */
-    public function frontmatterEdit(): ?FrontmatterEdit
-    {
-        if (! $this->has('has_frontmatter')) {
-            return null;
-        }
-
-        return new FrontmatterEdit(
-            (bool) $this->validated('has_frontmatter'),
-            (string) ($this->validated('frontmatter') ?? ''),
-        );
     }
 }

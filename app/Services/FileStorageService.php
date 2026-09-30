@@ -442,6 +442,18 @@ final class FileStorageService
     }
 
     /**
+     * The file's Unix modification time, or null if it can't be read.
+     */
+    public function modifiedTime(string $path): ?int
+    {
+        clearstatcache();
+
+        $time = @filemtime($path);
+
+        return $time === false ? null : $time;
+    }
+
+    /**
      * $root joined with a '/'-separated relative path, using
      * DIRECTORY_SEPARATOR. An empty relative path returns $root unchanged.
      * No validation is performed.
@@ -509,10 +521,12 @@ final class FileStorageService
      * whether a directory or file is included; rejected directories are
      * not descended into. Every returned list is '/'-separated relative to
      * $root and sorted with strcmp. `unreadable` lists relative directories
-     * that could not be listed ('' means the root itself).
+     * that could not be listed ('' means the root itself). Each file's
+     * `mtime` is its Unix modification time, or null if it couldn't be
+     * read.
      *
      * @param  callable(string $relativePath, string $name, bool $isDirectory): bool  $accept
-     * @return array{files: list<array{path: string, size: int}>, directories: list<string>, unreadable: list<string>}
+     * @return array{files: list<array{path: string, size: int, mtime: ?int}>, directories: list<string>, unreadable: list<string>}
      */
     public function scan(string $root, callable $accept): array
     {
@@ -556,7 +570,17 @@ final class FileStorageService
                             $size = 0;
                         }
 
-                        $files[] = ['path' => $entryRelative, 'size' => $size];
+                        try {
+                            $mtime = $iterator->getMTime();
+
+                            if ($mtime <= 0) {
+                                $mtime = null;
+                            }
+                        } catch (\Throwable) {
+                            $mtime = null;
+                        }
+
+                        $files[] = ['path' => $entryRelative, 'size' => $size, 'mtime' => $mtime];
                     }
                 }
             }

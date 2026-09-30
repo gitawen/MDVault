@@ -1,8 +1,9 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
 import content from './content'
+import disk from './disk'
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
 export const show = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -17,7 +18,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
 show.url = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions) => {
@@ -50,7 +51,7 @@ show.url = (args: { note: string | { uuid: string } } | [note: string | { uuid: 
 
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
 show.get = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -59,7 +60,7 @@ show.get = (args: { note: string | { uuid: string } } | [note: string | { uuid: 
 })
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
 show.head = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -69,7 +70,7 @@ show.head = (args: { note: string | { uuid: string } } | [note: string | { uuid:
 
     /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
     const showForm = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +80,7 @@ show.head = (args: { note: string | { uuid: string } } | [note: string | { uuid:
 
             /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
         showForm.get = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -88,7 +89,7 @@ show.head = (args: { note: string | { uuid: string } } | [note: string | { uuid:
         })
             /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
         showForm.head = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -365,6 +366,7 @@ update: Object.assign(update, update),
 content: Object.assign(content, content),
 move: Object.assign(move, move),
 destroy: Object.assign(destroy, destroy),
+disk: Object.assign(disk, disk),
 }
 
 export default notes

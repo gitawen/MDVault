@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $mime_type
  * @property int $file_size
  * @property string $file_hash
+ * @property ?int $file_mtime
  * @property bool $is_encrypted
  * @property ?CarbonImmutable $created_at
  * @property ?CarbonImmutable $updated_at
@@ -44,6 +45,7 @@ class Note extends Model
         'mime_type',
         'file_size',
         'file_hash',
+        'file_mtime',
         'is_encrypted',
     ];
 
@@ -69,6 +71,7 @@ class Note extends Model
     {
         return [
             'file_size' => 'integer',
+            'file_mtime' => 'integer',
             'is_encrypted' => 'boolean',
         ];
     }

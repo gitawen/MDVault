@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\IndexMode;
 use App\Enums\NoteSaveMode;
 use App\Enums\SettingKey;
 use App\Exceptions\NoteSaveConflictException;
@@ -11,6 +12,7 @@ use App\Services\VaultIndexService;
 use App\Services\VaultService;
 use App\Support\FrontmatterEdit;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -498,6 +500,22 @@ test('an external edit updates the record hash and size on preview', function ()
     expect($fresh->file_size)->toBe(strlen('edited content'));
 });
 
+test('an external edit nulls a trusted file_mtime on preview (AR-03)', function () {
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    $note = $this->service->create($this->vault, null, 'a');
+    File::put($path, 'one');
+
+    app(VaultIndexService::class)->reconcile($this->vault, IndexMode::Full);
+    touch($path, time() - 100);
+    app(VaultIndexService::class)->reconcile($this->vault, IndexMode::Full);
+    expect($note->fresh()->file_mtime)->not->toBeNull();
+
+    File::put($path, 'edited content');
+    $this->service->preview($note->fresh());
+
+    expect($note->fresh()->file_mtime)->toBeNull();
+});
+
 test('preview of a missing file gives the missing state', function () {
     $note = $this->service->create($this->vault, null, 'a');
     unlink($this->vault->path.DIRECTORY_SEPARATOR.'a.md');
@@ -650,6 +668,45 @@ test('saving unchanged content is a no-op that leaves the modification time unto
     expect($result->written)->toBeFalse();
     expect($fake->calls)->toBe(0);
     expect($note->fresh()->updated_at->equalTo($before))->toBeTrue();
+});
+
+test('a no-op save makes no database write at all (AR-03)', function () {
+    // Unlike "saving unchanged content is a no-op…" above, this must start
+    // with the DB's file_hash/file_size already matching the disk (a true
+    // no-op end to end), or reconcile() would rightly still write once to
+    // catch up a stale record — which is not what this test is asserting.
+    $note = $this->service->create($this->vault, null, 'a');
+    $preview = $this->service->preview($note->fresh());
+    $note = $note->fresh();
+
+    $writes = 0;
+    DB::listen(function ($query) use (&$writes): void {
+        if (preg_match('/^\s*(insert|update|delete)\b/i', $query->sql) === 1) {
+            $writes++;
+        }
+    });
+
+    $result = $this->service->save($note, $preview['content'], $preview['base_hash'], NoteSaveMode::Source);
+
+    expect($result->written)->toBeFalse();
+    expect($writes)->toBe(0);
+});
+
+test('a content-changing save nulls a trusted file_mtime (AR-03)', function () {
+    $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
+    $note = $this->service->create($this->vault, null, 'a');
+    File::put($path, "# Same\n");
+
+    app(VaultIndexService::class)->reconcile($this->vault, IndexMode::Full);
+    touch($path, time() - 100);
+    app(VaultIndexService::class)->reconcile($this->vault, IndexMode::Full);
+    expect($note->fresh()->file_mtime)->not->toBeNull();
+
+    $baseHash = hash('sha256', "# Same\n");
+    $result = $this->service->save($note->fresh(), "# New\n", $baseHash, NoteSaveMode::Rich);
+
+    expect($result->written)->toBeTrue();
+    expect($note->fresh()->file_mtime)->toBeNull();
 });
 
 test('a stale base hash gives a changed conflict and leaves the external content intact', function () {

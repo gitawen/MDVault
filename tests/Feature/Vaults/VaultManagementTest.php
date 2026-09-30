@@ -177,6 +177,31 @@ test('opening a vault indexes its Markdown files', function () {
     expect(session('inertia.flash_data')['toast']['message'])->toContain('1 added');
 });
 
+test('opening a vault reconciles in Quick mode, missing a same-size mtime-restored edit that a manual Re-index catches', function () {
+    $this->post(route('vaults.store'), ['name' => 'Work']);
+    $vault = Vault::query()->sole();
+    $path = $vault->path.DIRECTORY_SEPARATOR.'a.md';
+    File::put($path, 'hello');
+
+    // Establish a trusted mtime: open once (racy, just written), then age
+    // it and do a manual Full Re-index so the mtime is stored as trusted.
+    $this->post(route('vaults.open', $vault->uuid));
+    touch($path, time() - 100);
+    $this->post(route('vaults.reindex', $vault->uuid));
+    $storedMtime = Note::query()->first()->file_mtime;
+    expect($storedMtime)->not->toBeNull();
+
+    // A same-size edit with the mtime restored to what's stored.
+    File::put($path, 'HELLO');
+    touch($path, $storedMtime);
+
+    $this->post(route('vaults.open', $vault->uuid));
+    expect(Note::query()->first()->file_hash)->toBe(hash('sha256', 'hello'));
+
+    $this->post(route('vaults.reindex', $vault->uuid));
+    expect(Note::query()->first()->file_hash)->toBe(hash('sha256', 'HELLO'));
+});
+
 test('closing clears the current vault', function () {
     $this->post(route('vaults.store'), ['name' => 'Work']);
     $vault = Vault::query()->sole();

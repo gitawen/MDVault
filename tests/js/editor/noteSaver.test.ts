@@ -410,4 +410,114 @@ describe('createNoteSaver', () => {
         // The loop must not start a second send once the first resolves.
         expect(send).toHaveBeenCalledTimes(1);
     });
+
+    it('externalConflict pauses autosave, marks the saver dirty, and overwrite() uses its hash', async () => {
+        let content = 'b';
+        const send = vi
+            .fn()
+            .mockResolvedValue(saved({ fileHash: 'hash-after-overwrite' }));
+        const saver = createNoteSaver({
+            baseHash: 'base',
+            baseline: 'a',
+            readContent: () => content,
+            send,
+        });
+
+        saver.notifyChange();
+        saver.externalConflict(
+            'changed',
+            'disk-hash',
+            'changed outside MDVault',
+        );
+
+        expect(saver.getState().status).toBe('conflict');
+        expect(saver.getState().conflict).toEqual({
+            reason: 'changed',
+            currentHash: 'disk-hash',
+        });
+        expect(saver.isDirty()).toBe(true);
+
+        // No send fires even once the idle/max-wait timers would have.
+        await vi.advanceTimersByTimeAsync(AUTOSAVE_MAX_WAIT_MS);
+        expect(send).not.toHaveBeenCalled();
+
+        content = 'c';
+        const outcome = await saver.overwrite();
+
+        expect(outcome).toBe('saved');
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(send).toHaveBeenCalledWith('c', 'disk-hash');
+    });
+
+    it('externalConflict is ignored while a save is already in flight', async () => {
+        let resolveSend: (outcome: SaveOutcome) => void = () => {};
+        const send = vi.fn().mockImplementationOnce(
+            () =>
+                new Promise<SaveOutcome>((resolve) => {
+                    resolveSend = resolve;
+                }),
+        );
+        const saver = createNoteSaver({
+            baseHash: 'base',
+            baseline: 'a',
+            readContent: () => 'b',
+            send,
+        });
+
+        saver.notifyChange();
+        await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+        expect(saver.getState().status).toBe('saving');
+
+        saver.externalConflict('changed', 'disk-hash', 'ignored while saving');
+        expect(saver.getState().status).toBe('saving');
+
+        resolveSend(saved());
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(saver.getState().status).toBe('saved');
+    });
+
+    it('resume() clears a missing conflict and flushes the pending edit', async () => {
+        let content = 'a';
+        const send = vi
+            .fn()
+            .mockResolvedValue(saved({ fileHash: 'hash-after-resume' }));
+        const saver = createNoteSaver({
+            baseHash: 'base',
+            baseline: 'a',
+            readContent: () => content,
+            send,
+        });
+
+        saver.externalConflict(
+            'missing',
+            null,
+            'moved or deleted outside MDVault',
+        );
+        expect(saver.getState().status).toBe('conflict');
+
+        content = 'b';
+        saver.notifyChange();
+
+        const result = await saver.resume();
+
+        expect(result).toBe('saved');
+        expect(saver.getState().conflict).toBeNull();
+        expect(send).toHaveBeenCalledWith('b', 'base');
+    });
+
+    it('resume() on a clean saver resolves clean with no send', async () => {
+        const send = vi.fn();
+        const saver = createNoteSaver({
+            baseHash: 'base',
+            baseline: 'a',
+            readContent: () => 'a',
+            send,
+        });
+
+        const result = await saver.resume();
+
+        expect(result).toBe('clean');
+        expect(send).not.toHaveBeenCalled();
+    });
 });

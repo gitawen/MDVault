@@ -76,4 +76,4 @@ arch('index and note services use no raw filesystem functions')
         'Illuminate\Support\Facades\File',
         'Illuminate\Support\Facades\Storage',
     ])
-    ->not->toBeUsedIn(['App\Services\VaultIndexService', 'App\Services\NoteService', 'App\Services\MarkdownService']);
+    ->not->toBeUsedIn(['App\Services\VaultIndexService', 'App\Services\NoteService', 'App\Services\MarkdownService', 'App\Services\ExternalChangeService']);

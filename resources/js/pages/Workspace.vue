@@ -7,7 +7,9 @@ import NoteEditor from '@/components/editor/NoteEditor.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import NoteTree from '@/components/notes/NoteTree.vue';
+import OrphanSaveNotice from '@/components/notes/OrphanSaveNotice.vue';
 import VaultStatusBadge from '@/components/vaults/VaultStatusBadge.vue';
+import { useExternalChanges } from '@/composables/useExternalChanges';
 import { workspace } from '@/routes';
 import { close, index } from '@/routes/vaults';
 import type {
@@ -18,7 +20,7 @@ import type {
     VaultSummary,
 } from '@/types';
 
-defineProps<{
+const props = defineProps<{
     status: SystemStatus;
     editor: EditorPreferences;
     currentVault: VaultSummary | null;
@@ -26,11 +28,23 @@ defineProps<{
     folders: string[];
     note: NoteDetail | null;
     canTrash: boolean;
+    treeSignature: string | null;
+    checkExternalChanges: boolean;
 }>();
 
 function closeVault() {
     router.post(close.url());
 }
+
+const editorRef = ref<InstanceType<typeof NoteEditor> | null>(null);
+
+const { requestCheck, orphanTempFiles } = useExternalChanges({
+    vaultUuid: () => props.currentVault?.uuid ?? null,
+    enabled: () => props.checkExternalChanges,
+    vaultActive: () => props.currentVault?.status === 'active',
+    treeSignature: () => props.treeSignature,
+    editor: () => editorRef.value,
+});
 
 // Below `md`, the note tree starts collapsed behind this toggle so the
 // editor gets the full width on a phone; from `md` up it is always shown
@@ -102,6 +116,12 @@ defineOptions({
             >
         </div>
 
+        <OrphanSaveNotice
+            v-if="orphanTempFiles.length > 0"
+            :paths="orphanTempFiles"
+            class="mx-4 mt-4"
+        />
+
         <div
             v-if="
                 currentVault &&
@@ -127,11 +147,14 @@ defineOptions({
             >
                 <NoteEditor
                     v-if="note"
+                    ref="editorRef"
                     :key="`${note.uuid}:${note.base_hash ?? note.state}`"
                     :note="note"
                     :vault-uuid="currentVault.uuid"
                     :preferences="editor"
                     :runtime="status.runtime"
+                    :external-checks="checkExternalChanges"
+                    @request-check="requestCheck"
                 />
                 <p v-else class="text-sm text-muted-foreground">
                     Select a note from the list, or create a new one.

@@ -68,6 +68,6 @@
   - Folder rename/move is unavailable until a follow-up.
 - **Follow-ups**:
   - Phase 4 (delivered): atomic save via `replaceFile`; see ADR `note-save-atomic-replace`.
-  - Phase 5: the watcher must be paused or stopped for a vault before a vault rename or trash, and must ignore `.mdvault-*` names.
+  - Phase 5 (resolved): detection polls (ADR `external-change-detection`) and holds no directory handle between checks, so nothing needs pausing before a vault rename or trash; `.mdvault-*` names stay ignored.
   - Follow-up item: folder rename/move and non-empty folder delete (to the Recycle Bin).
   - Phase 4 Revision 4 (delivered): new notes may start with a frontmatter template (setting `editor.new_note_template*`); E4's "new notes are created as empty files" now applies only when the template is off.

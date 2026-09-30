@@ -132,6 +132,11 @@ final class NoteOperationException extends \RuntimeException
         return new self("MDVault couldn't read \u{201c}{$relative}\u{201d} to check it before saving. Close any programs that may be locking it and try again. Your text is still in the editor.", 'content');
     }
 
+    public static function copyNameUnavailable(string $relative): self
+    {
+        return new self("MDVault couldn't find a free name for a copy of \u{201c}{$relative}\u{201d}. Rename or move some notes and try again. Your text is still in the editor.", 'content');
+    }
+
     public static function invalidFrontmatter(): self
     {
         return new self("The frontmatter can't contain a line of three dashes (---), because that would end it early and change the note. Remove that line and try again. Nothing on disk was changed.", 'frontmatter');

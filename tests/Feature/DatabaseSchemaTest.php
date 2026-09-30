@@ -24,7 +24,7 @@ test('the vaults table has the expected columns', function () {
 test('the notes table has the expected columns', function () {
     expect(Schema::hasColumns('notes', [
         'id', 'uuid', 'vault_id', 'title', 'filename', 'relative_path',
-        'extension', 'mime_type', 'file_size', 'file_hash', 'is_encrypted',
+        'extension', 'mime_type', 'file_size', 'file_hash', 'file_mtime', 'is_encrypted',
         'created_at', 'updated_at',
     ]))->toBeTrue();
 

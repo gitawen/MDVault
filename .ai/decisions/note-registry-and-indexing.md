@@ -73,4 +73,5 @@
   - macOS NFD/NFC name differences rely on hash matching.
 - **Follow-ups**:
   - Phase 5: a watcher-driven incremental index, rename events for identity when the content has changed, an optional mtime/size shortcut, and background indexing with progress.
+  - Phase 5 (delivered, ADR `external-change-reconciliation`): `reconcile()` with Quick/Full modes and the `notes.file_mtime` shortcut, a fourth pairing step (unique file name), a stale-registry guard, and a tree signature. Vault open/create/add now reconcile in Quick mode; manual Re-index stays Full.
   - Phase 6: backups export `uuid` plus `relative_path` plus `file_hash`.

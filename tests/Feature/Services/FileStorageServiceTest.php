@@ -422,6 +422,20 @@ test('scan of a missing root gives unreadable === [""]', function () {
     expect($result['unreadable'])->toBe(['']);
 });
 
+test('scan reports each file\'s mtime', function () {
+    writeVaultFiles($this->tmp, ['a.md' => 'x']);
+    $path = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    touch($path, 1_700_000_000);
+
+    $result = app(FileStorageService::class)->scan($this->tmp, fn (): bool => true);
+
+    expect($result['files'][0]['mtime'])->toBe(filemtime($path));
+});
+
+test('modifiedTime returns null for a missing path', function () {
+    expect(app(FileStorageService::class)->modifiedTime($this->tmp.DIRECTORY_SEPARATOR.'missing.md'))->toBeNull();
+});
+
 test('read of a missing file gives null; size of a missing file gives null', function () {
     $service = app(FileStorageService::class);
     $missing = $this->tmp.DIRECTORY_SEPARATOR.'missing.md';

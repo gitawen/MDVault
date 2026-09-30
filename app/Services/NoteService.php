@@ -110,25 +110,166 @@ final class NoteService
             throw NoteOperationException::createFailed($relative, 'name');
         }
 
-        $hash = $this->hashes->hashFile($absolute) ?? $this->hashes->hashString($source);
-        $size = $this->files->size($absolute) ?? strlen($source);
+        return $this->registerNewFile($vault, $relative, $filename, $stem, $absolute, $source);
+    }
+
+    /**
+     * Inserts the registry record for a file this call just created
+     * exclusively at $absolute holding exactly $bytes. When $clearStaleRow
+     * is true, any existing row at this exact vault-scoped relative_path is
+     * deleted first, in the same transaction: since the file was just
+     * created there through an exclusive ("x" mode) create, which only
+     * succeeds when nothing already existed on disk at that path, such a
+     * row can only be a stale registry entry left behind by a deletion that
+     * was never reconciled (`NoteService::save`'s 409 `missing` path never
+     * touches the registry, and the automatic reconcile checks can be
+     * switched off) — never a real conflict, since `assertNoConflict`'s own
+     * exists() check already refused a path a real file sits at (Rule
+     * 9/10: the filesystem is the truth). On a DB failure, the transaction
+     * rolls back (any stale row is left exactly as it was) and the new
+     * file is removed as compensation (only if its bytes still exactly
+     * equal $bytes), then the exception is rethrown.
+     */
+    private function registerNewFile(Vault $vault, string $relative, string $filename, string $stem, string $absolute, string $bytes, bool $clearStaleRow = false): Note
+    {
+        $hash = $this->hashes->hashFile($absolute) ?? $this->hashes->hashString($bytes);
+        $size = $this->files->size($absolute) ?? strlen($bytes);
+
+        $attributes = [
+            'title' => $stem,
+            'filename' => $filename,
+            'relative_path' => $relative,
+            'extension' => self::EXTENSION,
+            'mime_type' => Note::MIME_TYPE,
+            'file_size' => $size,
+            'file_hash' => $hash,
+            'is_encrypted' => false,
+        ];
 
         try {
-            return $vault->notes()->create([
-                'title' => $stem,
-                'filename' => $filename,
-                'relative_path' => $relative,
-                'extension' => self::EXTENSION,
-                'mime_type' => Note::MIME_TYPE,
-                'file_size' => $size,
-                'file_hash' => $hash,
-                'is_encrypted' => false,
-            ]);
+            return $this->database->connection()->transaction(function () use ($vault, $relative, $attributes, $clearStaleRow): Note {
+                if ($clearStaleRow) {
+                    Note::query()
+                        ->where('vault_id', $vault->id)
+                        ->where('relative_path', $relative)
+                        ->delete();
+                }
+
+                return $vault->notes()->create($attributes);
+            });
         } catch (\Throwable $e) {
-            $this->files->deleteNewFileWithContents($absolute, $source);
+            $this->files->deleteNewFileWithContents($absolute, $bytes);
 
             throw $e;
         }
+    }
+
+    /**
+     * Creates a never-overwriting copy of $sourcePath's edited content next
+     * to it (or at the original path if it has been deleted), for the
+     * external-change "Save mine as a new note" action (ADR
+     * `open-note-external-conflicts`). Never touches $sourcePath itself.
+     *
+     * @throws NoteOperationException
+     */
+    public function createCopy(Vault $vault, string $sourcePath, string $content, NoteSaveMode $mode, ?FrontmatterEdit $frontmatter): Note
+    {
+        $this->assertVaultAvailable($vault);
+
+        if (
+            str_contains($sourcePath, '\\')
+            || str_contains($sourcePath, "\0")
+            || str_starts_with($sourcePath, '/')
+            || preg_match('/^[A-Za-z]:/', $sourcePath) === 1
+            || ! str_ends_with(mb_strtolower($sourcePath), '.md')
+        ) {
+            throw NoteOperationException::invalidFolder('source_path');
+        }
+
+        foreach (explode('/', $sourcePath) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                throw NoteOperationException::invalidFolder('source_path');
+            }
+        }
+
+        $folder = $this->parentFolder($sourcePath);
+        $stem = $this->assertValidNoteName(basename($sourcePath));
+
+        if ($folder !== '') {
+            if (! $this->files->isDirectory($this->files->joinRelative($vault->path, $folder))) {
+                $folder = '';
+            } else {
+                [$folder] = $this->resolveFolder($vault, $folder, 'source_path');
+            }
+        }
+
+        // Excluded from the candidate conflict checks below: recreating at
+        // the source's own path (candidate 0) must succeed once its file is
+        // gone, even though its stale registry row still names that exact
+        // path. A file that still exists there is refused regardless,
+        // since assertNoConflict's own exists() check does not consult
+        // $except.
+        $sourceNote = $vault->notes()->where('relative_path', $sourcePath)->first();
+
+        $srcAbs = $this->files->joinRelative($vault->path, $sourcePath);
+        $doc = $this->markdown->decode('');
+
+        if ($this->files->isFile($srcAbs) && ! $this->files->isSymlink($srcAbs)) {
+            $size = $this->files->size($srcAbs);
+
+            if ($size !== null && $size <= self::EDIT_LIMIT) {
+                $raw = $this->files->read($srcAbs);
+
+                if ($raw !== null) {
+                    $doc = $this->markdown->decode($raw);
+
+                    if (! $doc->validUtf8) {
+                        $doc = $this->markdown->decode('');
+                    }
+                }
+            }
+        }
+
+        $source = $mode === NoteSaveMode::Rich
+            ? $this->markdown->composeRich($doc, $content, $frontmatter)
+            : $this->markdown->composeSource($content);
+
+        $bytes = $this->markdown->encode($source, $doc->eol, $doc->hasBom);
+
+        if (strlen($bytes) > self::EDIT_LIMIT) {
+            throw NoteOperationException::contentTooLarge();
+        }
+
+        $truncatedStem = mb_substr($stem, 0, 100);
+
+        $candidateStems = [$stem, $truncatedStem.' (my version)'];
+        for ($n = 2; $n <= 20; $n++) {
+            $candidateStems[] = $truncatedStem." (my version {$n})";
+        }
+
+        foreach ($candidateStems as $candidateStem) {
+            $filename = $candidateStem.'.'.self::EXTENSION;
+            $relative = $this->relativeFor($folder, $filename);
+            $absolute = $this->files->joinRelative($vault->path, $relative);
+
+            try {
+                $this->assertNoConflict($vault, $relative, $absolute, 'content', $sourceNote, null);
+            } catch (NoteOperationException) {
+                continue;
+            }
+
+            if (! $this->files->createFile($absolute, $bytes)) {
+                if ($this->files->exists($absolute)) {
+                    continue;
+                }
+
+                throw NoteOperationException::createFailed($relative, 'content');
+            }
+
+            return $this->registerNewFile($vault, $relative, $filename, $candidateStem, $absolute, $bytes, clearStaleRow: true);
+        }
+
+        throw NoteOperationException::copyNameUnavailable($sourcePath);
     }
 
     /**
@@ -265,7 +406,7 @@ final class NoteService
             $hash = $this->hashes->hashFile($absolute);
 
             if ($hash !== null && ($hash !== $note->file_hash || $size !== $note->file_size)) {
-                $note->update(['file_hash' => $hash, 'file_size' => $size]);
+                $note->update(['file_hash' => $hash, 'file_size' => $size, 'file_mtime' => null]);
             }
 
             return $this->previewResult(state: 'too_large', readOnlyReason: 'too_large');
@@ -280,7 +421,7 @@ final class NoteService
         $hash = $this->hashes->hashString($raw);
 
         if ($hash !== $note->file_hash || strlen($raw) !== $note->file_size) {
-            $note->update(['file_hash' => $hash, 'file_size' => strlen($raw)]);
+            $note->update(['file_hash' => $hash, 'file_size' => strlen($raw), 'file_mtime' => null]);
         }
 
         $doc = $this->markdown->decode($raw);
@@ -418,12 +559,19 @@ final class NoteService
 
     /**
      * Updates the DB hash/size to match the file. A failure is reported and
-     * never compensated: the file is always the truth (Rule 9).
+     * never compensated: the file is always the truth (Rule 9). A no-op
+     * (the stored hash/size already match) makes no write at all, and a
+     * real change also nulls `file_mtime`: it can no longer attest to the
+     * new hash (ADR `external-change-reconciliation`).
      */
     private function reconcile(Note $note, string $hash, int $size): void
     {
+        if ($note->file_hash === $hash && $note->file_size === $size) {
+            return;
+        }
+
         try {
-            $note->update(['file_hash' => $hash, 'file_size' => $size]);
+            $note->update(['file_hash' => $hash, 'file_size' => $size, 'file_mtime' => null]);
         } catch (\Throwable $e) {
             report($e);
         }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\IndexMode;
 use App\Exceptions\NoteOperationException;
 use App\Exceptions\VaultOperationException;
 use App\Http\Requests\Vaults\RegisterVaultRequest;
@@ -29,7 +30,7 @@ class ExistingVaultController extends Controller
         $suffix = '';
 
         try {
-            $result = $index->reindex($vault);
+            $result = $index->reconcile($vault, IndexMode::Quick);
             $suffix = " {$result->added} note(s) indexed.";
         } catch (NoteOperationException) {
             // Nothing to index if the folder can't be read right now.

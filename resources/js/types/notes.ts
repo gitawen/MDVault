@@ -52,3 +52,30 @@ export type NoteSaveConflictResponse = {
     message: string;
     current_hash: string | null;
 };
+
+export type RemoteOpenNote = {
+    uuid: string;
+    exists: boolean;
+    relative_path: string | null;
+    file_hash: string | null;
+};
+
+export type VaultChangeCheckResponse = {
+    status: 'ok' | 'busy' | 'unavailable' | 'disabled' | 'inactive';
+    changed: boolean;
+    tree_signature: string | null;
+    open_note: RemoteOpenNote | null;
+    orphan_temp_files: string[];
+};
+
+export type NoteCopyResponse = {
+    uuid: string;
+    title: string;
+    relative_path: string;
+};
+
+export type NoteDiskResponse = {
+    state: NotePreviewState;
+    content: string | null;
+    base_hash: string | null;
+};

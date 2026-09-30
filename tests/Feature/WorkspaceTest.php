@@ -1,7 +1,11 @@
 <?php
 
+use App\Enums\IndexMode;
 use App\Enums\SettingKey;
+use App\Models\Note;
+use App\Services\ExternalChangeService;
 use App\Services\SettingsService;
+use App\Services\VaultIndexService;
 use App\Services\VaultService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -64,6 +68,119 @@ test('a missing current vault folder gives a null tree', function () {
     } finally {
         File::deleteDirectory($tmp);
     }
+});
+
+test('the treeSignature prop matches the external-change check for an unchanged vault', function () {
+    $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mdvault-workspace-'.Str::random(8);
+
+    try {
+        fakeDocumentsDirectory($tmp.DIRECTORY_SEPARATOR.'Documents');
+
+        $vault = app(VaultService::class)->create('Work');
+        app(VaultService::class)->open($vault);
+        writeVaultFiles($vault->path, ['a.md' => 'one']);
+        app(VaultIndexService::class)->reconcile($vault, IndexMode::Full);
+
+        $check = app(ExternalChangeService::class)->check($vault, null);
+
+        $response = $this->get(route('workspace'));
+
+        $response->assertInertia(fn ($page) => $page->where('treeSignature', $check['tree_signature']));
+    } finally {
+        File::deleteDirectory($tmp);
+    }
+});
+
+test('a partial tree reload of a deleted open note renders the workspace instead of 404ing (AR-01)', function () {
+    $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mdvault-workspace-'.Str::random(8);
+
+    try {
+        fakeDocumentsDirectory($tmp.DIRECTORY_SEPARATOR.'Documents');
+
+        $vault = app(VaultService::class)->create('Work');
+        app(VaultService::class)->open($vault);
+        writeVaultFiles($vault->path, ['a.md' => 'one']);
+        app(VaultIndexService::class)->reconcile($vault, IndexMode::Full);
+        $note = Note::query()->sole();
+
+        File::delete($vault->path.DIRECTORY_SEPARATOR.'a.md');
+        // As the real flow does: the "changes" check reconciles the
+        // deletion (removing the row) and returns the new tree signature
+        // before the renderer's tree-only partial reload of notes.show for
+        // the same, now-missing, uuid.
+        $check = app(ExternalChangeService::class)->check($vault, $note->uuid);
+
+        $response = $this->get(route('notes.show', $note->uuid), [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => hash_file('xxh128', public_path('build/manifest.json')),
+            'X-Inertia-Partial-Component' => 'Workspace',
+            'X-Inertia-Partial-Data' => 'tree,folders,treeSignature',
+        ]);
+
+        $response->assertOk();
+        expect($response->json('component'))->toBe('Workspace');
+        expect($response->json('props.treeSignature'))->toBe($check['tree_signature']);
+        expect(collect($response->json('props.tree'))->pluck('uuid'))->not->toContain($note->uuid);
+    } finally {
+        File::deleteDirectory($tmp);
+    }
+});
+
+test('a partial note reload of a deleted open note returns note as null instead of 404ing (AR-01)', function () {
+    $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mdvault-workspace-'.Str::random(8);
+
+    try {
+        fakeDocumentsDirectory($tmp.DIRECTORY_SEPARATOR.'Documents');
+
+        $vault = app(VaultService::class)->create('Work');
+        app(VaultService::class)->open($vault);
+        writeVaultFiles($vault->path, ['a.md' => 'one']);
+        app(VaultIndexService::class)->reconcile($vault, IndexMode::Full);
+        $note = Note::query()->sole();
+
+        File::delete($vault->path.DIRECTORY_SEPARATOR.'a.md');
+        app(ExternalChangeService::class)->check($vault, $note->uuid);
+
+        $response = $this->get(route('notes.show', $note->uuid), [
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => hash_file('xxh128', public_path('build/manifest.json')),
+            'X-Inertia-Partial-Component' => 'Workspace',
+            'X-Inertia-Partial-Data' => 'note',
+        ]);
+
+        $response->assertOk();
+        expect($response->json('component'))->toBe('Workspace');
+        expect($response->json('props.note'))->toBeNull();
+    } finally {
+        File::deleteDirectory($tmp);
+    }
+});
+
+test('a full (non-partial) GET to a deleted uuid still 404s (AR-01)', function () {
+    $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mdvault-workspace-'.Str::random(8);
+
+    try {
+        fakeDocumentsDirectory($tmp.DIRECTORY_SEPARATOR.'Documents');
+
+        $vault = app(VaultService::class)->create('Work');
+        app(VaultService::class)->open($vault);
+        writeVaultFiles($vault->path, ['a.md' => 'one']);
+        app(VaultIndexService::class)->reconcile($vault, IndexMode::Full);
+        $note = Note::query()->sole();
+
+        File::delete($vault->path.DIRECTORY_SEPARATOR.'a.md');
+        app(ExternalChangeService::class)->check($vault, $note->uuid);
+
+        $this->get(route('notes.show', $note->uuid))->assertNotFound();
+    } finally {
+        File::deleteDirectory($tmp);
+    }
+});
+
+test('checkExternalChanges is true by default', function () {
+    $response = $this->get(route('workspace'));
+
+    $response->assertInertia(fn ($page) => $page->where('checkExternalChanges', true));
 });
 
 test('the workspace editor prop reflects a stored preference', function () {

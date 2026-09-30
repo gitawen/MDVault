@@ -18,7 +18,10 @@ class VaultIndexController extends Controller
         try {
             $result = $index->reindex($vault);
 
-            Inertia::flash('toast', ['type' => 'success', 'message' => $result->summary()]);
+            Inertia::flash('toast', [
+                'type' => $result->stale ? 'error' : 'success',
+                'message' => $result->summary(),
+            ]);
         } catch (NoteOperationException $e) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
         }

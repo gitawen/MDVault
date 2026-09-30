@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\IndexMode;
 use App\Exceptions\NoteOperationException;
 use App\Exceptions\VaultOperationException;
 use App\Http\Requests\Vaults\DestroyVaultRequest;
@@ -35,7 +36,7 @@ class VaultController extends Controller
         $vaults->open($vault);
 
         try {
-            $index->reindex($vault);
+            $index->reconcile($vault, IndexMode::Quick);
         } catch (NoteOperationException) {
             // The vault was just created; nothing to reindex yet.
         }
@@ -89,9 +90,9 @@ class VaultController extends Controller
         }
 
         try {
-            $result = $index->reindex($vault);
+            $result = $index->reconcile($vault, IndexMode::Quick);
 
-            if ($result->hasChanges() || $result->skipped > 0) {
+            if (! $result->stale && ($result->hasChanges() || $result->skipped > 0)) {
                 Inertia::flash('toast', ['type' => 'success', 'message' => $result->summary()]);
             }
         } catch (NoteOperationException $e) {

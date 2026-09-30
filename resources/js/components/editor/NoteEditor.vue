@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import { router, useHttp } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { toast } from 'vue-sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import FrontmatterPanel from '@/components/editor/FrontmatterPanel.vue';
+import NoteCompareDialog from '@/components/editor/NoteCompareDialog.vue';
 import NoteConflictAlert from '@/components/editor/NoteConflictAlert.vue';
 import SourceEditor from '@/components/editor/SourceEditor.vue';
 import TiptapEditor from '@/components/editor/TiptapEditor.vue';
 import UnsavedChangesDialog from '@/components/editor/UnsavedChangesDialog.vue';
 import { useUnsavedChangesGuard } from '@/composables/useUnsavedChangesGuard';
 import * as editorSession from '@/lib/editor/editorSession';
+import {
+    classifyOpenNote,
+    decideOpenNoteAction,
+} from '@/lib/external/openNoteStatus';
 import type { NoteSaverState, SaveOutcome } from '@/lib/editor/noteSaver';
 import { createNoteSaver } from '@/lib/editor/noteSaver';
 import {
@@ -18,6 +24,7 @@ import {
     richContentAsText,
     richSavePayload,
 } from '@/lib/editor/richContent';
+import { mapCopyResult } from '@/lib/editor/copyTransport';
 import { mapSaveResult } from '@/lib/editor/saveTransport';
 import {
     assessMarkdown,
@@ -25,15 +32,29 @@ import {
     type MarkdownAssessment,
 } from '@/lib/markdown/assess';
 import { getMarkdownConverter } from '@/lib/markdown/converter';
+import { workspace } from '@/routes';
+import { show } from '@/routes/notes';
 import { update as updateContent } from '@/routes/notes/content';
 import { reindex } from '@/routes/vaults';
-import type { EditorPreferences, NoteDetail, NoteSaveResponse } from '@/types';
+import { copy } from '@/routes/vaults/notes';
+import type {
+    EditorPreferences,
+    NoteCopyResponse,
+    NoteDetail,
+    NoteSaveResponse,
+    RemoteOpenNote,
+} from '@/types';
 
 const props = defineProps<{
     note: NoteDetail;
     vaultUuid: string;
     preferences: EditorPreferences;
     runtime: 'desktop' | 'browser';
+    externalChecks: boolean;
+}>();
+
+const emit = defineEmits<{
+    'request-check': [];
 }>();
 
 function formatBytes(bytes: number): string {
@@ -148,6 +169,13 @@ type SavePayload = {
     frontmatter?: string;
 };
 
+// A save epoch (Phase 5, ADR `open-note-external-conflicts`): incremented
+// before a save request starts and again once it settles, so a stale
+// external-change check result (one whose token no longer matches) is
+// never acted on. `externalCheckToken()` also returns null while a save is
+// in flight, so a check is skipped that round rather than racing the save.
+let epoch = 0;
+
 function send(content: string, baseHash: string): Promise<SaveOutcome> {
     const payload: SavePayload =
         mode.value === 'rich'
@@ -158,20 +186,35 @@ function send(content: string, baseHash: string): Promise<SaveOutcome> {
               }
             : { content, base_hash: baseHash, mode: 'source' };
 
+    epoch++;
+
     return new Promise((resolve) => {
+        function finish(outcome: SaveOutcome): void {
+            epoch++;
+
+            if (outcome.kind === 'conflict' && outcome.reason === 'missing') {
+                // A pure move 409s as `missing`; an immediate check lets it
+                // resolve itself through `resume` instead of showing a
+                // banner for a note that only moved.
+                emit('request-check');
+            }
+
+            resolve(outcome);
+        }
+
         useHttp<SavePayload, NoteSaveResponse>(payload).put(
             updateContent.url(props.note.uuid),
             {
                 onSuccess: (response) => {
                     writtenSinceMount.value =
                         writtenSinceMount.value || response.saved;
-                    resolve(mapSaveResult({ kind: 'success', response }));
+                    finish(mapSaveResult({ kind: 'success', response }));
                 },
                 onError: (errors) => {
-                    resolve(mapSaveResult({ kind: 'validation', errors }));
+                    finish(mapSaveResult({ kind: 'validation', errors }));
                 },
                 onHttpException: (httpResponse) => {
-                    resolve(
+                    finish(
                         mapSaveResult({
                             kind: 'httpException',
                             status: httpResponse.status,
@@ -180,7 +223,7 @@ function send(content: string, baseHash: string): Promise<SaveOutcome> {
                     );
                 },
                 onNetworkError: () => {
-                    resolve(mapSaveResult({ kind: 'network' }));
+                    finish(mapSaveResult({ kind: 'network' }));
                 },
             },
         );
@@ -241,7 +284,10 @@ onMounted(() => {
     window.addEventListener('keydown', onKeydown);
 });
 
+let unmounted = false;
+
 onUnmounted(() => {
+    unmounted = true;
     window.removeEventListener('keydown', onKeydown);
     saver?.dispose();
 });
@@ -333,9 +379,199 @@ function conflictCopy(): void {
     void navigator.clipboard?.writeText(text);
 }
 
-function conflictReindex(): void {
-    runReindex();
+// --- External changes (ADR `open-note-external-conflicts`) -------------------
+
+function refresh(): void {
+    router.reload({ only: ['note', 'tree', 'folders', 'treeSignature'] });
 }
+
+function externalCheckToken(): number | null {
+    return saveState.value.status === 'saving' ? null : epoch;
+}
+
+function localSnapshot(): {
+    uuid: string;
+    relativePath: string;
+    baseHash: string;
+} {
+    return {
+        uuid: props.note.uuid,
+        relativePath: props.note.relative_path,
+        baseHash:
+            saver?.getState().baseHash ||
+            props.note.base_hash ||
+            props.note.file_hash,
+    };
+}
+
+function applyExternalStatus(token: number, remote: RemoteOpenNote): void {
+    // A check result can resolve after this instance has unmounted (AR-02):
+    // acting on it here (e.g. `leave`'s `router.visit`) would navigate away
+    // from whatever note the user has since opened.
+    if (unmounted || token !== epoch || saveState.value.status === 'saving') {
+        return;
+    }
+
+    const change = classifyOpenNote(localSnapshot(), remote);
+    const action = decideOpenNoteAction(change, {
+        dirty: isDirty(),
+        conflict: saveState.value.conflict?.reason ?? null,
+    });
+
+    switch (action) {
+        case 'none':
+            break;
+
+        case 'refresh':
+            refresh();
+            break;
+
+        case 'resume':
+            void saver?.resume().then(() => refresh());
+            break;
+
+        case 'reload':
+            discard();
+            toast.info(
+                `\u{201c}${props.note.title}\u{201d} was changed outside MDVault and has been reloaded.`,
+            );
+            refresh();
+            break;
+
+        case 'leave':
+            discard();
+            toast.warning(
+                `\u{201c}${props.note.relative_path}\u{201d} was deleted or moved outside MDVault.`,
+            );
+            router.visit(workspace.url());
+            break;
+
+        case 'conflict-changed': {
+            if (!saver) {
+                // Still assessing (no saver yet): treat exactly like a
+                // clean reload rather than losing the change notice.
+                discard();
+                toast.info(
+                    `\u{201c}${props.note.title}\u{201d} was changed outside MDVault and has been reloaded.`,
+                );
+                refresh();
+                break;
+            }
+
+            let conflictMessage = `\u{201c}${props.note.relative_path}\u{201d} was changed outside MDVault while you were editing. Your edits haven't been saved yet.`;
+
+            if (change.kind === 'changed' && change.moved) {
+                conflictMessage += ` It was also moved to \u{201c}${change.relativePath}\u{201d}.`;
+            }
+
+            saver.externalConflict(
+                'changed',
+                change.kind === 'changed' ? change.currentHash : null,
+                conflictMessage,
+            );
+            break;
+        }
+
+        case 'conflict-missing':
+            saver?.externalConflict(
+                'missing',
+                null,
+                `\u{201c}${props.note.relative_path}\u{201d} was deleted or moved outside MDVault, and MDVault couldn't find where it went. Your text is still in the editor.`,
+            );
+            break;
+    }
+}
+
+type CopyPayload = {
+    source_path: string;
+    mode: Mode;
+    content: string;
+    has_frontmatter?: boolean;
+    frontmatter?: string;
+};
+
+function saveAsNewNote(): void {
+    const payload: CopyPayload =
+        mode.value === 'rich'
+            ? {
+                  ...richSavePayload(decodeRichContent(readContent())),
+                  mode: 'rich',
+                  source_path: props.note.relative_path,
+              }
+            : {
+                  content: readContent(),
+                  mode: 'source',
+                  source_path: props.note.relative_path,
+              };
+
+    useHttp<CopyPayload, NoteCopyResponse>(payload).post(
+        copy.url(props.vaultUuid),
+        {
+            onSuccess: (response) => {
+                discard();
+                toast.success(
+                    `Your version was saved as \u{201c}${response.relative_path}\u{201d}.`,
+                );
+                router.visit(show.url(response.uuid));
+            },
+            onError: (errors) => {
+                const outcome = mapCopyResult({ kind: 'validation', errors });
+
+                if (outcome.kind === 'error') {
+                    toast.error(outcome.message);
+                }
+            },
+            onHttpException: () => {
+                const outcome = mapCopyResult({ kind: 'httpException' });
+
+                if (outcome.kind === 'error') {
+                    toast.error(outcome.message);
+                }
+            },
+            onNetworkError: () => {
+                const outcome = mapCopyResult({ kind: 'network' });
+
+                if (outcome.kind === 'error') {
+                    toast.error(outcome.message);
+                }
+            },
+        },
+    );
+}
+
+const compareOpen = ref(false);
+const compareMine = ref('');
+
+function openCompare(): void {
+    compareMine.value =
+        mode.value === 'rich'
+            ? richContentAsText(decodeRichContent(readContent()))
+            : readContent();
+    compareOpen.value = true;
+}
+
+function discardMissing(): void {
+    discard();
+    emit('request-check');
+
+    if (!props.externalChecks) {
+        router.visit(workspace.url());
+    }
+}
+
+function checkAgain(): void {
+    if (props.externalChecks) {
+        emit('request-check');
+    } else {
+        runReindex();
+    }
+}
+
+defineExpose({
+    noteUuid: () => props.note.uuid,
+    externalCheckToken,
+    applyExternalStatus,
+});
 
 // --- Unsaved-changes guard ----------------------------------------------------
 
@@ -470,10 +706,14 @@ const statusLabel = computed(() => {
                 v-if="saveState.conflict"
                 :conflict="saveState.conflict"
                 :message="saveState.message ?? ''"
+                :external-checks="externalChecks"
                 @reload="conflictReload"
                 @overwrite="conflictOverwrite"
                 @copy="conflictCopy"
-                @reindex="conflictReindex"
+                @save-as-new="saveAsNewNote"
+                @compare="openCompare"
+                @check="checkAgain"
+                @discard="discardMissing"
             />
 
             <Alert
@@ -570,6 +810,13 @@ const statusLabel = computed(() => {
             :message="saveState.message ?? ''"
             @stay="guard.stay"
             @discard="guard.discardAndContinue"
+        />
+
+        <NoteCompareDialog
+            v-model:open="compareOpen"
+            :note-uuid="note.uuid"
+            :title="note.title"
+            :mine="compareMine"
         />
     </article>
 </template>

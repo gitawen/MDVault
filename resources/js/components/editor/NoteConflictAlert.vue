@@ -14,17 +14,22 @@ import {
 defineProps<{
     conflict: { reason: 'changed' | 'missing'; currentHash: string | null };
     message: string;
+    externalChecks: boolean;
 }>();
 
 const emit = defineEmits<{
     reload: [];
     overwrite: [];
     copy: [];
-    reindex: [];
+    saveAsNew: [];
+    compare: [];
+    check: [];
+    discard: [];
 }>();
 
 const reloadConfirmOpen = ref(false);
 const overwriteConfirmOpen = ref(false);
+const discardConfirmOpen = ref(false);
 
 function confirmReload(): void {
     reloadConfirmOpen.value = false;
@@ -34,6 +39,11 @@ function confirmReload(): void {
 function confirmOverwrite(): void {
     overwriteConfirmOpen.value = false;
     emit('overwrite');
+}
+
+function confirmDiscard(): void {
+    discardConfirmOpen.value = false;
+    emit('discard');
 }
 </script>
 
@@ -59,12 +69,33 @@ function confirmOverwrite(): void {
                         >
                             Keep my version
                         </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            @click="emit('saveAsNew')"
+                        >
+                            Save mine as a new note
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            @click="emit('compare')"
+                        >
+                            Compare
+                        </Button>
                         <Button size="sm" variant="ghost" @click="emit('copy')">
                             Copy my text
                         </Button>
                     </template>
 
                     <template v-else>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            @click="emit('saveAsNew')"
+                        >
+                            Save as a new note
+                        </Button>
                         <Button
                             size="sm"
                             variant="outline"
@@ -75,9 +106,20 @@ function confirmOverwrite(): void {
                         <Button
                             size="sm"
                             variant="outline"
-                            @click="emit('reindex')"
+                            @click="emit('check')"
                         >
-                            Re-index vault
+                            {{
+                                externalChecks
+                                    ? 'Check again'
+                                    : 'Re-index vault'
+                            }}
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            @click="discardConfirmOpen = true"
+                        >
+                            Discard my edits
                         </Button>
                     </template>
                 </div>
@@ -124,6 +166,29 @@ function confirmOverwrite(): void {
                     </Button>
                     <Button variant="destructive" @click="confirmOverwrite">
                         Keep mine
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <Dialog v-model:open="discardConfirmOpen">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Discard your edits?</DialogTitle>
+                    <DialogDescription>
+                        Discard your unsaved edits? They haven&#8217;t been
+                        saved anywhere.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        @click="discardConfirmOpen = false"
+                    >
+                        Cancel
+                    </Button>
+                    <Button variant="destructive" @click="confirmDiscard">
+                        Discard
                     </Button>
                 </DialogFooter>
             </DialogContent>

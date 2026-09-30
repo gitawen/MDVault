@@ -49,6 +49,21 @@ export type NoteSaver = {
     flush(): Promise<'clean' | 'saved' | 'failed'>;
     /** Only meaningful after a 'changed' conflict: resend with baseHash = conflict.currentHash. */
     overwrite(): Promise<'saved' | 'failed'>;
+    /**
+     * Enter a conflict detected by an external-change check (not by a
+     * save). Ignored while a save is in flight. Pauses autosave; keeps the
+     * pending edit.
+     */
+    externalConflict(
+        reason: 'changed' | 'missing',
+        currentHash: string | null,
+        message: string,
+    ): void;
+    /**
+     * Clear any conflict (the file is back where the saver expects it, or
+     * the external change was undone) and flush.
+     */
+    resume(): Promise<'clean' | 'saved' | 'failed'>;
     /** Marks clean and stops timers (used by Reload and Discard-and-leave). */
     discard(): void;
     /** True while there is a pending change, an in-flight save, or an unsaved failure. */
@@ -285,6 +300,40 @@ export function createNoteSaver(options: NoteSaverOptions): NoteSaver {
         return result === 'saved' ? 'saved' : 'failed';
     }
 
+    function externalConflict(
+        reason: 'changed' | 'missing',
+        currentHash: string | null,
+        newMessage: string,
+    ): void {
+        if (flushPromise !== null) {
+            return;
+        }
+
+        if (status === 'conflict' && conflict?.reason === reason) {
+            conflict = { reason, currentHash };
+            message = newMessage;
+            emitState();
+
+            return;
+        }
+
+        clearTimers();
+        hadFailure = true;
+        status = 'conflict';
+        conflict = { reason, currentHash };
+        message = newMessage;
+        emitState();
+    }
+
+    function resume(): Promise<'clean' | 'saved' | 'failed'> {
+        conflict = null;
+        hadFailure = false;
+        status = pending ? 'dirty' : 'clean';
+        emitState();
+
+        return flush();
+    }
+
     function discard(): void {
         clearTimers();
         pending = false;
@@ -314,6 +363,8 @@ export function createNoteSaver(options: NoteSaverOptions): NoteSaver {
         notifyChange,
         flush,
         overwrite,
+        externalConflict,
+        resume,
         discard,
         isDirty,
         getState,

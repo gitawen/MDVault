@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\SettingGroup;
+use App\Enums\SettingKey;
 use App\Enums\VaultStatus;
 use App\Models\Note;
 use App\Services\NoteService;
@@ -53,6 +54,8 @@ class WorkspaceController extends Controller
             'currentVault' => $current ? $vaults->present($current) : null,
             'tree' => fn () => $active ? $browse()['tree'] : null,
             'folders' => fn () => $active ? $browse()['folders'] : [],
+            'treeSignature' => fn () => $active ? $browse()['signature'] : null,
+            'checkExternalChanges' => $settings->boolean(SettingKey::CheckExternalChanges),
             'note' => function () use ($note, $active, $notes): ?array {
                 if (! $note || ! $active) {
                     return null;

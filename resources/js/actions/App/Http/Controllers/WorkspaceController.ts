@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/'
  */
 const WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9 = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.definition = {
 
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/'
  */
 WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.url = (options?: RouteQueryO
 
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/'
  */
 WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.get = (options?: RouteQueryO
 })
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/'
  */
 WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.head = (options?: RouteQuery
 
     /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/'
  */
     const WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9Form = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.head = (options?: RouteQuery
 
             /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/'
  */
         WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9Form.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.head = (options?: RouteQuery
         })
             /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/'
  */
         WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9Form.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.head = (options?: RouteQuery
     WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9.form = WorkspaceController980bb49ee7ae63891f1d891d2fbcf1c9Form
     /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
 const WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +94,7 @@ WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.definition = {
 
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
 WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.url = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions) => {
@@ -127,7 +127,7 @@ WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.url = (args: { note: string 
 
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
 WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.get = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -136,7 +136,7 @@ WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.get = (args: { note: string 
 })
 /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
 WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.head = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -146,7 +146,7 @@ WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.head = (args: { note: string
 
     /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
     const WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59fForm = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -156,7 +156,7 @@ WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.head = (args: { note: string
 
             /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
         WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59fForm.get = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -165,7 +165,7 @@ WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59f.head = (args: { note: string
         })
             /**
 * @see \App\Http\Controllers\WorkspaceController::__invoke
- * @see app/Http/Controllers/WorkspaceController.php:22
+ * @see app/Http/Controllers/WorkspaceController.php:23
  * @route '/notes/{note}'
  */
         WorkspaceController90bb6cf0f6f6941cbce7208f85d6a59fForm.head = (args: { note: string | { uuid: string } } | [note: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

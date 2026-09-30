@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/vue3';
 import type { PendingVisit } from '@inertiajs/core';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { isEditorSafeVisit } from '@/lib/editor/visitSafety';
 
 export type UnsavedChangesGuardOptions = {
     isDirty: () => boolean;
@@ -45,6 +46,10 @@ export function useUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
     }
 
     function handleBefore(event: CustomEvent<{ visit: PendingVisit }>): void {
+        if (isEditorSafeVisit(event.detail.visit, window.location.href)) {
+            return;
+        }
+
         if (bypassNextVisit) {
             bypassNextVisit = false;
 
@@ -117,10 +122,22 @@ export function useUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
         unsubscribeBefore = router.on('before', handleBefore);
         // Visits that keep this component mounted (a re-index, a partial
         // reload of the same note, a cancelled visit) must unfreeze it
-        // again once they settle.
-        unsubscribeFinish = router.on('finish', () => {
-            options.unfreeze();
-        });
+        // again once they settle. An editor-safe visit (a tree-only
+        // background reload) never reached `event.preventDefault()` above,
+        // so its finish must not lift a freeze that a genuine, still
+        // in-flight guarded navigation put in place (AR-02).
+        unsubscribeFinish = router.on(
+            'finish',
+            (event: CustomEvent<{ visit: PendingVisit }>) => {
+                if (
+                    isEditorSafeVisit(event.detail.visit, window.location.href)
+                ) {
+                    return;
+                }
+
+                options.unfreeze();
+            },
+        );
         window.addEventListener('beforeunload', handleBeforeUnload);
     });
 
