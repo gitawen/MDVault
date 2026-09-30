@@ -548,6 +548,157 @@ test('isWritableFile is true for a normal file and false for a read-only one', f
     }
 });
 
+// --- createFileFromStream (T2) --------------------------------------------
+
+test('createFileFromStream writes exact bytes from the stream', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'restored.md';
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, 'hello world');
+    rewind($stream);
+
+    $written = app(FileStorageService::class)->createFileFromStream($target, $stream, 1024);
+    fclose($stream);
+
+    expect($written)->toBe(11)
+        ->and(File::get($target))->toBe('hello world');
+});
+
+test('createFileFromStream returns null and removes the file when the cap is exceeded', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'too-big.md';
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, str_repeat('a', 20));
+    rewind($stream);
+
+    $written = app(FileStorageService::class)->createFileFromStream($target, $stream, 10);
+    fclose($stream);
+
+    expect($written)->toBeNull()
+        ->and(file_exists($target))->toBeFalse();
+});
+
+test('createFileFromStream returns null and leaves an existing target unchanged', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'exists.md';
+    File::put($target, 'original');
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, 'new');
+    rewind($stream);
+
+    $written = app(FileStorageService::class)->createFileFromStream($target, $stream, 1024);
+    fclose($stream);
+
+    expect($written)->toBeNull()
+        ->and(File::get($target))->toBe('original');
+});
+
+// --- discardTempFile / discardStaleTempFiles (T2) --------------------------
+
+test('discardTempFile refuses a user file and accepts both temp prefixes', function () {
+    $service = app(FileStorageService::class);
+
+    $userFile = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($userFile, 'x');
+    expect($service->discardTempFile($userFile))->toBeFalse();
+    expect(file_exists($userFile))->toBeTrue();
+
+    $save = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::SAVE_TEMP_PREFIX.'a';
+    File::put($save, 'x');
+    expect($service->discardTempFile($save))->toBeTrue();
+    expect(file_exists($save))->toBeFalse();
+
+    $backup = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::BACKUP_TEMP_PREFIX.'a.zip';
+    File::put($backup, 'x');
+    expect($service->discardTempFile($backup))->toBeTrue();
+    expect(file_exists($backup))->toBeFalse();
+});
+
+test('discardStaleTempFiles removes only old prefixed files', function () {
+    $service = app(FileStorageService::class);
+
+    $old = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::BACKUP_TEMP_PREFIX.'old.zip';
+    File::put($old, 'x');
+    touch($old, time() - 7200);
+
+    $fresh = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::BACKUP_TEMP_PREFIX.'fresh.zip';
+    File::put($fresh, 'x');
+
+    $unrelated = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
+    File::put($unrelated, 'x');
+    touch($unrelated, time() - 7200);
+
+    $count = $service->discardStaleTempFiles($this->tmp, FileStorageService::BACKUP_TEMP_PREFIX, 3600);
+
+    expect($count)->toBe(1)
+        ->and(file_exists($old))->toBeFalse()
+        ->and(file_exists($fresh))->toBeTrue()
+        ->and(file_exists($unrelated))->toBeTrue();
+});
+
+// --- deleteStagingDirectory / staleStagingDirectories (T2) -----------------
+
+test('deleteStagingDirectory deletes a nested prefixed folder', function () {
+    $staging = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::RESTORE_STAGING_PREFIX.'abc';
+    File::makeDirectory($staging.DIRECTORY_SEPARATOR.'v0', 0755, true);
+    File::put($staging.DIRECTORY_SEPARATOR.'v0'.DIRECTORY_SEPARATOR.'a.md', 'x');
+
+    expect(app(FileStorageService::class)->deleteStagingDirectory($staging))->toBeTrue()
+        ->and(is_dir($staging))->toBeFalse();
+});
+
+test('deleteStagingDirectory refuses a non-prefixed folder and a prefixed file', function () {
+    $service = app(FileStorageService::class);
+
+    $normal = $this->tmp.DIRECTORY_SEPARATOR.'Work';
+    File::makeDirectory($normal);
+    File::put($normal.DIRECTORY_SEPARATOR.'a.md', 'x');
+    expect($service->deleteStagingDirectory($normal))->toBeFalse()
+        ->and(is_dir($normal))->toBeTrue();
+
+    $prefixedFile = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::RESTORE_STAGING_PREFIX.'file';
+    File::put($prefixedFile, 'x');
+    expect($service->deleteStagingDirectory($prefixedFile))->toBeFalse()
+        ->and(file_exists($prefixedFile))->toBeTrue();
+});
+
+test('deleteStagingDirectory does not follow a symlinked staging folder', function () {
+    $real = $this->tmp.DIRECTORY_SEPARATOR.'RealTarget';
+    File::makeDirectory($real);
+    File::put($real.DIRECTORY_SEPARATOR.'keep.md', 'x');
+
+    $link = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::RESTORE_STAGING_PREFIX.'link';
+    symlink($real, $link);
+
+    expect(app(FileStorageService::class)->deleteStagingDirectory($link))->toBeFalse()
+        ->and(is_dir($real))->toBeTrue()
+        ->and(File::get($real.DIRECTORY_SEPARATOR.'keep.md'))->toBe('x');
+})->skipOnWindows();
+
+test('staleStagingDirectories lists only old prefixed directories', function () {
+    $old = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::RESTORE_STAGING_PREFIX.'old';
+    File::makeDirectory($old);
+    touch($old, time() - 7200);
+
+    $fresh = $this->tmp.DIRECTORY_SEPARATOR.FileStorageService::RESTORE_STAGING_PREFIX.'fresh';
+    File::makeDirectory($fresh);
+
+    $result = app(FileStorageService::class)->staleStagingDirectories($this->tmp, 3600);
+
+    expect($result)->toBe([$old]);
+});
+
+// --- setModifiedTime / freeSpace (T2) ---------------------------------------
+
+test('setModifiedTime sets the mtime', function () {
+    $target = $this->tmp.DIRECTORY_SEPARATOR.'a.md';
+    File::put($target, 'x');
+
+    expect(app(FileStorageService::class)->setModifiedTime($target, 1_700_000_000))->toBeTrue()
+        ->and(filemtime($target))->toBe(1_700_000_000);
+});
+
+test('freeSpace returns an int for the temp directory', function () {
+    expect(app(FileStorageService::class)->freeSpace($this->tmp))->toBeInt();
+});
+
 test('discardTempFile (through replaceFile) never removes the target on any failure path', function () {
     $target = $this->tmp.DIRECTORY_SEPARATOR.'note.md';
 

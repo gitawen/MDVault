@@ -700,6 +700,29 @@ test('register: a duplicate name is rejected', function () {
     expect(fn () => $this->service->register($existing, 'Work'))->toThrow(VaultOperationException::class);
 });
 
+// --- nameAvailable / overlappingVault (T2) ----------------------------------
+
+test('nameAvailable is case-insensitive', function () {
+    $this->service->create('Work');
+
+    expect($this->service->nameAvailable('Work'))->toBeFalse()
+        ->and($this->service->nameAvailable('WORK'))->toBeFalse()
+        ->and($this->service->nameAvailable('Personal'))->toBeTrue();
+});
+
+test('overlappingVault detects the same path, a path inside, a path containing, and returns null for unrelated', function () {
+    $vault = $this->service->create('Work');
+
+    $inside = $vault->path.DIRECTORY_SEPARATOR.'Sub';
+    $containing = dirname($vault->path);
+    $unrelated = $this->root.DIRECTORY_SEPARATOR.'Elsewhere';
+
+    expect($this->service->overlappingVault($vault->path)?->uuid)->toBe($vault->uuid)
+        ->and($this->service->overlappingVault($inside)?->uuid)->toBe($vault->uuid)
+        ->and($this->service->overlappingVault($containing)?->uuid)->toBe($vault->uuid)
+        ->and($this->service->overlappingVault($unrelated))->toBeNull();
+});
+
 // --- Root-change isolation (FR-16) -------------------------------------------
 
 test('root-change isolation: an existing vault keeps working after the root changes', function () {

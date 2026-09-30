@@ -83,7 +83,7 @@
   - A continuously busy registry could keep returning `stale`; the client simply retries on the next tick.
   - One migration.
 - **Follow-ups**:
-  - Phase 6: backups export `uuid`, `relative_path` and `file_hash`, and may omit `file_mtime`; restore leaves it `null`.
+  - Phase 6 (delivered): manifests carry uuid, relative_path, file_hash and file_size but never file_mtime; restored notes start with `file_mtime` null.
   - Phase 7: pairing over encrypted names.
   - Consider progress reporting for Full re-index of very large vaults.
   - With automatic checks off, "Save as a new note" on a note that was moved (not deleted) clears its stale row, so the moved file is re-registered with a new UUID (F3); consider a Quick reconcile before the copy.

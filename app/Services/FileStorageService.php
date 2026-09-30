@@ -19,7 +19,24 @@ final class FileStorageService
      */
     public const SAVE_TEMP_PREFIX = '.mdvault-save-';
 
+    /**
+     * Prefix of the temp sibling `BackupService::create()` writes to before
+     * renaming it over the chosen destination. Dot-prefixed so the indexer
+     * (and backups themselves) ignore it.
+     */
+    public const BACKUP_TEMP_PREFIX = '.mdvault-backup-';
+
+    /**
+     * Prefix of the hidden staging folder a restore extracts into before
+     * moving each vault's folder into place (ADR `backup-restore-semantics`,
+     * H9). The only recursive delete in MDVault targets folders with this
+     * prefix.
+     */
+    public const RESTORE_STAGING_PREFIX = '.mdvault-restore-';
+
     public const REPLACE_ATTEMPTS = 3;
+
+    private const STREAM_CHUNK_BYTES = 1024 * 1024;
 
     public function __construct(
         private readonly Filesystem $files,
@@ -401,12 +418,17 @@ final class FileStorageService
     }
 
     /**
-     * Compensation only: removes $path only if it is one of MDVault's own
-     * `.mdvault-save-*` temp files. Never touches a user's file.
+     * Compensation/cleanup only: removes $path only if it is a regular,
+     * non-symlink file whose basename starts with SAVE_TEMP_PREFIX or
+     * BACKUP_TEMP_PREFIX. Never touches a user's file.
      */
-    private function discardTempFile(string $path): bool
+    public function discardTempFile(string $path): bool
     {
-        if (! str_starts_with(basename($path), self::SAVE_TEMP_PREFIX) || ! is_file($path) || is_link($path)) {
+        $basename = basename($path);
+        $allowedPrefix = str_starts_with($basename, self::SAVE_TEMP_PREFIX)
+            || str_starts_with($basename, self::BACKUP_TEMP_PREFIX);
+
+        if (! $allowedPrefix || ! is_file($path) || is_link($path)) {
             return false;
         }
 
@@ -415,6 +437,196 @@ final class FileStorageService
         clearstatcache();
 
         return ! file_exists($path);
+    }
+
+    /**
+     * Best-effort: discards $prefix temp files (allow-listed prefixes only:
+     * SAVE_TEMP_PREFIX or BACKUP_TEMP_PREFIX) directly in $directory whose
+     * mtime is older than now - $minAgeSeconds. Returns the count removed.
+     */
+    public function discardStaleTempFiles(string $directory, string $prefix, int $minAgeSeconds): int
+    {
+        if (! in_array($prefix, [self::SAVE_TEMP_PREFIX, self::BACKUP_TEMP_PREFIX], true)) {
+            return 0;
+        }
+
+        try {
+            $iterator = new \FilesystemIterator($directory, \FilesystemIterator::SKIP_DOTS);
+        } catch (\Throwable) {
+            return 0;
+        }
+
+        $cutoff = time() - $minAgeSeconds;
+        $count = 0;
+
+        for ($iterator->rewind(); $iterator->valid(); $iterator->next()) {
+            if ($iterator->isLink() || ! $iterator->isFile()) {
+                continue;
+            }
+
+            if (! str_starts_with($iterator->getFilename(), $prefix)) {
+                continue;
+            }
+
+            $pathname = $iterator->getPathname();
+            $mtime = @filemtime($pathname);
+
+            if ($mtime !== false && $mtime < $cutoff && $this->discardTempFile($pathname)) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * The ONLY recursive delete in MDVault (ADR `backup-restore-semantics`,
+     * H9). Accepts only a non-symlink directory whose basename starts with
+     * RESTORE_STAGING_PREFIX; uses `Filesystem::deleteDirectory` (does not
+     * follow links inside it). The result is checked afterwards.
+     */
+    public function deleteStagingDirectory(string $path): bool
+    {
+        if (! str_starts_with(basename($path), self::RESTORE_STAGING_PREFIX) || ! is_dir($path) || is_link($path)) {
+            return false;
+        }
+
+        $this->files->deleteDirectory($path);
+
+        clearstatcache();
+
+        return ! is_dir($path);
+    }
+
+    /**
+     * @return list<string> absolute paths of RESTORE_STAGING_PREFIX
+     *                      directories directly in $root older than now - $minAgeSeconds
+     */
+    public function staleStagingDirectories(string $root, int $minAgeSeconds): array
+    {
+        try {
+            $iterator = new \FilesystemIterator($root, \FilesystemIterator::SKIP_DOTS);
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $cutoff = time() - $minAgeSeconds;
+
+        /** @var list<string> $result */
+        $result = [];
+
+        for ($iterator->rewind(); $iterator->valid(); $iterator->next()) {
+            if ($iterator->isLink() || ! $iterator->isDir()) {
+                continue;
+            }
+
+            if (! str_starts_with($iterator->getFilename(), self::RESTORE_STAGING_PREFIX)) {
+                continue;
+            }
+
+            $pathname = $iterator->getPathname();
+            $mtime = @filemtime($pathname);
+
+            if ($mtime !== false && $mtime < $cutoff) {
+                $result[] = $pathname;
+            }
+        }
+
+        sort($result);
+
+        return $result;
+    }
+
+    /**
+     * Recursive mkdir (used only inside a freshly created staging folder).
+     * True if $path is a directory afterwards.
+     */
+    public function makeDirectories(string $path): bool
+    {
+        if (! is_dir($path)) {
+            $this->files->makeDirectory($path, 0755, true, true);
+        }
+
+        return is_dir($path);
+    }
+
+    /**
+     * Best-effort `touch($path, $mtime)`; false on failure.
+     */
+    public function setModifiedTime(string $path, int $mtime): bool
+    {
+        return @touch($path, $mtime);
+    }
+
+    /**
+     * `disk_free_space($directory)` as an int, or null when it can't be
+     * determined.
+     */
+    public function freeSpace(string $directory): ?int
+    {
+        $space = @disk_free_space($directory);
+
+        return $space === false ? null : (int) $space;
+    }
+
+    /**
+     * Exclusive-create $path ('x') and copy at most $maxBytes from $stream
+     * in 1 MiB chunks. Returns the number of bytes written; null on any
+     * failure, including the stream yielding more than $maxBytes. On
+     * failure the file this call created is removed. Never overwrites an
+     * existing file.
+     */
+    public function createFileFromStream(string $path, mixed $stream, int $maxBytes): ?int
+    {
+        $handle = @fopen($path, 'x');
+
+        if ($handle === false) {
+            return null;
+        }
+
+        $written = 0;
+        $failed = false;
+
+        try {
+            while (! feof($stream)) {
+                $chunk = fread($stream, self::STREAM_CHUNK_BYTES);
+
+                if ($chunk === false) {
+                    $failed = true;
+
+                    break;
+                }
+
+                $length = strlen($chunk);
+
+                if ($length === 0) {
+                    continue;
+                }
+
+                $written += $length;
+
+                if ($written > $maxBytes || fwrite($handle, $chunk) !== $length) {
+                    $failed = true;
+
+                    break;
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+
+        clearstatcache();
+
+        if ($failed || ! is_file($path) || filesize($path) !== $written) {
+            if (is_file($path) && ! is_link($path)) {
+                @unlink($path);
+                clearstatcache();
+            }
+
+            return null;
+        }
+
+        return $written;
     }
 
     public function read(string $path): ?string

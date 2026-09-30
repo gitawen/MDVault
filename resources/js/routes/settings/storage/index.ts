@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\StorageController::edit
- * @see app/Http/Controllers/Settings/StorageController.php:18
+ * @see app/Http/Controllers/Settings/StorageController.php:17
  * @route '/settings/storage'
  */
 export const edit = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\StorageController::edit
- * @see app/Http/Controllers/Settings/StorageController.php:18
+ * @see app/Http/Controllers/Settings/StorageController.php:17
  * @route '/settings/storage'
  */
 edit.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ edit.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\StorageController::edit
- * @see app/Http/Controllers/Settings/StorageController.php:18
+ * @see app/Http/Controllers/Settings/StorageController.php:17
  * @route '/settings/storage'
  */
 edit.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ edit.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 /**
 * @see \App\Http\Controllers\Settings\StorageController::edit
- * @see app/Http/Controllers/Settings/StorageController.php:18
+ * @see app/Http/Controllers/Settings/StorageController.php:17
  * @route '/settings/storage'
  */
 edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
     /**
 * @see \App\Http\Controllers\Settings\StorageController::edit
- * @see app/Http/Controllers/Settings/StorageController.php:18
+ * @see app/Http/Controllers/Settings/StorageController.php:17
  * @route '/settings/storage'
  */
     const editForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
             /**
 * @see \App\Http\Controllers\Settings\StorageController::edit
- * @see app/Http/Controllers/Settings/StorageController.php:18
+ * @see app/Http/Controllers/Settings/StorageController.php:17
  * @route '/settings/storage'
  */
         editForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
         })
             /**
 * @see \App\Http\Controllers\Settings\StorageController::edit
- * @see app/Http/Controllers/Settings/StorageController.php:18
+ * @see app/Http/Controllers/Settings/StorageController.php:17
  * @route '/settings/storage'
  */
         editForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -79,7 +79,7 @@ edit.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     edit.form = editForm
 /**
 * @see \App\Http\Controllers\Settings\StorageController::update
- * @see app/Http/Controllers/Settings/StorageController.php:26
+ * @see app/Http/Controllers/Settings/StorageController.php:25
  * @route '/settings/storage'
  */
 export const update = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -94,7 +94,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\StorageController::update
- * @see app/Http/Controllers/Settings/StorageController.php:26
+ * @see app/Http/Controllers/Settings/StorageController.php:25
  * @route '/settings/storage'
  */
 update.url = (options?: RouteQueryOptions) => {
@@ -103,7 +103,7 @@ update.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\StorageController::update
- * @see app/Http/Controllers/Settings/StorageController.php:26
+ * @see app/Http/Controllers/Settings/StorageController.php:25
  * @route '/settings/storage'
  */
 update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -113,7 +113,7 @@ update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
 
     /**
 * @see \App\Http\Controllers\Settings\StorageController::update
- * @see app/Http/Controllers/Settings/StorageController.php:26
+ * @see app/Http/Controllers/Settings/StorageController.php:25
  * @route '/settings/storage'
  */
     const updateForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -128,7 +128,7 @@ update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
 
             /**
 * @see \App\Http\Controllers\Settings\StorageController::update
- * @see app/Http/Controllers/Settings/StorageController.php:26
+ * @see app/Http/Controllers/Settings/StorageController.php:25
  * @route '/settings/storage'
  */
         updateForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -144,7 +144,7 @@ update.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     update.form = updateForm
 /**
 * @see \App\Http\Controllers\Settings\StorageController::browse
- * @see app/Http/Controllers/Settings/StorageController.php:35
+ * @see app/Http/Controllers/Settings/StorageController.php:39
  * @route '/settings/storage/browse'
  */
 export const browse = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -159,7 +159,7 @@ browse.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\StorageController::browse
- * @see app/Http/Controllers/Settings/StorageController.php:35
+ * @see app/Http/Controllers/Settings/StorageController.php:39
  * @route '/settings/storage/browse'
  */
 browse.url = (options?: RouteQueryOptions) => {
@@ -168,7 +168,7 @@ browse.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\StorageController::browse
- * @see app/Http/Controllers/Settings/StorageController.php:35
+ * @see app/Http/Controllers/Settings/StorageController.php:39
  * @route '/settings/storage/browse'
  */
 browse.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -178,7 +178,7 @@ browse.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\Settings\StorageController::browse
- * @see app/Http/Controllers/Settings/StorageController.php:35
+ * @see app/Http/Controllers/Settings/StorageController.php:39
  * @route '/settings/storage/browse'
  */
     const browseForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -188,7 +188,7 @@ browse.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\Settings\StorageController::browse
- * @see app/Http/Controllers/Settings/StorageController.php:35
+ * @see app/Http/Controllers/Settings/StorageController.php:39
  * @route '/settings/storage/browse'
  */
         browseForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -199,7 +199,7 @@ browse.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     browse.form = browseForm
 /**
 * @see \App\Http\Controllers\Settings\StorageController::destroy
- * @see app/Http/Controllers/Settings/StorageController.php:50
+ * @see app/Http/Controllers/Settings/StorageController.php:54
  * @route '/settings/storage'
  */
 export const destroy = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -214,7 +214,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\StorageController::destroy
- * @see app/Http/Controllers/Settings/StorageController.php:50
+ * @see app/Http/Controllers/Settings/StorageController.php:54
  * @route '/settings/storage'
  */
 destroy.url = (options?: RouteQueryOptions) => {
@@ -223,7 +223,7 @@ destroy.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\StorageController::destroy
- * @see app/Http/Controllers/Settings/StorageController.php:50
+ * @see app/Http/Controllers/Settings/StorageController.php:54
  * @route '/settings/storage'
  */
 destroy.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -233,7 +233,7 @@ destroy.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
 
     /**
 * @see \App\Http\Controllers\Settings\StorageController::destroy
- * @see app/Http/Controllers/Settings/StorageController.php:50
+ * @see app/Http/Controllers/Settings/StorageController.php:54
  * @route '/settings/storage'
  */
     const destroyForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -248,7 +248,7 @@ destroy.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
 
             /**
 * @see \App\Http\Controllers\Settings\StorageController::destroy
- * @see app/Http/Controllers/Settings/StorageController.php:50
+ * @see app/Http/Controllers/Settings/StorageController.php:54
  * @route '/settings/storage'
  */
         destroyForm.delete = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

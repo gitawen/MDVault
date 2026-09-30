@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Settings;
 
 use App\Exceptions\InvalidStorageRootException;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Settings\BrowseStorageRootRequest;
 use App\Http\Requests\Settings\UpdateStorageRootRequest;
 use App\Services\NativeDialogService;
 use App\Services\StoragePathService;
@@ -32,17 +31,22 @@ class StorageController extends Controller
         return back();
     }
 
-    public function browse(BrowseStorageRootRequest $request, StoragePathService $paths, NativeDialogService $dialogs): RedirectResponse
+    /**
+     * Opens the native folder picker. Only fills the location field on the
+     * client (via an `Inertia::flash`) - never creates a directory or
+     * writes a setting. Only `update()` (Save) does that.
+     */
+    public function browse(StoragePathService $paths, NativeDialogService $dialogs): RedirectResponse
     {
+        abort_unless($dialogs->isAvailable(), 404);
+
         $chosen = $dialogs->chooseDirectory('Choose where MDVault stores your vaults', $paths->rootPath());
 
         if ($chosen === null) {
             return back();
         }
 
-        $this->changeRoot($paths, $chosen, $request->validated('folder_name'));
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Storage location updated.']);
+        Inertia::flash('pickedLocation', ['location' => $chosen]);
 
         return back();
     }

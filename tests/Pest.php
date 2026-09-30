@@ -3,9 +3,12 @@
 use App\Contracts\Trash;
 use App\Contracts\UserDirectories;
 use App\Exceptions\NoteOperationException;
+use App\Services\SettingsService;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /*
@@ -187,6 +190,85 @@ function noteOperationField(Closure $callback): string
     } catch (NoteOperationException $e) {
         return $e->field();
     }
+}
+
+/**
+ * @return list<string>
+ */
+function zipEntryNames(string $path): array
+{
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::RDONLY);
+    $names = [];
+
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $names[] = $zip->statIndex($i)['name'];
+    }
+
+    $zip->close();
+
+    return $names;
+}
+
+function zipEntryContents(string $path, string $name): string
+{
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::RDONLY);
+    $contents = $zip->getFromName($name);
+    $zip->close();
+
+    return $contents;
+}
+
+/**
+ * Crafts a ZIP directly with ZipArchive (bypassing ArchiveService), for
+ * hostile/invalid backup archives in tests. $entries maps an entry name to
+ * its string contents, or null for a directory entry.
+ *
+ * @param  array<string, string|null>  $entries
+ */
+function makeZip(string $path, array $entries): void
+{
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+    foreach ($entries as $name => $contents) {
+        if ($contents === null) {
+            $zip->addEmptyDir(rtrim($name, '/'));
+        } else {
+            $zip->addFromString($name, $contents);
+        }
+    }
+
+    $zip->close();
+}
+
+/**
+ * Simulates "remove local data → fresh application state" (§55): deletes
+ * every vault/note/setting/backup row, deletes $oldRoot recursively, points
+ * Documents at a NEW temp dir, and forgets scoped services. Returns the new
+ * Documents dir.
+ */
+function simulateFreshInstall(string $oldRoot): string
+{
+    DB::table('notes')->delete();
+    DB::table('vaults')->delete();
+    DB::table('settings')->delete();
+    DB::table('backups')->delete();
+
+    File::deleteDirectory($oldRoot);
+
+    // AR-05 (analyst review, `mdv-p6`): created under the calling test's own
+    // $this->tmp — already recursively deleted by its afterEach — instead
+    // of directly under the system temp dir, which leaked a fresh,
+    // never-cleaned directory on every call.
+    $newDocuments = test()->tmp.DIRECTORY_SEPARATOR.'mdvault-fresh-'.Str::random(8).DIRECTORY_SEPARATOR.'Documents';
+    File::makeDirectory($newDocuments, 0755, true);
+    fakeDocumentsDirectory($newDocuments);
+
+    app()->forgetInstance(SettingsService::class);
+
+    return $newDocuments;
 }
 
 /** Bind a fake Trash. $deletes=true simulates success (deletes the file or directory); false simulates a silent OS failure. */

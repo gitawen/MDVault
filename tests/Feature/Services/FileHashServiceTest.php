@@ -58,3 +58,28 @@ test('a large file is hashed by streaming, matching hash_file directly', functio
 
     expect($this->service->hashFile($path))->toBe(hash_file('sha256', $path));
 });
+
+test('hashStream equals hash("sha256", ...) and reports the byte count', function () {
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, 'abc');
+    rewind($stream);
+
+    $result = $this->service->hashStream($stream, 1024);
+    fclose($stream);
+
+    expect($result)->toBe([
+        'hash' => 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+        'bytes' => 3,
+    ]);
+});
+
+test('hashStream returns null when the stream has more than the cap', function () {
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, str_repeat('a', 20));
+    rewind($stream);
+
+    $result = $this->service->hashStream($stream, 10);
+    fclose($stream);
+
+    expect($result)->toBeNull();
+});

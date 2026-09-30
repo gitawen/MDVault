@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { HardDrive, Palette, PenLine, SlidersHorizontal } from '@lucide/vue';
+import {
+    Archive,
+    HardDrive,
+    Palette,
+    PenLine,
+    SlidersHorizontal,
+} from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/settings/appearance';
+import { edit as editBackup } from '@/routes/settings/backup';
 import { edit as editEditor } from '@/routes/settings/editor';
 import { edit as editGeneral } from '@/routes/settings/general';
 import { edit as editStorage } from '@/routes/settings/storage';
@@ -22,6 +29,11 @@ const sidebarNavItems: NavItem[] = [
         title: 'Storage',
         href: editStorage(),
         icon: HardDrive,
+    },
+    {
+        title: 'Backup',
+        href: editBackup(),
+        icon: Archive,
     },
     {
         title: 'Editor',

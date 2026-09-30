@@ -363,6 +363,23 @@ test('ensureRootReady throws when a file sits at the root path', function () {
         ->toThrow(InvalidStorageRootException::class);
 });
 
+test('defaultBackupDirectory is the fake Documents folder plus "MDVault Backups", and is not created', function () {
+    $service = app(StoragePathService::class);
+
+    $expected = $this->tmp.DIRECTORY_SEPARATOR.'Documents'.DIRECTORY_SEPARATOR.'MDVault Backups';
+
+    expect($service->defaultBackupDirectory())->toBe($expected)
+        ->and(is_dir($expected))->toBeFalse();
+});
+
+test('defaultBackupDirectory falls back to storage_path(app) when there is no documents directory', function () {
+    fakeDocumentsDirectory(null);
+
+    $service = app(StoragePathService::class);
+
+    expect($service->defaultBackupDirectory())->toBe(storage_path('app').DIRECTORY_SEPARATOR.'MDVault Backups');
+});
+
 test('resetToDefault keeps the custom folder name', function () {
     $service = app(StoragePathService::class);
     $custom = $this->tmp.DIRECTORY_SEPARATOR.'custom';

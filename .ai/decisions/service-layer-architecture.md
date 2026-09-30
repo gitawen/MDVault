@@ -45,3 +45,4 @@ It is the working proof of the layering and the runtime evidence for "SQLite dat
 - **Positive**: The architecture exists, is tested, and is enforced automatically from day one. No speculative APIs. Each later phase designs its service against real requirements.
 - **Negative / trade-offs**: `app/Services/` starts with a single class; the Master Plan's service list only materialises phase by phase. Arch tests need occasional `ignoring()` entries, and each must be justified in the phase's `implementation.md`.
 - **Follow-ups**: Phase 1 adds `SettingsService` and `StoragePathService`, and probably the first contract (a platform path resolver using NativePHP's `documents` disk / `NATIVEPHP_DOCUMENTS_PATH` when running natively).
+  - Phase 6: `ZipArchive` only in `ArchiveService`; `BackupService` uses no raw filesystem functions.

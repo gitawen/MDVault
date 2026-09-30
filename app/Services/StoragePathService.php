@@ -23,6 +23,13 @@ final class StoragePathService
     public const FOLDER_NAME = 'MDVault';
 
     /**
+     * The subfolder of Documents (or the fallback base) backups are saved
+     * to (browser dev and tests) or default into (the desktop Save
+     * dialog). Never a setting (ADR `backup-archive-format`, H7).
+     */
+    public const BACKUP_FOLDER_NAME = 'MDVault Backups';
+
+    /**
      * Windows reserved device names (case-insensitive, with or without an
      * extension). Rejected on every OS for portability.
      *
@@ -70,6 +77,18 @@ final class StoragePathService
     public function isUsingDefault(): bool
     {
         return ! $this->settings->has(SettingKey::StorageRootPath);
+    }
+
+    /**
+     * The default backup folder: `<Documents>/MDVault Backups`, or under
+     * `storage_path('app')` when Documents is unavailable. Never created
+     * here.
+     */
+    public function defaultBackupDirectory(): string
+    {
+        $base = $this->directories->documentsPath() ?? $this->app->storagePath('app');
+
+        return rtrim($base, '\\/').DIRECTORY_SEPARATOR.self::BACKUP_FOLDER_NAME;
     }
 
     /**

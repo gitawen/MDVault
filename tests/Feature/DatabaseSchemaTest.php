@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 
 test('the schema keeps only framework tables', function (string $table) {
     expect(Schema::hasTable($table))->toBeTrue();
-})->with(['sessions', 'cache', 'jobs', 'settings', 'vaults', 'notes']);
+})->with(['sessions', 'cache', 'jobs', 'settings', 'vaults', 'notes', 'backups']);
 
 test('the schema has no authentication tables', function (string $table) {
     expect(Schema::hasTable($table))->toBeFalse();
@@ -31,6 +31,14 @@ test('the notes table has the expected columns', function () {
     expect(Schema::hasColumn('notes', 'content'))->toBeFalse();
 });
 
+test('the backups table has the expected columns', function () {
+    expect(Schema::hasColumns('backups', [
+        'id', 'uuid', 'scope', 'filename', 'path', 'file_size', 'file_hash',
+        'format_version', 'vault_count', 'note_count', 'file_count', 'contents',
+        'created_at', 'updated_at',
+    ]))->toBeTrue();
+});
+
 test('later-phase tables do not exist yet', function (string $table) {
     expect(Schema::hasTable($table))->toBeFalse();
-})->with(['vault_encryption', 'backups']);
+})->with(['vault_encryption']);

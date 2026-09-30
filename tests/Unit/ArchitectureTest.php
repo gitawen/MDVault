@@ -76,4 +76,22 @@ arch('index and note services use no raw filesystem functions')
         'Illuminate\Support\Facades\File',
         'Illuminate\Support\Facades\Storage',
     ])
-    ->not->toBeUsedIn(['App\Services\VaultIndexService', 'App\Services\NoteService', 'App\Services\MarkdownService', 'App\Services\ExternalChangeService']);
+    ->not->toBeUsedIn(['App\Services\VaultIndexService', 'App\Services\NoteService', 'App\Services\MarkdownService', 'App\Services\ExternalChangeService', 'App\Services\BackupService', 'App\Services\ArchiveService']);
+
+// ArchiveService itself is exempt from the rule above only for ZipArchive
+// (below); it must not use fopen/unlink either, which the rule above
+// already enforces since it names ArchiveService explicitly.
+
+arch('zip archives only via ArchiveService')
+    ->expect('ZipArchive')
+    ->toOnlyBeUsedIn('App\Services\ArchiveService')
+    // Tests craft hostile/invalid archives directly with ZipArchive
+    // (tests/Pest.php's makeZip() helper and ArchiveServiceTest's
+    // symlink/encrypted-entry fixtures) to exercise BackupService's
+    // validation without going through the write() boundary. Documented
+    // in implementation.md per the plan's T3 instruction.
+    ->ignoring('Tests');
+
+arch('backup records are only used by services, controllers, models and factories')
+    ->expect('App\Models\Backup')
+    ->toOnlyBeUsedIn(['App\Services', 'App\Http\Controllers', 'App\Models', 'Database\Factories']);

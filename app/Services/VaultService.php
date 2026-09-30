@@ -407,9 +407,35 @@ final class VaultService
     }
 
     /**
+     * Whether no registered vault is named $name (case-insensitive).
+     */
+    public function nameAvailable(string $name): bool
+    {
+        return $this->firstNameMatch($name, null) === null;
+    }
+
+    /**
+     * The first registered vault whose path is the same as, inside, or
+     * containing $path; null when none overlaps.
+     */
+    public function overlappingVault(string $path): ?Vault
+    {
+        return $this->firstOverlap($path, null);
+    }
+
+    /**
      * @throws VaultOperationException
      */
     private function assertNameAvailable(string $name, ?Vault $except): void
+    {
+        $match = $this->firstNameMatch($name, $except);
+
+        if ($match !== null) {
+            throw VaultOperationException::duplicateName($name);
+        }
+    }
+
+    private function firstNameMatch(string $name, ?Vault $except): ?Vault
     {
         $lower = mb_strtolower($name);
 
@@ -419,9 +445,11 @@ final class VaultService
             }
 
             if (mb_strtolower($vault->name) === $lower) {
-                throw VaultOperationException::duplicateName($name);
+                return $vault;
             }
         }
+
+        return null;
     }
 
     /**
@@ -429,15 +457,26 @@ final class VaultService
      */
     private function assertNoOverlap(string $path, string $field, ?Vault $except = null): void
     {
+        $overlap = $this->firstOverlap($path, $except);
+
+        if ($overlap !== null) {
+            throw VaultOperationException::overlapsVault($overlap->name, $field);
+        }
+    }
+
+    private function firstOverlap(string $path, ?Vault $except): ?Vault
+    {
         foreach (Vault::query()->get() as $vault) {
             if ($except !== null && $vault->is($except)) {
                 continue;
             }
 
             if ($this->files->isSameOrInside($path, $vault->path) || $this->files->isSameOrInside($vault->path, $path)) {
-                throw VaultOperationException::overlapsVault($vault->name, $field);
+                return $vault;
             }
         }
+
+        return null;
     }
 
     /**

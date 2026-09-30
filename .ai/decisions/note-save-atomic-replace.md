@@ -83,5 +83,5 @@
   - The DB may briefly hold a stale hash after a DB failure.
 - **Follow-ups**:
   - **Phase 5** (delivered): own saves update `file_hash` before any later check, so they are never reported as external; Compare view and 'Save mine as a new note' (ADR `open-note-external-conflicts`); orphan `.mdvault-save-*` files older than 60 s are reported, never deleted.
-  - **Phase 6**: backups exclude `.mdvault-*` temp files.
+  - Phase 6 (delivered): backups skip every dot-prefixed entry, including `.mdvault-*` temp files.
   - Revisit the 1 MiB edit cap if performance testing allows.

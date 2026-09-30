@@ -135,69 +135,45 @@ test('browse is not found outside the desktop runtime', function () {
     $this->post(route('settings.storage.browse'))->assertNotFound();
 });
 
-test('browse persists the picked folder with the typed folder name in the desktop runtime', function () {
+test('browse returns the picked folder without creating it or writing any setting', function () {
     config(['nativephp-internal.running' => true]);
 
     $target = $this->tmp.DIRECTORY_SEPARATOR.'picked';
-    File::makeDirectory($target, 0755, true);
 
     Http::fake([
         '*dialog/open' => Http::response(['result' => [$target]]),
     ]);
 
-    $this->post(route('settings.storage.browse'), ['folder_name' => 'MDVault'])
-        ->assertRedirect();
+    $response = $this->post(route('settings.storage.browse'));
 
-    expect(app(StoragePathService::class)->rootPath())->toBe(realpath($target.DIRECTORY_SEPARATOR.'MDVault'));
+    $response->assertRedirect();
+    $response->assertInertiaFlash('pickedLocation.location', $target);
+
+    expect(is_dir($target))->toBeFalse()
+        ->and(app(SettingsService::class)->has(SettingKey::StorageRootPath))->toBeFalse()
+        ->and(app(SettingsService::class)->has(SettingKey::StorageFolderName))->toBeFalse();
 });
 
-test('browse uses the folder name posted with the request, overriding any previously saved name', function () {
+test('browse does not disturb an already-saved location or folder name', function () {
     config(['nativephp-internal.running' => true]);
-    app(StoragePathService::class)->changeRoot($this->tmp.DIRECTORY_SEPARATOR.'first', 'OldVault');
+    app(StoragePathService::class)->changeRoot($this->tmp.DIRECTORY_SEPARATOR.'first', 'MyVault');
 
     $target = $this->tmp.DIRECTORY_SEPARATOR.'picked';
-    File::makeDirectory($target, 0755, true);
 
     Http::fake([
         '*dialog/open' => Http::response(['result' => [$target]]),
     ]);
 
-    $this->post(route('settings.storage.browse'), ['folder_name' => 'NewVault'])
-        ->assertRedirect();
+    $this->post(route('settings.storage.browse'))->assertRedirect();
 
-    expect(app(StoragePathService::class)->rootPath())->toBe(realpath($target.DIRECTORY_SEPARATOR.'NewVault'))
-        ->and(app(StoragePathService::class)->folderName())->toBe('NewVault');
+    expect(app(StoragePathService::class)->folderName())->toBe('MyVault')
+        ->and(app(StoragePathService::class)->rootPath())->toBe(
+            realpath($this->tmp.DIRECTORY_SEPARATOR.'first'.DIRECTORY_SEPARATOR.'MyVault')
+        )
+        ->and(is_dir($target))->toBeFalse();
 });
 
-test('browse with an empty folder name is rejected before the dialog opens', function () {
-    config(['nativephp-internal.running' => true]);
-
-    Http::fake([
-        '*dialog/open' => Http::response(['result' => []]),
-    ]);
-
-    $this->post(route('settings.storage.browse'), ['folder_name' => ''])
-        ->assertSessionHasErrors('folder_name');
-
-    Http::assertNothingSent();
-    expect(app(SettingsService::class)->has(SettingKey::StorageRootPath))->toBeFalse();
-});
-
-test('browse with an invalid folder name is rejected before the dialog opens', function () {
-    config(['nativephp-internal.running' => true]);
-
-    Http::fake([
-        '*dialog/open' => Http::response(['result' => []]),
-    ]);
-
-    $this->post(route('settings.storage.browse'), ['folder_name' => 'CON'])
-        ->assertSessionHasErrors('folder_name');
-
-    Http::assertNothingSent();
-    expect(app(SettingsService::class)->has(SettingKey::StorageFolderName))->toBeFalse();
-});
-
-test('cancelling the browse dialog changes nothing', function () {
+test('cancelling the browse dialog changes nothing and flashes no picked location', function () {
     config(['nativephp-internal.running' => true]);
     app(StoragePathService::class)->changeRoot($this->tmp.DIRECTORY_SEPARATOR.'first', 'MyVault');
 
@@ -205,8 +181,10 @@ test('cancelling the browse dialog changes nothing', function () {
         '*dialog/open' => Http::response(['result' => []]),
     ]);
 
-    $this->post(route('settings.storage.browse'), ['folder_name' => 'MyVault'])
-        ->assertRedirect();
+    $response = $this->post(route('settings.storage.browse'));
+
+    $response->assertRedirect();
+    $response->assertInertiaFlashMissing('pickedLocation');
 
     expect(app(StoragePathService::class)->folderName())->toBe('MyVault')
         ->and(app(StoragePathService::class)->rootPath())->toBe(
@@ -214,7 +192,7 @@ test('cancelling the browse dialog changes nothing', function () {
         );
 });
 
-test('browsing to a file path produces a session error', function () {
+test('browsing to a file path is returned as-is and still creates nothing (validated only on save)', function () {
     config(['nativephp-internal.running' => true]);
 
     File::makeDirectory($this->tmp, 0755, true);
@@ -225,8 +203,11 @@ test('browsing to a file path produces a session error', function () {
         '*dialog/open' => Http::response(['result' => [$file]]),
     ]);
 
-    $this->post(route('settings.storage.browse'), ['folder_name' => 'MDVault'])
-        ->assertSessionHasErrors('location');
+    $response = $this->post(route('settings.storage.browse'));
+
+    $response->assertRedirect();
+    $response->assertInertiaFlash('pickedLocation.location', $file);
+    expect(app(SettingsService::class)->has(SettingKey::StorageRootPath))->toBeFalse();
 });
 
 test('canBrowse is true in the desktop runtime', function () {

@@ -34,13 +34,13 @@ const form = useForm({
 const page = usePage();
 const browsing = ref(false);
 
-// The location is server-derived (folder picker, reset to default), so keep
-// it in sync whenever it actually changes there. The folder name is
+// The location is server-derived (Save, reset to default), so keep it in
+// sync whenever it actually changes there. Choosing a folder does NOT change
+// it server-side any more (see chooseFolder() below) - it only fills the
+// field locally, so it never triggers this watcher. The folder name is
 // deliberately NOT resynced from props here: it is the single source of
-// truth the user types, and is only ever re-baselined (see save() and
-// chooseFolder() below) after a request that itself submitted it - never
-// overwritten by an unrelated reload, such as cancelling the folder picker,
-// which changes nothing server-side.
+// truth the user types, and is only ever re-baselined (see save() below)
+// after a request that itself submitted it.
 watch(
     () => props.storage.location,
     (location) => {
@@ -99,20 +99,28 @@ function save() {
     });
 }
 
+type PickedLocationFlash = { pickedLocation?: { location: string } };
+
+// Picking a folder only fills the location field - it creates nothing on
+// disk and writes no setting. The user must still click Save to apply it;
+// cancelling the picker (no `pickedLocation` flash) changes nothing.
 function chooseFolder() {
     browsing.value = true;
 
-    // The typed folder name is the only source of truth: it is sent as-is,
-    // and the server must use exactly this value (never a previously saved
-    // one) for the new root. On success this only re-baselines the "dirty"
-    // tracking to the value already in the field - it never overwrites what
-    // the user typed, including when the picker was cancelled.
     router.post(
         browse.url(),
-        { folder_name: form.folder_name },
+        {},
         {
+            preserveState: true,
             preserveScroll: true,
-            onSuccess: () => form.defaults('folder_name', form.folder_name),
+            onFlash: (flash) => {
+                const pickedLocation = (flash as PickedLocationFlash)
+                    ?.pickedLocation;
+
+                if (pickedLocation) {
+                    form.location = pickedLocation.location;
+                }
+            },
             onFinish: () => {
                 browsing.value = false;
             },

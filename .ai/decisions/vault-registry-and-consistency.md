@@ -83,4 +83,5 @@
 - **Follow-ups**:
   - Phase 3: `StoragePathService` delegates its probe and mkdir to `FileStorageService`; `notes.vault_id` references `vaults.id`, and exports use `uuid`.
   - A vault-relocation item (move, relink) before Phase 6; folder rename was delivered in Phase 2 Revision 2.
+  - Phase 6: restore inserts vaults with their original UUID (or a new one for a copy) under the current storage root; `relative_path` = the restored folder name.
   - Phase 7 adds a `Locked` status.

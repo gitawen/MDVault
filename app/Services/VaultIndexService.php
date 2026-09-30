@@ -525,6 +525,19 @@ final class VaultIndexService
     }
 
     /**
+     * The attributes for a new note row at $relativePath, for direct
+     * insertion (e.g. `BackupService::restore()`). `file_mtime` is always
+     * null: a restored note's timestamp is never trusted (ADR
+     * `external-change-reconciliation`).
+     *
+     * @return array<string, mixed>
+     */
+    public function newNoteAttributes(string $relativePath, int $size, string $hash): array
+    {
+        return $this->insertAttributes($relativePath, ['size' => $size, 'hash' => $hash, 'mtime' => null]);
+    }
+
+    /**
      * @param  array{size: int, hash: string, mtime: ?int}  $file
      * @return array<string, mixed>
      */

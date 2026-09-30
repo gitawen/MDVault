@@ -59,3 +59,70 @@ test('defaultPath is only sent when the directory exists', function () {
 
     Http::assertSent(fn (Request $request) => $request['defaultPath'] === null);
 });
+
+// --- chooseSaveFile ---------------------------------------------------------
+
+test('chooseSaveFile returns the picked path', function () {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/save' => Http::response(['result' => 'C:\\b\\x.zip']),
+    ]);
+
+    $result = app(NativeDialogService::class)->chooseSaveFile('Save MDVault backup', 'C:\\b\\default.zip', 'MDVault backup', ['zip']);
+
+    expect($result)->toBe('C:\\b\\x.zip');
+});
+
+test('chooseSaveFile returns null for an empty result (cancel)', function () {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/save' => Http::response(['result' => null]),
+    ]);
+
+    $result = app(NativeDialogService::class)->chooseSaveFile('Save MDVault backup', 'C:\\b\\default.zip', 'MDVault backup', ['zip']);
+
+    expect($result)->toBeNull();
+});
+
+test('chooseSaveFile returns null and sends nothing when unavailable', function () {
+    Http::fake();
+
+    $result = app(NativeDialogService::class)->chooseSaveFile('Save MDVault backup', 'C:\\b\\default.zip', 'MDVault backup', ['zip']);
+
+    expect($result)->toBeNull();
+    Http::assertNothingSent();
+});
+
+// --- chooseFile --------------------------------------------------------------
+
+test('chooseFile returns the first picked path and sends the filter', function () {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/open' => Http::response(['result' => ['C:\\b\\backup.zip']]),
+    ]);
+
+    $result = app(NativeDialogService::class)->chooseFile('Choose an MDVault backup', 'MDVault backup', ['zip']);
+
+    expect($result)->toBe('C:\\b\\backup.zip');
+
+    Http::assertSent(function (Request $request) {
+        return str_ends_with($request->url(), 'dialog/open')
+            && $request['filters'][0]['name'] === 'MDVault backup'
+            && $request['filters'][0]['extensions'] === ['zip'];
+    });
+});
+
+test('chooseFile returns null on cancel', function () {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/open' => Http::response(['result' => []]),
+    ]);
+
+    $result = app(NativeDialogService::class)->chooseFile('Choose an MDVault backup', 'MDVault backup', ['zip']);
+
+    expect($result)->toBeNull();
+});

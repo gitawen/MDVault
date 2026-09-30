@@ -50,6 +50,7 @@
     - Order: `moveToTrash(path)` → `clearstatcache()` → check `! file_exists(path)` → only then the DB transaction.
     - If the folder still exists → a "close programs using it" error, and **the record is kept**.
   - **MDVault never permanently deletes a vault folder or any non-empty directory in v1.** The only directory removal is `FileStorageService::deleteEmptyDirectory()`, used to undo a folder the same create call just made.
+  - Amended in Phase 6 (ADR `backup-restore-semantics`, H9): the only exception is `FileStorageService::deleteStagingDirectory()`, which removes MDVault's own `.mdvault-restore-*` staging folders (copies extracted from a backup archive that still exists).
 - **Rename** (`VaultService::rename(Vault, string $name, ?string $description)`), Revision 2:
   - **Name rules**: `assertValidFolderName` (portable, on every OS) and case-insensitive uniqueness among vaults (C7).
   - **No filesystem work when**:
@@ -95,7 +96,7 @@
 - **Follow-ups**:
   - Vault relocation (move, relink), before Phase 6.
   - Phase 3 (delivered): MDVault holds no watchers or persistent handles; every handle is closed in `finally` (ADR `note-file-operations`). Phase 5 must stop its watcher for a vault before renaming or trashing that vault.
-  - Phase 6 backups may offer "back up before removing".
+  - Deferred beyond Phase 6: "back up before removing".
 
 ## Revision History
 | Date | Change |

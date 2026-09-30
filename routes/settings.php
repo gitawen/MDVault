@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Settings\AppearanceController;
+use App\Http\Controllers\Settings\BackupController;
+use App\Http\Controllers\Settings\BackupRestoreController;
 use App\Http\Controllers\Settings\EditorController;
 use App\Http\Controllers\Settings\GeneralController;
 use App\Http\Controllers\Settings\StorageController;
@@ -21,3 +23,9 @@ Route::patch('settings/editor', [EditorController::class, 'update'])->name('sett
 
 Route::get('settings/appearance', [AppearanceController::class, 'edit'])->name('settings.appearance.edit');
 Route::patch('settings/appearance', [AppearanceController::class, 'update'])->name('settings.appearance.update');
+
+Route::get('settings/backup', [BackupController::class, 'edit'])->name('settings.backup.edit');
+Route::post('settings/backup', [BackupController::class, 'store'])->name('settings.backup.store');
+Route::post('settings/backup/restore/browse', [BackupRestoreController::class, 'browse'])->name('settings.backup.restore.browse');
+Route::post('settings/backup/restore/inspect', [BackupRestoreController::class, 'inspect'])->name('settings.backup.restore.inspect');
+Route::post('settings/backup/restore', [BackupRestoreController::class, 'store'])->name('settings.backup.restore.store');

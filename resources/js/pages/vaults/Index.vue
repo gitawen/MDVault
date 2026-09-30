@@ -2,6 +2,7 @@
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
+import BackupVaultButton from '@/components/backups/BackupVaultButton.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,6 +84,7 @@ function openVault(uuid: string) {
                             Open
                         </Button>
                         <RenameVaultDialog :vault="vault" />
+                        <BackupVaultButton :vault="vault" />
                         <RemoveVaultDialog
                             :vault="vault"
                             :can-trash="canTrash"
