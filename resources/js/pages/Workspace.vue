@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { PanelLeft } from '@lucide/vue';
 import { ref } from 'vue';
 import StatusBar from '@/components/StatusBar.vue';
 import NoteEditor from '@/components/editor/NoteEditor.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import NoteTree from '@/components/notes/NoteTree.vue';
 import OrphanSaveNotice from '@/components/notes/OrphanSaveNotice.vue';
 import VaultStatusBadge from '@/components/vaults/VaultStatusBadge.vue';
 import { useExternalChanges } from '@/composables/useExternalChanges';
@@ -24,6 +22,9 @@ const props = defineProps<{
     status: SystemStatus;
     editor: EditorPreferences;
     currentVault: VaultSummary | null;
+    // `tree`, `folders` and `canTrash` are consumed by the sidebar through
+    // `usePage()`; they are declared here so they do not fall through as
+    // attributes on this component's root element.
     tree: NoteTreeNode[] | null;
     folders: string[];
     note: NoteDetail | null;
@@ -46,11 +47,6 @@ const { requestCheck, orphanTempFiles } = useExternalChanges({
     editor: () => editorRef.value,
 });
 
-// Below `md`, the note tree starts collapsed behind this toggle so the
-// editor gets the full width on a phone; from `md` up it is always shown
-// (the toggle button itself is hidden there via `md:hidden`).
-const treeOpen = ref(false);
-
 defineOptions({
     layout: {
         breadcrumbs: [{ title: 'Workspace', href: workspace() }],
@@ -66,18 +62,6 @@ defineOptions({
             v-if="currentVault && currentVault.status === 'active'"
             class="flex items-center gap-2 border-b p-2 px-4"
         >
-            <Button
-                v-if="tree !== null"
-                variant="ghost"
-                size="icon-sm"
-                class="shrink-0 md:hidden"
-                :aria-pressed="treeOpen"
-                title="Toggle note list"
-                aria-label="Toggle note list"
-                @click="treeOpen = !treeOpen"
-            >
-                <PanelLeft />
-            </Button>
             <span class="shrink-0 font-medium">{{ currentVault.name }}</span>
             <span
                 class="min-w-0 flex-1 truncate text-xs text-muted-foreground"
@@ -123,25 +107,9 @@ defineOptions({
         />
 
         <div
-            v-if="
-                currentVault &&
-                currentVault.status === 'active' &&
-                tree !== null
-            "
-            class="flex min-h-0 flex-1 flex-col md:flex-row"
+            v-if="currentVault && currentVault.status === 'active'"
+            class="flex min-h-0 flex-1 flex-col"
         >
-            <aside
-                class="shrink-0 overflow-auto md:block md:w-64 md:border-r md:border-b-0"
-                :class="treeOpen ? 'block max-h-64 border-b' : 'hidden'"
-            >
-                <NoteTree
-                    :vault-uuid="currentVault.uuid"
-                    :tree="tree"
-                    :folders="folders"
-                    :selected-uuid="note?.uuid ?? null"
-                    :can-trash="canTrash"
-                />
-            </aside>
             <main
                 class="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto p-4"
             >
@@ -157,7 +125,7 @@ defineOptions({
                     @request-check="requestCheck"
                 />
                 <p v-else class="text-sm text-muted-foreground">
-                    Select a note from the list, or create a new one.
+                    Select a note from the sidebar, or create a new one.
                 </p>
             </main>
         </div>

@@ -8,6 +8,7 @@ export type NoteTreeActions = {
     move(note: NoteTreeNote): void;
     remove(note: NoteTreeNote): void;
     removeFolder(folder: NoteTreeFolder): void;
+    noteSelected(): void;
 };
 
 export const noteTreeActionsKey: InjectionKey<NoteTreeActions> =

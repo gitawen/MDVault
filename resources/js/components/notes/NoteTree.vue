@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
-import { FilePlus, FolderPlus, RefreshCw } from '@lucide/vue';
 import { provide, ref } from 'vue';
-import { Button } from '@/components/ui/button';
-import { reindex } from '@/routes/vaults';
 import type { NoteTreeFolder, NoteTreeNode, NoteTreeNote } from '@/types';
 import CreateFolderDialog from './CreateFolderDialog.vue';
 import CreateNoteDialog from './CreateNoteDialog.vue';
@@ -14,7 +10,7 @@ import { noteTreeActionsKey } from './noteTreeActions';
 import NoteTreeItem from './NoteTreeItem.vue';
 import RenameNoteDialog from './RenameNoteDialog.vue';
 
-const props = defineProps<{
+defineProps<{
     vaultUuid: string;
     tree: NoteTreeNode[];
     folders: string[];
@@ -22,22 +18,7 @@ const props = defineProps<{
     canTrash: boolean;
 }>();
 
-const reindexing = ref(false);
-
-function runReindex() {
-    reindexing.value = true;
-
-    router.post(
-        reindex.url(props.vaultUuid),
-        {},
-        {
-            preserveScroll: true,
-            onFinish: () => {
-                reindexing.value = false;
-            },
-        },
-    );
-}
+const emit = defineEmits<{ 'note-selected': [] }>();
 
 const createNoteOpen = ref(false);
 const createNoteFolder = ref('');
@@ -52,14 +33,23 @@ const deleteNoteTarget = ref<NoteTreeNote | null>(null);
 const deleteFolderOpen = ref(false);
 const deleteFolderTarget = ref<NoteTreeFolder | null>(null);
 
+function newNote(folder = '') {
+    createNoteFolder.value = folder;
+    createNoteOpen.value = true;
+}
+
+function newFolder(parent = '') {
+    createFolderParent.value = parent;
+    createFolderOpen.value = true;
+}
+
+defineExpose({ newNote, newFolder });
+
 provide(noteTreeActionsKey, {
-    newNote(folder: string) {
-        createNoteFolder.value = folder;
-        createNoteOpen.value = true;
-    },
-    newFolder(parent: string) {
-        createFolderParent.value = parent;
-        createFolderOpen.value = true;
+    newNote,
+    newFolder,
+    noteSelected() {
+        emit('note-selected');
     },
     rename(note: NoteTreeNote) {
         renameNoteTarget.value = note;
@@ -81,55 +71,11 @@ provide(noteTreeActionsKey, {
 </script>
 
 <template>
-    <div class="flex h-full flex-col">
-        <div class="flex items-center gap-1 border-b px-2 py-1.5">
-            <span class="flex-1 text-sm font-medium">Notes</span>
-            <Button
-                variant="ghost"
-                size="icon"
-                class="size-7"
-                title="New note"
-                aria-label="New note"
-                @click="
-                    createNoteFolder = '';
-                    createNoteOpen = true;
-                "
-            >
-                <FilePlus class="size-4" />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon"
-                class="size-7"
-                title="New folder"
-                aria-label="New folder"
-                @click="
-                    createFolderParent = '';
-                    createFolderOpen = true;
-                "
-            >
-                <FolderPlus class="size-4" />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon"
-                class="size-7"
-                title="Re-index"
-                aria-label="Re-index"
-                :disabled="reindexing"
-                @click="runReindex"
-            >
-                <RefreshCw
-                    class="size-4"
-                    :class="{ 'animate-spin': reindexing }"
-                />
-            </Button>
-        </div>
-
-        <div class="flex-1 overflow-auto p-1">
+    <div class="flex flex-col">
+        <div class="py-1">
             <p
                 v-if="tree.length === 0"
-                class="p-3 text-sm text-muted-foreground"
+                class="px-2 py-1 text-xs text-muted-foreground"
             >
                 No notes yet. Create one, or add .md files to the vault folder
                 and re-index.

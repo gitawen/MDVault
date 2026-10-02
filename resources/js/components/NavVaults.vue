@@ -1,22 +1,60 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { FolderClosed, Plus, TriangleAlert } from '@lucide/vue';
-import { computed } from 'vue';
+import { Plus } from '@lucide/vue';
+import { computed, ref, watch } from 'vue';
+import SidebarVaultItem from '@/components/vaults/SidebarVaultItem.vue';
 import {
     SidebarGroup,
     SidebarGroupAction,
     SidebarGroupLabel,
     SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
+import { useWorkspaceTree } from '@/composables/useWorkspaceTree';
+import { workspace } from '@/routes';
 import { index, open } from '@/routes/vaults';
+import type { VaultSummary } from '@/types';
 
 const page = usePage();
 const vaults = computed(() => page.props.vaults);
 
-function openVault(uuid: string) {
-    router.post(open.url(uuid));
+const { state, isMobile } = useSidebar();
+const { onWorkspace, tree, folders, canTrash, selectedUuid, available } =
+    useWorkspaceTree();
+
+const currentExpanded = ref(true);
+
+const currentUuid = computed(
+    () => vaults.value.find((v) => v.is_current)?.uuid ?? null,
+);
+
+watch(currentUuid, () => {
+    currentExpanded.value = true;
+});
+
+function onActivate(vault: VaultSummary) {
+    if (vault.status === 'missing' || !vault.is_current) {
+        if (vault.status !== 'missing') {
+            currentExpanded.value = true;
+        }
+
+        router.post(open.url(vault.uuid));
+
+        return;
+    }
+
+    if (!onWorkspace.value) {
+        currentExpanded.value = true;
+        router.visit(workspace());
+
+        return;
+    }
+
+    if (state.value === 'collapsed' && !isMobile.value) {
+        return;
+    }
+
+    currentExpanded.value = !currentExpanded.value;
 }
 </script>
 
@@ -30,21 +68,19 @@ function openVault(uuid: string) {
         </SidebarGroupAction>
 
         <SidebarMenu>
-            <SidebarMenuItem v-for="vault in vaults" :key="vault.uuid">
-                <SidebarMenuButton
-                    :is-active="vault.is_current"
-                    :tooltip="vault.name"
-                    as="button"
-                    @click="openVault(vault.uuid)"
-                >
-                    <TriangleAlert v-if="vault.status === 'missing'" />
-                    <FolderClosed v-else />
-                    <span>{{ vault.name }}</span>
-                    <span v-if="vault.status === 'missing'" class="sr-only">
-                        (folder missing)
-                    </span>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
+            <SidebarVaultItem
+                v-for="vault in vaults"
+                :key="vault.uuid"
+                :vault="vault"
+                :can-expand="vault.status !== 'missing'"
+                :has-tree="vault.is_current && available"
+                :expanded="vault.is_current && available && currentExpanded"
+                :tree="tree ?? []"
+                :folders="folders"
+                :can-trash="canTrash"
+                :selected-uuid="selectedUuid"
+                @activate="onActivate(vault)"
+            />
         </SidebarMenu>
 
         <div

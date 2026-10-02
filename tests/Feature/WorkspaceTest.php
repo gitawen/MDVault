@@ -204,3 +204,60 @@ test('removed auth and account routes are gone', function (string $uri) {
     '/settings/security',
     '/.well-known/passkey-endpoints',
 ]);
+
+test('the workspace provides the sidebar tree data for an active vault with an open note', function () {
+    $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mdvault-workspace-'.Str::random(8);
+
+    try {
+        fakeDocumentsDirectory($tmp.DIRECTORY_SEPARATOR.'Documents');
+
+        $vault = app(VaultService::class)->create('Work');
+        app(VaultService::class)->open($vault);
+        writeVaultFiles($vault->path, ['Projects/a.md' => 'one']);
+        app(VaultIndexService::class)->reconcile($vault, IndexMode::Full);
+        $note = Note::query()->sole();
+
+        $response = $this->get(route('notes.show', $note->uuid));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Workspace')
+            ->where('currentVault.uuid', $vault->uuid)
+            ->has('tree')
+            ->has('folders')
+            ->has('canTrash')
+            ->where('note.uuid', $note->uuid)
+            ->where('tree.0.type', 'folder')
+            ->where('tree.0.name', 'Projects')
+            ->where('tree.0.open', true));
+    } finally {
+        File::deleteDirectory($tmp);
+    }
+});
+
+test('non-workspace pages do not build the note tree', function (string $routeName) {
+    $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'mdvault-workspace-'.Str::random(8);
+
+    try {
+        fakeDocumentsDirectory($tmp.DIRECTORY_SEPARATOR.'Documents');
+
+        $vault = app(VaultService::class)->create('Work');
+        app(VaultService::class)->open($vault);
+        writeVaultFiles($vault->path, ['Projects/a.md' => 'one']);
+        app(VaultIndexService::class)->reconcile($vault, IndexMode::Full);
+
+        $response = $this->get(route($routeName));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->missing('tree')
+            ->missing('folders')
+            ->missing('treeSignature')
+            ->where('vaults.0.is_current', true));
+    } finally {
+        File::deleteDirectory($tmp);
+    }
+})->with([
+    'settings' => 'settings.general.edit',
+    'vaults' => 'vaults.index',
+]);

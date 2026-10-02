@@ -18,7 +18,7 @@ import { show } from '@/routes/notes';
 import type { NoteTreeNode } from '@/types';
 import { noteTreeActionsKey } from './noteTreeActions';
 
-const props = defineProps<{
+defineProps<{
     node: NoteTreeNode;
     selectedUuid: string | null;
     canTrash: boolean;
@@ -26,7 +26,9 @@ const props = defineProps<{
 }>();
 
 const actions = inject(noteTreeActionsKey);
-const indent = `${props.depth * 1.25}rem`;
+// Nesting depth comes from the guide-lined CollapsibleContent wrappers,
+// so every row only needs a small fixed inset.
+const indent = '0.25rem';
 </script>
 
 <template>
@@ -37,7 +39,7 @@ const indent = `${props.depth * 1.25}rem`;
             :default-open="node.open"
         >
             <div
-                class="group flex items-center gap-1 rounded-md pr-1 hover:bg-accent"
+                class="group flex items-center gap-1 rounded-md pr-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 :style="{ paddingLeft: indent }"
             >
                 <CollapsibleTrigger as-child>
@@ -60,7 +62,7 @@ const indent = `${props.depth * 1.25}rem`;
                         <Button
                             variant="ghost"
                             size="icon"
-                            class="size-6 opacity-0 group-hover:opacity-100"
+                            class="size-6 data-[state=open]:opacity-100 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
                             aria-label="Folder actions"
                         >
                             <MoreHorizontal class="size-4" />
@@ -83,7 +85,9 @@ const indent = `${props.depth * 1.25}rem`;
                 </DropdownMenu>
             </div>
 
-            <CollapsibleContent>
+            <CollapsibleContent
+                class="ml-3 border-l border-sidebar-border pl-2"
+            >
                 <NoteTreeItem
                     v-for="child in node.children"
                     :key="child.type === 'folder' ? child.path : child.uuid"
@@ -97,16 +101,21 @@ const indent = `${props.depth * 1.25}rem`;
 
         <div
             v-else
-            class="group flex items-center gap-1 rounded-md pr-1 hover:bg-accent"
-            :class="{ 'bg-accent': node.uuid === selectedUuid }"
+            class="group flex items-center gap-1 rounded-md pr-1 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            :class="{
+                'bg-sidebar-accent font-medium text-sidebar-accent-foreground':
+                    node.uuid === selectedUuid,
+            }"
             :style="{ paddingLeft: indent }"
         >
             <Link
                 :href="show(node.uuid)"
+                :aria-current="node.uuid === selectedUuid ? 'page' : undefined"
                 :only="['note']"
                 preserve-state
                 preserve-scroll
-                class="flex flex-1 items-center gap-1.5 py-1.5 text-sm"
+                class="flex min-w-0 flex-1 items-center gap-1.5 py-1.5 text-sm"
+                @click="actions?.noteSelected()"
             >
                 <FileText class="size-4 shrink-0 text-muted-foreground" />
                 <span class="truncate">{{ node.title }}</span>
@@ -117,7 +126,7 @@ const indent = `${props.depth * 1.25}rem`;
                     <Button
                         variant="ghost"
                         size="icon"
-                        class="size-6 opacity-0 group-hover:opacity-100"
+                        class="size-6 data-[state=open]:opacity-100 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
                         aria-label="Note actions"
                     >
                         <MoreHorizontal class="size-4" />
