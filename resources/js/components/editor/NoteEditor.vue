@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { router, useHttp } from '@inertiajs/vue3';
+import { Code2, FileText, Save } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -606,13 +607,13 @@ const statusLabel = computed(() => {
 
 <template>
     <article class="flex min-h-0 flex-1 flex-col gap-3">
-        <header class="flex flex-wrap items-center gap-2">
+        <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1">
             <div class="flex min-w-0 flex-1 items-center gap-2">
-                <h1 class="shrink-0 text-lg font-semibold">
+                <h1 class="shrink-0 text-base sm:text-lg font-semibold tracking-tight">
                     {{ note.title }}
                 </h1>
                 <span
-                    class="min-w-0 truncate font-mono text-xs text-muted-foreground"
+                    class="min-w-0 truncate font-mono text-[11px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md border border-border/50"
                     :title="note.relative_path"
                 >
                     {{ note.relative_path }}
@@ -620,39 +621,54 @@ const statusLabel = computed(() => {
             </div>
 
             <template v-if="note.editable">
-                <div class="flex flex-wrap items-center gap-2">
-                    <Button
-                        size="sm"
-                        :variant="mode === 'rich' ? 'secondary' : 'ghost'"
-                        :disabled="
-                            assessing || assessment?.status === 'unsupported'
-                        "
-                        :title="
-                            assessment?.status === 'unsupported'
-                                ? 'This note has formatting the rich editor can’t preserve.'
-                                : undefined
-                        "
-                        @click="switchMode('rich')"
-                    >
-                        Rich text
-                    </Button>
-                    <Button
-                        size="sm"
-                        :variant="mode === 'source' ? 'secondary' : 'ghost'"
-                        :disabled="assessing"
-                        @click="switchMode('source')"
-                    >
-                        Source
-                    </Button>
+                <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <!-- Segmented Control for Mode -->
+                    <div class="inline-flex items-center rounded-lg bg-muted/60 p-0.5 border border-border/60 text-xs font-medium">
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all text-xs font-medium cursor-pointer"
+                            :class="mode === 'rich' ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                            :disabled="assessing || assessment?.status === 'unsupported'"
+                            :title="assessment?.status === 'unsupported' ? 'This note has formatting the rich editor can’t preserve.' : undefined"
+                            @click="switchMode('rich')"
+                        >
+                            <FileText class="size-3.5" />
+                            <span>Rich text</span>
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all text-xs font-medium cursor-pointer"
+                            :class="mode === 'source' ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                            :disabled="assessing"
+                            @click="switchMode('source')"
+                        >
+                            <Code2 class="size-3.5" />
+                            <span>Source</span>
+                        </button>
+                    </div>
 
-                    <span
+                    <!-- Status Indicator Badge -->
+                    <div
                         aria-live="polite"
-                        class="text-sm text-muted-foreground"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-muted/40 border border-border/50 text-muted-foreground select-none"
                     >
-                        {{ statusLabel }}
-                    </span>
+                        <span
+                            class="size-2 rounded-full transition-colors"
+                            :class="{
+                                'bg-emerald-500': saveState.status === 'saved' || saveState.status === 'clean',
+                                'bg-amber-500 animate-pulse': saveState.status === 'dirty',
+                                'bg-blue-500 animate-pulse': saveState.status === 'saving',
+                                'bg-destructive': saveState.status === 'conflict' || saveState.status === 'error',
+                            }"
+                        />
+                        <span class="max-w-[120px] sm:max-w-none truncate">{{ statusLabel }}</span>
+                    </div>
 
-                    <Button size="sm" @click="flush">Save</Button>
+                    <!-- Save Button -->
+                    <Button size="sm" class="h-8 px-3 text-xs gap-1.5 shadow-xs" @click="flush">
+                        <Save class="size-3.5" />
+                        <span>Save</span>
+                    </Button>
                 </div>
             </template>
         </header>
@@ -794,14 +810,16 @@ const statusLabel = computed(() => {
         </template>
 
         <footer
-            class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+            class="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 pt-2 border-t border-border/40 text-xs text-muted-foreground"
         >
-            <span class="shrink-0">{{ formatBytes(note.file_size) }}</span>
-            <span class="shrink-0" :title="note.file_hash">
-                SHA-256
-                {{
-                    (saveState.baseHash || note.file_hash).slice(0, 12)
-                }}&hellip;
+            <div class="flex items-center gap-3">
+                <span class="shrink-0 font-medium">{{ formatBytes(note.file_size) }}</span>
+                <span class="shrink-0 font-mono text-[11px]" :title="note.file_hash">
+                    SHA-256 {{ (saveState.baseHash || note.file_hash).slice(0, 12) }}&hellip;
+                </span>
+            </div>
+            <span v-if="saveState.lastSavedAt" class="text-[11px] text-muted-foreground/80 hidden sm:inline-block">
+                Saved at {{ saveState.lastSavedAt.toLocaleTimeString() }}
             </span>
         </footer>
 

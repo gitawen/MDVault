@@ -72,6 +72,88 @@ function handleContentClick(
     return true;
 }
 
+const indentSize = computed(() => preferences.indent_size ?? 4);
+const indentSpaces = computed(() => ' '.repeat(indentSize.value));
+
+function handleKeyDown(_view: EditorView, event: KeyboardEvent): boolean {
+    if (event.key !== 'Tab') {
+        return false;
+    }
+
+    if (!editable) {
+        return false;
+    }
+
+    // Always prevent default to prevent tabbing focus away from the editor
+    event.preventDefault();
+
+    if (!editor.value) {
+        return true;
+    }
+
+    const ed = editor.value;
+    const indentStr = indentSpaces.value;
+    const size = indentSize.value;
+
+    if (!event.shiftKey) {
+        // Tab (Increase indent)
+        if (ed.can().goToNextCell()) {
+            return ed.commands.goToNextCell();
+        }
+
+        if (ed.can().sinkListItem('listItem')) {
+            return ed.commands.sinkListItem('listItem');
+        }
+
+        if (ed.can().sinkListItem('taskItem')) {
+            return ed.commands.sinkListItem('taskItem');
+        }
+
+        return ed.commands.command(({ tr, dispatch }) => {
+            dispatch?.(tr.insertText(indentStr));
+            return true;
+        });
+    } else {
+        // Shift-Tab (Decrease indent / lift)
+        if (ed.can().goToPreviousCell()) {
+            return ed.commands.goToPreviousCell();
+        }
+
+        if (ed.can().liftListItem('listItem')) {
+            return ed.commands.liftListItem('listItem');
+        }
+
+        if (ed.can().liftListItem('taskItem')) {
+            return ed.commands.liftListItem('taskItem');
+        }
+
+        const { state } = ed;
+        const { from, empty } = state.selection;
+        if (empty && from > 0) {
+            const lookback = Math.min(from, size);
+            const textBefore = state.doc.textBetween(
+                from - lookback,
+                from,
+                '\n',
+                '\n',
+            );
+            if (textBefore === ' '.repeat(lookback)) {
+                return ed.commands.deleteRange({ from: from - lookback, to: from });
+            } else if (textBefore.endsWith(' ')) {
+                let spacesCount = 0;
+                while (spacesCount < lookback && textBefore[textBefore.length - 1 - spacesCount] === ' ') {
+                    spacesCount++;
+                }
+                if (spacesCount > 0) {
+                    return ed.commands.deleteRange({ from: from - spacesCount, to: from });
+                }
+            }
+        }
+
+        return true;
+    }
+}
+
 const editor = useEditor({
     extensions: markdownExtensions(),
     content: markdown,
@@ -83,6 +165,7 @@ const editor = useEditor({
             'aria-label': 'Note editor',
         },
         handleClick: handleContentClick,
+        handleKeyDown,
     },
     onCreate: ({ editor: created }) => {
         emit('ready', serializeEditor(created));
@@ -123,10 +206,12 @@ defineExpose({ getContent });
 </script>
 
 <template>
-    <div class="flex min-h-0 flex-1 flex-col rounded-lg border bg-card">
+    <div
+        class="flex min-h-0 flex-1 flex-col rounded-xl border border-border/80 bg-card shadow-xs overflow-hidden transition-all duration-200 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20"
+    >
         <EditorToolbar v-if="editable" :editor="editor" />
         <div
-            class="min-h-0 flex-1 overflow-auto p-4"
+            class="min-h-0 flex-1 overflow-auto p-3 sm:p-5 md:p-6 cursor-text"
             :class="[
                 fontFamilyClass,
                 { 'tiptap-nowrap': preferences.word_wrap === false },

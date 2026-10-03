@@ -115,6 +115,22 @@ const datePlaceholder = '{{date}}';
                 <InputError :message="form.errors.line_height" />
             </div>
 
+            <div class="grid gap-2">
+                <Label for="indent_size">Indent size</Label>
+                <Input
+                    id="indent_size"
+                    v-model.number="form.indent_size"
+                    type="number"
+                    min="1"
+                    max="8"
+                    class="w-32"
+                />
+                <p class="text-xs text-muted-foreground">
+                    Number of spaces inserted per Tab indent (default: 4).
+                </p>
+                <InputError :message="form.errors.indent_size" />
+            </div>
+
             <div class="flex items-center gap-2">
                 <Checkbox id="word_wrap" v-model="form.word_wrap" />
                 <Label for="word_wrap">Wrap long lines</Label>

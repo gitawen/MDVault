@@ -16,6 +16,7 @@ enum SettingKey: string
     case EditorLineHeight = 'editor.line_height';
     case EditorWordWrap = 'editor.word_wrap';
     case EditorShowLineNumbers = 'editor.show_line_numbers';
+    case EditorIndentSize = 'editor.indent_size';
     case EditorNewNoteTemplateEnabled = 'editor.new_note_template_enabled';
     case EditorNewNoteTemplate = 'editor.new_note_template';
     case CheckExternalChanges = 'app.check_external_changes';
@@ -27,7 +28,7 @@ enum SettingKey: string
     {
         return match ($this) {
             self::StorageRootPath, self::StorageFolderName, self::AppearanceTheme, self::EditorFontFamily, self::EditorNewNoteTemplate, self::CurrentVault => SettingType::String,
-            self::EditorFontSize, self::SecurityAutoLockMinutes => SettingType::Integer,
+            self::EditorFontSize, self::EditorIndentSize, self::SecurityAutoLockMinutes => SettingType::Integer,
             self::EditorLineHeight => SettingType::Float,
             self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorNewNoteTemplateEnabled, self::CheckExternalChanges, self::SecurityLockOnScreenLock => SettingType::Boolean,
         };
@@ -38,7 +39,7 @@ enum SettingKey: string
         return match ($this) {
             self::StorageRootPath, self::StorageFolderName => SettingGroup::Storage,
             self::AppearanceTheme => SettingGroup::Appearance,
-            self::EditorFontSize, self::EditorFontFamily, self::EditorLineHeight, self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorNewNoteTemplateEnabled, self::EditorNewNoteTemplate => SettingGroup::Editor,
+            self::EditorFontSize, self::EditorFontFamily, self::EditorLineHeight, self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorIndentSize, self::EditorNewNoteTemplateEnabled, self::EditorNewNoteTemplate => SettingGroup::Editor,
             self::CheckExternalChanges, self::CurrentVault => SettingGroup::General,
             self::SecurityAutoLockMinutes, self::SecurityLockOnScreenLock => SettingGroup::Security,
         };
@@ -55,6 +56,7 @@ enum SettingKey: string
             self::EditorLineHeight => 1.6,
             self::EditorWordWrap => true,
             self::EditorShowLineNumbers => false,
+            self::EditorIndentSize => 4,
             self::EditorNewNoteTemplateEnabled => true,
             self::EditorNewNoteTemplate => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
             self::CheckExternalChanges => true,

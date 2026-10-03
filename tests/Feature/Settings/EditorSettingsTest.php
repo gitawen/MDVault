@@ -12,6 +12,7 @@ function baseEditorSettingsPayload(): array
         'line_height' => 1.6,
         'word_wrap' => true,
         'show_line_numbers' => false,
+        'indent_size' => 4,
         'new_note_template_enabled' => true,
         'new_note_template' => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
     ];
@@ -29,6 +30,7 @@ test('the editor page shows defaults, including the new-note template defaults',
             'line_height' => 1.6,
             'word_wrap' => true,
             'show_line_numbers' => false,
+            'indent_size' => 4,
             'new_note_template_enabled' => true,
             'new_note_template' => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
         ])
@@ -42,6 +44,7 @@ test('valid editor preferences are persisted', function () {
         'line_height' => 1.8,
         'word_wrap' => false,
         'show_line_numbers' => true,
+        'indent_size' => 2,
     ]))->assertRedirect();
 
     $settings = app(SettingsService::class);
@@ -50,7 +53,8 @@ test('valid editor preferences are persisted', function () {
         ->and($settings->string(SettingKey::EditorFontFamily))->toBe('mono')
         ->and($settings->float(SettingKey::EditorLineHeight))->toBe(1.8)
         ->and($settings->boolean(SettingKey::EditorWordWrap))->toBeFalse()
-        ->and($settings->boolean(SettingKey::EditorShowLineNumbers))->toBeTrue();
+        ->and($settings->boolean(SettingKey::EditorShowLineNumbers))->toBeTrue()
+        ->and($settings->integer(SettingKey::EditorIndentSize))->toBe(2);
 });
 
 test('invalid editor preferences are rejected', function (array $overrides, string $field) {
@@ -66,6 +70,9 @@ test('invalid editor preferences are rejected', function (array $overrides, stri
     'line height too small' => [['line_height' => 1.0], 'line_height'],
     'line height too large' => [['line_height' => 3], 'line_height'],
     'word wrap not boolean' => [['word_wrap' => 'maybe'], 'word_wrap'],
+    'indent size too small' => [['indent_size' => 0], 'indent_size'],
+    'indent size too large' => [['indent_size' => 9], 'indent_size'],
+    'indent size not numeric' => [['indent_size' => 'two'], 'indent_size'],
     'missing font size' => [['font_size' => null], 'font_size'],
 ]);
 

@@ -15,12 +15,12 @@ withDefaults(
 
 <template>
     <header
-        class="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border/70 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4"
+        class="flex h-12 sm:h-14 shrink-0 items-center gap-2 border-b border-sidebar-border/70 px-3 sm:px-4 md:px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12"
     >
-        <div class="flex items-center gap-2">
-            <SidebarTrigger class="-ml-1" />
+        <div class="flex min-w-0 items-center gap-2">
+            <SidebarTrigger class="-ml-1 size-8 rounded-md hover:bg-muted/80" />
             <template v-if="breadcrumbs && breadcrumbs.length > 0">
-                <Breadcrumbs :breadcrumbs="breadcrumbs" />
+                <Breadcrumbs :breadcrumbs="breadcrumbs" class="truncate" />
             </template>
         </div>
     </header>

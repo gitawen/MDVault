@@ -16,6 +16,7 @@ export type EditorPreferences = {
     line_height: number;
     word_wrap: boolean;
     show_line_numbers: boolean;
+    indent_size: number;
     new_note_template_enabled: boolean;
     new_note_template: string;
 };

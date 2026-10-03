@@ -121,156 +121,253 @@ function currentHref(): string {
     <div
         role="toolbar"
         aria-label="Formatting"
-        class="sticky top-0 z-10 flex shrink-0 flex-wrap items-center gap-0.5 border-b bg-card p-1"
+        class="sticky top-0 z-10 flex shrink-0 items-center gap-1.5 border-b border-border/70 bg-card/95 backdrop-blur-xs px-2 py-1.5 overflow-x-auto no-scrollbar touch-pan-x"
     >
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('undo')"
-            :disabled="!canRun('undo')"
-            :title="title('undo')"
-            @click="run('undo')"
-        >
-            <Undo2 />
-        </Button>
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('redo')"
-            :disabled="!canRun('redo')"
-            :title="title('redo')"
-            @click="run('redo')"
-        >
-            <Redo2 />
-        </Button>
-
-        <Separator orientation="vertical" class="mx-1 hidden h-6 sm:block" />
-
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('bold')"
-            :disabled="!canRun('bold')"
-            :title="title('bold')"
-            @click="run('bold')"
-        >
-            <Bold />
-        </Button>
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('italic')"
-            :disabled="!canRun('italic')"
-            :title="title('italic')"
-            @click="run('italic')"
-        >
-            <Italic />
-        </Button>
-
-        <Separator orientation="vertical" class="mx-1 hidden h-6 sm:block" />
-
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('h1')"
-            :disabled="!canRun('h1')"
-            :title="title('h1')"
-            @click="run('h1')"
-        >
-            <Heading1 />
-        </Button>
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('h2')"
-            :disabled="!canRun('h2')"
-            :title="title('h2')"
-            @click="run('h2')"
-        >
-            <Heading2 />
-        </Button>
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('h3')"
-            :disabled="!canRun('h3')"
-            :title="title('h3')"
-            @click="run('h3')"
-        >
-            <Heading3 />
-        </Button>
-
-        <Separator orientation="vertical" class="mx-1 hidden h-6 sm:block" />
-
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('bulletList')"
-            :disabled="!canRun('bulletList')"
-            :title="title('bulletList')"
-            @click="run('bulletList')"
-        >
-            <List />
-        </Button>
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="isActive('orderedList')"
-            :disabled="!canRun('orderedList')"
-            :title="title('orderedList')"
-            @click="run('orderedList')"
-        >
-            <ListOrdered />
-        </Button>
-
-        <Separator orientation="vertical" class="mx-1 hidden h-6 sm:block" />
-
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            :aria-pressed="false"
-            :disabled="!editor"
-            title="Link (Ctrl+K)"
-            @click="openLinkDialog"
-        >
-            <LinkIcon />
-        </Button>
-
-        <!-- The less-used commands stay inline from `md` up, and collapse
-             into this "More" menu below `md` so the toolbar never wraps
-             onto enough rows to overlap the content. -->
-        <template v-for="id in overflowCommands" :key="id">
-            <Separator
-                v-if="id === 'paragraph' || id === 'codeBlock'"
-                orientation="vertical"
-                class="mx-1 hidden h-6 md:block"
-            />
+        <!-- History Group -->
+        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="hidden md:inline-flex"
-                :aria-pressed="isActive(id)"
-                :disabled="!canRun(id)"
-                :title="title(id)"
-                @click="run(id)"
+                class="size-7 sm:size-7.5 rounded-sm transition-all"
+                :class="isActive('undo') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('undo')"
+                :disabled="!canRun('undo')"
+                :title="title('undo')"
+                @click="run('undo')"
             >
-                <component :is="overflowCommandIcons[id]" />
+                <Undo2 class="size-3.5 sm:size-4" />
             </Button>
-        </template>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all"
+                :class="isActive('redo') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('redo')"
+                :disabled="!canRun('redo')"
+                :title="title('redo')"
+                @click="run('redo')"
+            >
+                <Redo2 class="size-3.5 sm:size-4" />
+            </Button>
+        </div>
 
+        <Separator orientation="vertical" class="h-5 shrink-0" />
+
+        <!-- Inline Formatting Group -->
+        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all"
+                :class="isActive('bold') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('bold')"
+                :disabled="!canRun('bold')"
+                :title="title('bold')"
+                @click="run('bold')"
+            >
+                <Bold class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all"
+                :class="isActive('italic') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('italic')"
+                :disabled="!canRun('italic')"
+                :title="title('italic')"
+                @click="run('italic')"
+            >
+                <Italic class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all hidden sm:inline-flex"
+                :class="isActive('strike') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('strike')"
+                :disabled="!canRun('strike')"
+                :title="title('strike')"
+                @click="run('strike')"
+            >
+                <Strikethrough class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all hidden sm:inline-flex"
+                :class="isActive('code') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('code')"
+                :disabled="!canRun('code')"
+                :title="title('code')"
+                @click="run('code')"
+            >
+                <Code class="size-3.5 sm:size-4" />
+            </Button>
+        </div>
+
+        <Separator orientation="vertical" class="h-5 shrink-0" />
+
+        <!-- Headings Group -->
+        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all"
+                :class="isActive('h1') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('h1')"
+                :disabled="!canRun('h1')"
+                :title="title('h1')"
+                @click="run('h1')"
+            >
+                <Heading1 class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all"
+                :class="isActive('h2') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('h2')"
+                :disabled="!canRun('h2')"
+                :title="title('h2')"
+                @click="run('h2')"
+            >
+                <Heading2 class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all hidden sm:inline-flex"
+                :class="isActive('h3') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('h3')"
+                :disabled="!canRun('h3')"
+                :title="title('h3')"
+                @click="run('h3')"
+            >
+                <Heading3 class="size-3.5 sm:size-4" />
+            </Button>
+        </div>
+
+        <Separator orientation="vertical" class="h-5 shrink-0" />
+
+        <!-- Lists Group -->
+        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all"
+                :class="isActive('bulletList') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('bulletList')"
+                :disabled="!canRun('bulletList')"
+                :title="title('bulletList')"
+                @click="run('bulletList')"
+            >
+                <List class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all"
+                :class="isActive('orderedList') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('orderedList')"
+                :disabled="!canRun('orderedList')"
+                :title="title('orderedList')"
+                @click="run('orderedList')"
+            >
+                <ListOrdered class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all hidden sm:inline-flex"
+                :class="isActive('taskList') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('taskList')"
+                :disabled="!canRun('taskList')"
+                :title="title('taskList')"
+                @click="run('taskList')"
+            >
+                <ListTodo class="size-3.5 sm:size-4" />
+            </Button>
+        </div>
+
+        <Separator orientation="vertical" class="h-5 shrink-0" />
+
+        <!-- Links & Blocks Group -->
+        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all text-muted-foreground hover:text-foreground"
+                :aria-pressed="false"
+                :disabled="!editor"
+                title="Link (Ctrl+K)"
+                @click="openLinkDialog"
+            >
+                <LinkIcon class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all hidden md:inline-flex"
+                :class="isActive('blockquote') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('blockquote')"
+                :disabled="!canRun('blockquote')"
+                :title="title('blockquote')"
+                @click="run('blockquote')"
+            >
+                <Quote class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all hidden md:inline-flex"
+                :class="isActive('codeBlock') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('codeBlock')"
+                :disabled="!canRun('codeBlock')"
+                :title="title('codeBlock')"
+                @click="run('codeBlock')"
+            >
+                <SquareCode class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all hidden md:inline-flex"
+                :class="isActive('horizontalRule') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('horizontalRule')"
+                :disabled="!canRun('horizontalRule')"
+                :title="title('horizontalRule')"
+                @click="run('horizontalRule')"
+            >
+                <Minus class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="size-7 sm:size-7.5 rounded-sm transition-all hidden md:inline-flex"
+                :class="isActive('clearFormatting') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                :aria-pressed="isActive('clearFormatting')"
+                :disabled="!canRun('clearFormatting')"
+                :title="title('clearFormatting')"
+                @click="run('clearFormatting')"
+            >
+                <RemoveFormatting class="size-3.5 sm:size-4" />
+            </Button>
+        </div>
+
+        <!-- Overflow Dropdown Menu for Mobile & Tablet -->
         <DropdownMenu>
             <DropdownMenuTrigger as-child>
                 <Button
                     variant="ghost"
                     size="icon-sm"
-                    class="md:hidden"
+                    class="size-7 sm:size-7.5 shrink-0 rounded-sm md:hidden text-muted-foreground hover:text-foreground"
                     title="More formatting"
                     aria-label="More formatting"
                 >
-                    <MoreHorizontal />
+                    <MoreHorizontal class="size-4" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
+            <DropdownMenuContent align="end" class="w-48">
                 <DropdownMenuCheckboxItem
                     v-for="id in overflowCommands"
                     :key="id"

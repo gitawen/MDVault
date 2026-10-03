@@ -171,9 +171,21 @@
     }
 }
 
+@layer utilities {
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    /* Hide scrollbar for IE, Edge and Firefox */
+    .no-scrollbar {
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+}
+
 @layer components {
     .tiptap-content {
-        @apply min-h-40 outline-none;
+        @apply min-h-48 outline-none;
     }
 
     /* GitHub-style Markdown rendering. Sizes are em-relative so the
@@ -190,16 +202,16 @@
     .tiptap-content h4,
     .tiptap-content h5,
     .tiptap-content h6 {
-        @apply font-semibold;
+        @apply font-semibold text-foreground tracking-tight;
         line-height: 1.25;
     }
 
     .tiptap-content h1 {
-        @apply mt-8 mb-4 border-b border-border pb-2 text-[2em];
+        @apply mt-8 mb-4 border-b border-border/80 pb-2 text-[2em];
     }
 
     .tiptap-content h2 {
-        @apply mt-6 mb-4 border-b border-border pb-2 text-[1.5em];
+        @apply mt-6 mb-4 border-b border-border/70 pb-2 text-[1.5em];
     }
 
     .tiptap-content h3 {
@@ -207,15 +219,15 @@
     }
 
     .tiptap-content h4 {
-        @apply mt-6 mb-3 text-[1em];
+        @apply mt-5 mb-2 text-[1em];
     }
 
     .tiptap-content h5 {
-        @apply mt-6 mb-3 text-[0.875em];
+        @apply mt-4 mb-2 text-[0.875em];
     }
 
     .tiptap-content h6 {
-        @apply mt-6 mb-3 text-[0.85em] text-muted-foreground;
+        @apply mt-4 mb-2 text-[0.85em] text-muted-foreground;
     }
 
     .tiptap-content p {
@@ -223,15 +235,15 @@
     }
 
     .tiptap-content a {
-        @apply cursor-pointer text-blue-600 underline decoration-blue-600/40 underline-offset-2 transition-colors hover:decoration-blue-600 dark:text-blue-400 dark:decoration-blue-400/40 dark:hover:decoration-blue-400;
+        @apply cursor-pointer font-medium text-blue-600 dark:text-blue-400 underline decoration-blue-500/60 underline-offset-3 transition-all hover:text-blue-700 dark:hover:text-blue-300 hover:decoration-blue-600 dark:hover:decoration-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-950/50 rounded-xs px-0.5 -mx-0.5;
     }
 
     .tiptap-content strong {
-        @apply font-semibold;
+        @apply font-semibold text-foreground;
     }
 
     .tiptap-content s {
-        @apply text-muted-foreground;
+        @apply text-muted-foreground line-through;
     }
 
     .tiptap-content ul,
@@ -269,19 +281,19 @@
     }
 
     .tiptap-content ul[data-type='taskList'] {
-        @apply my-2 list-none pl-0;
+        @apply my-2.5 list-none pl-0;
     }
 
     .tiptap-content ul[data-type='taskList'] li {
-        @apply my-1 flex items-start gap-2.5;
+        @apply my-1.5 flex items-start gap-2.5;
     }
 
     .tiptap-content ul[data-type='taskList'] li > label {
-        @apply mt-[0.35em] flex flex-none items-center justify-center select-none;
+        @apply mt-[0.3em] flex flex-none items-center justify-center select-none;
     }
 
     .tiptap-content ul[data-type='taskList'] li > label input[type='checkbox'] {
-        @apply size-3.5 cursor-pointer rounded-xs accent-primary;
+        @apply size-4 cursor-pointer rounded-sm border-input accent-primary transition-transform active:scale-95;
     }
 
     .tiptap-content ul[data-type='taskList'] li > div {
@@ -290,6 +302,10 @@
 
     .tiptap-content ul[data-type='taskList'] li > div > p {
         @apply my-0 leading-relaxed;
+    }
+
+    .tiptap-content ul[data-type='taskList'] li[data-checked='true'] > div > p {
+        @apply text-muted-foreground line-through decoration-muted-foreground/60;
     }
 
     .tiptap-content ul[data-type='taskList'] li > div > p + p {
@@ -301,7 +317,7 @@
     }
 
     .tiptap-content blockquote {
-        @apply my-3 border-l-4 border-border pl-4 text-muted-foreground;
+        @apply my-4 rounded-r-md border-l-4 border-primary/70 bg-muted/30 py-1 pl-4 pr-3 italic text-muted-foreground;
     }
 
     .tiptap-content blockquote > :first-child {
@@ -313,36 +329,36 @@
     }
 
     .tiptap-content code {
-        @apply rounded bg-muted px-1 py-0.5 font-mono text-[0.875em];
+        @apply rounded-md bg-muted/80 px-1.5 py-0.5 font-mono text-[0.875em] text-foreground;
     }
 
     .tiptap-content pre {
-        @apply my-3 overflow-x-auto rounded-lg bg-muted p-3 font-mono text-[0.875em] leading-normal;
+        @apply my-4 overflow-x-auto rounded-lg border border-border/60 bg-muted/60 p-3.5 font-mono text-[0.875em] leading-normal;
     }
 
     .tiptap-content pre code {
-        @apply bg-transparent p-0 text-inherit;
+        @apply border-0 bg-transparent p-0 text-inherit;
     }
 
     .tiptap-content hr {
-        @apply my-6 border-border;
+        @apply my-6 border-border/80;
     }
 
     .tiptap-content img {
-        @apply my-3 max-w-full rounded-md;
+        @apply my-4 max-w-full rounded-lg border border-border/40 shadow-xs;
     }
 
     .tiptap-content table {
-        @apply my-3 w-full table-auto border-collapse text-[0.875em];
+        @apply my-4 w-full table-auto border-collapse text-[0.875em];
     }
 
     .tiptap-content th,
     .tiptap-content td {
-        @apply border border-border px-3 py-2 text-left align-top;
+        @apply border border-border/80 px-3 py-2 text-left align-top;
     }
 
     .tiptap-content th {
-        @apply bg-muted font-semibold;
+        @apply bg-muted/70 font-semibold text-foreground;
     }
 
     .tiptap-content th > p,

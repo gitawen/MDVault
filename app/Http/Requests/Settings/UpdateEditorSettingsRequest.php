@@ -32,6 +32,7 @@ class UpdateEditorSettingsRequest extends FormRequest
             'line_height' => ['required', 'numeric', 'between:1.2,2.2'],
             'word_wrap' => ['required', 'boolean'],
             'show_line_numbers' => ['required', 'boolean'],
+            'indent_size' => ['required', 'integer', 'between:1,8'],
             'new_note_template_enabled' => ['required', 'boolean'],
             'new_note_template' => [
                 'nullable',

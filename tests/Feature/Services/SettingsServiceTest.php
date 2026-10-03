@@ -142,6 +142,7 @@ test('group returns every field of the group with defaults merged with overrides
         'line_height' => 1.6,
         'word_wrap' => true,
         'show_line_numbers' => false,
+        'indent_size' => 4,
         'new_note_template_enabled' => true,
         'new_note_template' => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
     ]);

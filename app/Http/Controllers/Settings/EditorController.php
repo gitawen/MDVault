@@ -30,6 +30,7 @@ class EditorController extends Controller
             SettingKey::EditorLineHeight->value => (float) $request->validated('line_height'),
             SettingKey::EditorWordWrap->value => $request->boolean('word_wrap'),
             SettingKey::EditorShowLineNumbers->value => $request->boolean('show_line_numbers'),
+            SettingKey::EditorIndentSize->value => (int) $request->validated('indent_size'),
             SettingKey::EditorNewNoteTemplateEnabled->value => $request->boolean('new_note_template_enabled'),
         ];
 
