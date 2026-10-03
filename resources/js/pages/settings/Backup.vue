@@ -1,13 +1,32 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
+import {
+    AlertTriangle,
+    Archive,
+    CheckCircle2,
+    Clock,
+    FileArchive,
+    FolderOpen,
+    HardDrive,
+    Info,
+    RotateCcw,
+    Trash2,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
-import Heading from '@/components/Heading.vue';
 import ResetDatabaseDialog from '@/components/backups/ResetDatabaseDialog.vue';
 import RestoreBackupDialog from '@/components/backups/RestoreBackupDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { formatBytes } from '@/lib/formatBytes';
 import { edit, store } from '@/routes/settings/backup';
 import { browse } from '@/routes/settings/backup/restore';
@@ -103,143 +122,243 @@ function restoreBackup(record: BackupRecord): void {
 
         <h1 class="sr-only">Backup settings</h1>
 
-        <Heading
-            variant="small"
-            title="Back up"
-            description="Save every note, folder and attachment in your vaults to a single file."
-        />
-
-        <div class="space-y-2">
+        <!-- Section Header -->
+        <div class="space-y-1">
+            <h2 class="text-xl font-semibold tracking-tight">Backup & Recovery</h2>
             <p class="text-sm text-muted-foreground">
-                {{
-                    canBrowse
-                        ? "You'll choose where to save the backup."
-                        : `Backups are saved to ${defaultDirectory}.`
-                }}
+                Safeguard all vault contents into standalone archives or restore previously created snapshots.
             </p>
-            <p class="text-sm text-muted-foreground">
-                Backups include every note, folder and attachment in your
-                vaults, but not hidden folders such as
-                <code>.git</code>, or app settings.
-            </p>
-            <Button
-                type="button"
-                :disabled="!activeVaultExists || backingUp"
-                @click="backUpAll"
-            >
-                Back up all vaults
-            </Button>
         </div>
 
-        <div class="space-y-4">
-            <Heading variant="small" title="Restore" />
-
-            <p
-                v-if="missingVaultCount > 0"
-                class="text-sm text-muted-foreground"
-            >
-                {{ missingVaultCount }} vault(s) are missing from disk. A backup
-                of them would be skipped or restored as copies. Reset the
-                database below (or remove them on the Vaults page) before
-                restoring.
-            </p>
-
-            <div class="flex flex-wrap items-center gap-2">
-                <Button
-                    v-if="canBrowse"
-                    type="button"
-                    variant="outline"
-                    :disabled="browsing"
-                    @click="chooseBackupFile"
-                >
-                    Choose backup file&#8230;
-                </Button>
-            </div>
-
-            <div class="grid gap-2">
-                <Label for="backup-file-path">Backup file path</Label>
-                <div class="flex gap-2">
-                    <Input
-                        id="backup-file-path"
-                        v-model="typedPath"
-                        type="text"
-                        autocomplete="off"
-                        class="flex-1"
-                    />
-                    <Button
-                        type="button"
-                        variant="outline"
-                        @click="checkTypedPath"
-                    >
-                        Check backup
-                    </Button>
-                </div>
-            </div>
-        </div>
-
-        <div class="space-y-4">
-            <Heading variant="small" title="Recent backups" />
-
-            <p
-                v-if="backups.length === 0"
-                class="text-sm text-muted-foreground"
-            >
-                No backups yet.
-            </p>
-
-            <div v-else class="space-y-3">
-                <div
-                    v-for="record in backups"
-                    :key="record.uuid"
-                    class="space-y-2 rounded-md border p-3"
-                >
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="font-medium">
-                            {{ new Date(record.created_at).toLocaleString() }}
-                        </span>
-                        <span class="text-sm text-muted-foreground">
-                            {{
-                                record.scope === 'all'
-                                    ? 'All vaults'
-                                    : record.vaults.join(', ')
-                            }}
-                        </span>
-                        <Badge v-if="!record.exists" variant="destructive">
-                            Missing
-                        </Badge>
+        <!-- Create Backup Card -->
+        <Card class="border-border/60 shadow-xs">
+            <CardHeader class="pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Archive class="h-4 w-4" />
                     </div>
-                    <p class="text-sm text-muted-foreground">
-                        {{ record.note_count }} notes &middot;
-                        {{ formatBytes(record.file_size) }}
+                    <div>
+                        <CardTitle class="text-base font-medium">Create Full Backup</CardTitle>
+                        <CardDescription>
+                            Bundle every note, directory structure, and attachment across all vaults into a single archive.
+                        </CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent class="space-y-4">
+                <div class="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-2 text-xs text-muted-foreground">
+                    <div class="flex items-center gap-2 text-foreground font-medium">
+                        <HardDrive class="h-4 w-4 text-primary" />
+                        <span>Destination</span>
+                    </div>
+                    <p class="leading-relaxed">
+                        {{
+                            canBrowse
+                                ? "When initiated, you'll choose the folder or drive where the backup archive will be written."
+                                : `Backups are automatically saved to your configured directory: ${defaultDirectory}`
+                        }}
                     </p>
-                    <p
-                        class="font-mono text-xs break-all text-muted-foreground"
-                    >
-                        {{ record.path }}
+                    <p class="text-[11px] text-muted-foreground/80">
+                        Backups preserve all notes and media, excluding hidden version control directories (such as <code class="font-mono">.git</code>) and application runtime logs.
                     </p>
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <p v-if="!activeVaultExists" class="text-xs text-muted-foreground">
+                        Create or open a vault before generating a backup.
+                    </p>
+                    <span v-else />
                     <Button
                         type="button"
-                        size="sm"
-                        variant="outline"
-                        :disabled="!record.exists"
-                        @click="restoreBackup(record)"
+                        :disabled="!activeVaultExists || backingUp"
+                        class="min-w-36 gap-2"
+                        @click="backUpAll"
                     >
-                        Restore&#8230;
+                        <Spinner v-if="backingUp" class="h-4 w-4" />
+                        <Archive v-else class="h-4 w-4" />
+                        <span>{{ backingUp ? 'Backing up…' : 'Back up all vaults' }}</span>
                     </Button>
                 </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
 
+        <!-- Restore Backup Card -->
+        <Card class="border-border/60 shadow-xs">
+            <CardHeader class="pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <RotateCcw class="h-4 w-4" />
+                    </div>
+                    <div>
+                        <CardTitle class="text-base font-medium">Restore from Archive</CardTitle>
+                        <CardDescription>
+                            Inspect and import notes from a previous backup file.
+                        </CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent class="space-y-4">
+                <!-- Missing Vaults Warning -->
+                <div
+                    v-if="missingVaultCount > 0"
+                    class="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-400"
+                >
+                    <AlertTriangle class="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                    <div class="space-y-1">
+                        <p class="font-medium">Missing Vaults Detected</p>
+                        <p class="leading-relaxed">
+                            {{ missingVaultCount }} vault(s) are missing from disk. A backup of them would be skipped or restored as copies. Reset the database below (or remove them on the Vaults page) before restoring.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Restore File Picker & Path Input -->
+                <div class="space-y-3">
+                    <div v-if="canBrowse">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            :disabled="browsing"
+                            class="gap-1.5"
+                            @click="chooseBackupFile"
+                        >
+                            <FolderOpen class="h-4 w-4" />
+                            <span>Choose backup file…</span>
+                        </Button>
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="backup-file-path" class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Backup File Path
+                        </Label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <Input
+                                id="backup-file-path"
+                                v-model="typedPath"
+                                type="text"
+                                autocomplete="off"
+                                placeholder="Paste or type path to .tar.gz / backup file"
+                                class="bg-background font-mono text-sm flex-1"
+                            />
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                class="shrink-0"
+                                @click="checkTypedPath"
+                            >
+                                Check backup
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        <!-- Recent Backups Card -->
+        <Card class="border-border/60 shadow-xs">
+            <CardHeader class="pb-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <Clock class="h-4 w-4" />
+                        </div>
+                        <div>
+                            <CardTitle class="text-base font-medium">Recent Backups</CardTitle>
+                            <CardDescription>History of snapshots created on this device.</CardDescription>
+                        </div>
+                    </div>
+                    <Badge variant="outline" class="font-mono text-xs">
+                        {{ backups.length }} snapshot{{ backups.length === 1 ? '' : 's' }}
+                    </Badge>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <!-- Empty State -->
+                <div
+                    v-if="backups.length === 0"
+                    class="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 p-8 text-center"
+                >
+                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground mb-3">
+                        <FileArchive class="h-5 w-5" />
+                    </div>
+                    <p class="text-sm font-medium text-foreground">No backups found</p>
+                    <p class="text-xs text-muted-foreground mt-0.5 max-w-sm">
+                        Use the "Back up all vaults" button above to generate a complete safety archive of your markdown vault.
+                    </p>
+                </div>
+
+                <!-- Backups List -->
+                <div v-else class="space-y-3">
+                    <div
+                        v-for="record in backups"
+                        :key="record.uuid"
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-border/50 bg-muted/20 p-4 transition-colors hover:bg-muted/30"
+                    >
+                        <div class="space-y-1.5 min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-medium text-sm text-foreground">
+                                    {{ new Date(record.created_at).toLocaleString() }}
+                                </span>
+                                <Badge variant="secondary" class="text-xs">
+                                    {{
+                                        record.scope === 'all'
+                                            ? 'All vaults'
+                                            : record.vaults.join(', ')
+                                    }}
+                                </Badge>
+                                <Badge v-if="!record.exists" variant="destructive" class="text-xs">
+                                    Missing
+                                </Badge>
+                            </div>
+
+                            <p class="text-xs text-muted-foreground">
+                                {{ record.note_count }} notes &middot; {{ formatBytes(record.file_size) }}
+                            </p>
+
+                            <p class="font-mono text-[11px] text-muted-foreground/80 truncate break-all">
+                                {{ record.path }}
+                            </p>
+                        </div>
+
+                        <div class="shrink-0 self-end sm:self-center">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                :disabled="!record.exists"
+                                class="gap-1.5"
+                                @click="restoreBackup(record)"
+                            >
+                                <RotateCcw class="h-3.5 w-3.5" />
+                                <span>Restore…</span>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        <!-- Restore Backup Modal -->
         <RestoreBackupDialog v-model:open="dialogOpen" :path="dialogPath" />
 
-        <div class="space-y-4">
-            <Heading
-                variant="small"
-                title="Reset database"
-                description="Clear MDVault's list of vaults and notes so you can restore a backup from scratch. Files on disk are never deleted."
-            />
-
-            <ResetDatabaseDialog />
-        </div>
+        <!-- Danger Zone: Reset Database -->
+        <Card class="border-destructive/30 bg-destructive/[0.02] shadow-xs">
+            <CardHeader class="pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+                        <Trash2 class="h-4 w-4" />
+                    </div>
+                    <div>
+                        <CardTitle class="text-base font-medium text-destructive">Reset Database</CardTitle>
+                        <CardDescription>
+                            Clear MDVault's internal registry of vaults and notes so you can restore a backup from scratch. Files on disk are never deleted.
+                        </CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <ResetDatabaseDialog />
+            </CardContent>
+        </Card>
     </div>
 </template>

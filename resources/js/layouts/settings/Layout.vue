@@ -8,9 +8,6 @@ import {
     ShieldCheck,
     SlidersHorizontal,
 } from '@lucide/vue';
-import Heading from '@/components/Heading.vue';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/settings/appearance';
@@ -58,43 +55,94 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <div class="px-4 py-6">
-        <Heading
-            title="Settings"
-            description="Manage application preferences"
-        />
-
-        <div class="flex flex-col lg:flex-row lg:space-x-12">
-            <aside class="w-full max-w-xl lg:w-48">
-                <nav
-                    class="flex flex-col space-y-1 space-x-0"
-                    aria-label="Settings"
+    <div class="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-8">
+        <!-- Settings Page Header -->
+        <header class="mb-8 border-b border-border/50 pb-6">
+            <div class="flex items-center gap-3">
+                <div
+                    class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-2xs"
                 >
-                    <Button
-                        v-for="item in sidebarNavItems"
-                        :key="toUrl(item.href)"
-                        variant="ghost"
-                        :class="[
-                            'w-full justify-start',
-                            { 'bg-muted': isCurrentOrParentUrl(item.href) },
-                        ]"
-                        as-child
+                    <SlidersHorizontal class="h-5 w-5" />
+                </div>
+                <div>
+                    <h1 class="text-2xl font-semibold tracking-tight">
+                        Settings
+                    </h1>
+                    <p class="text-sm text-muted-foreground">
+                        Manage your vault preferences, editor typography, and storage configurations.
+                    </p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mobile Navigation (Horizontal Scrollable Pills) -->
+        <div class="mb-6 lg:hidden">
+            <nav
+                class="flex gap-1.5 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1.5 no-scrollbar"
+                aria-label="Settings mobile"
+            >
+                <Link
+                    v-for="item in sidebarNavItems"
+                    :key="toUrl(item.href)"
+                    :href="item.href"
+                    :class="[
+                        'flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150',
+                        isCurrentOrParentUrl(item.href)
+                            ? 'bg-background text-foreground shadow-2xs border border-border/80'
+                            : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
+                    ]"
+                >
+                    <component :is="item.icon" class="h-3.5 w-3.5" />
+                    <span>{{ item.title }}</span>
+                </Link>
+            </nav>
+        </div>
+
+        <!-- Desktop Navigation & Content Grid -->
+        <div class="flex flex-col lg:flex-row lg:items-start lg:gap-10">
+            <!-- Desktop Sidebar Rail -->
+            <aside class="hidden lg:block lg:w-60 lg:shrink-0">
+                <div class="sticky top-6 space-y-4">
+                    <p class="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                        Preferences
+                    </p>
+                    <nav
+                        class="flex flex-col space-y-1"
+                        aria-label="Settings navigation"
                     >
-                        <Link :href="item.href">
-                            <component :is="item.icon" class="h-4 w-4" />
-                            {{ item.title }}
+                        <Link
+                            v-for="item in sidebarNavItems"
+                            :key="toUrl(item.href)"
+                            :href="item.href"
+                            :class="[
+                                'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
+                                isCurrentOrParentUrl(item.href)
+                                    ? 'bg-accent text-accent-foreground shadow-2xs font-semibold'
+                                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                            ]"
+                        >
+                            <div
+                                :class="[
+                                    'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
+                                    isCurrentOrParentUrl(item.href)
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-muted-foreground group-hover:text-foreground',
+                                ]"
+                            >
+                                <component :is="item.icon" class="h-4 w-4" />
+                            </div>
+                            <span>{{ item.title }}</span>
                         </Link>
-                    </Button>
-                </nav>
+                    </nav>
+                </div>
             </aside>
 
-            <Separator class="my-6 lg:hidden" />
-
-            <div class="flex-1 md:max-w-2xl">
-                <section class="max-w-xl space-y-12">
+            <!-- Main Settings Content Area -->
+            <main class="flex-1 min-w-0 max-w-3xl">
+                <section class="space-y-8">
                     <slot />
                 </section>
-            </div>
+            </main>
         </div>
     </div>
 </template>
