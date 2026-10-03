@@ -26,6 +26,7 @@ export type RawSaveResult =
     | { kind: 'network' };
 
 const GENERIC_ERROR_MESSAGE = "MDVault couldn't save this note.";
+const LOCKED_ERROR_MESSAGE = 'This vault is locked. Unlock it to keep editing.';
 const NETWORK_ERROR_MESSAGE =
     "MDVault couldn't reach its local server. Your text is still here.";
 
@@ -77,7 +78,7 @@ function firstMessage(
 /**
  * Maps a raw `useHttp` result to the `noteSaver` `SaveOutcome` it expects
  * (ADR `note-save-atomic-replace`'s save-response contract): 200 -> `saved`;
- * 409 -> `conflict` (parsed from the JSON body, whether or not `useHttp`
+ * 423 -> `error` (the vault is locked); 409 -> `conflict` (parsed from the JSON body, whether or not `useHttp`
  * has already parsed it); 422 -> `error` with the first validation message
  * (this covers both the "too large" and the "not editable" / invalid-
  * encoding cases — both are plain field errors on `content`); any other
@@ -99,6 +100,12 @@ export function mapSaveResult(result: RawSaveResult): SaveOutcome {
             return { kind: 'error', message: firstMessage(result.errors) };
 
         case 'httpException': {
+            if (result.status === 423) {
+                // The vault was locked (idle, screen lock or locked elsewhere):
+                // the text stays in the editor, nothing was written.
+                return { kind: 'error', message: LOCKED_ERROR_MESSAGE };
+            }
+
             if (result.status === 409) {
                 const body = parseConflictBody(result.data);
 

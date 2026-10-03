@@ -22,6 +22,7 @@ final readonly class ReconcilePlan
      * @param  list<array<string, mixed>>  $inserts
      * @param  list<string>  $directories
      * @param  list<string>  $orphans  vault-relative paths of `.mdvault-save-*` files older than the orphan threshold
+     * @param  list<string>  $unencryptedFiles  encrypted vaults only: readable `.md` files that were not indexed
      */
     public function __construct(
         public array $snapshot,
@@ -34,5 +35,6 @@ final readonly class ReconcilePlan
         public int $skipped,
         public array $directories,
         public array $orphans,
+        public array $unencryptedFiles = [],
     ) {}
 }

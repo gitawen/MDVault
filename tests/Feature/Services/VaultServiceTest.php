@@ -598,7 +598,7 @@ test('present: has no id and the exact keys', function () {
 
     expect($presented)->not->toHaveKey('id')
         ->and(array_keys($presented))->toEqualCanonicalizing([
-            'uuid', 'name', 'description', 'path', 'relative_path', 'status', 'is_current', 'is_encrypted',
+            'uuid', 'name', 'description', 'path', 'relative_path', 'status', 'is_current', 'is_encrypted', 'is_unlocked',
         ]);
 });
 

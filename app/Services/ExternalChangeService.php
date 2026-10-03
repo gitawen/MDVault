@@ -20,6 +20,7 @@ final class ExternalChangeService
         private readonly VaultService $vaults,
         private readonly VaultIndexService $index,
         private readonly SettingsService $settings,
+        private readonly EncryptedNoteService $encrypted,
     ) {}
 
     /**
@@ -77,10 +78,21 @@ final class ExternalChangeService
      */
     private function openNoteState(Vault $vault, string $uuid): array
     {
-        $note = $vault->notes()->where('uuid', $uuid)->first(['uuid', 'relative_path', 'file_hash']);
+        $note = $vault->notes()->where('uuid', $uuid)->first(['id', 'vault_id', 'uuid', 'relative_path', 'file_hash']);
 
         if ($note === null) {
             return ['uuid' => $uuid, 'exists' => false, 'relative_path' => null, 'file_hash' => null];
+        }
+
+        if ($vault->is_encrypted) {
+            // The on-disk path is opaque: report the logical path only while
+            // the vault is unlocked (this check never touches the idle timer).
+            return [
+                'uuid' => $note->uuid,
+                'exists' => true,
+                'relative_path' => $this->encrypted->logicalPathFor($vault, $note),
+                'file_hash' => $note->file_hash,
+            ];
         }
 
         return [

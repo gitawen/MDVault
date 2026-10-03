@@ -51,3 +51,6 @@
 
     `vault_encryption` must reference `vaults` with an explicit delete policy, and `resetRegistry()` must be updated to match.
   - Optional later: a "Back up, then reset" combined action.
+
+## Amendment (Phase 7, 2026-10-03)
+- Follow-up resolved with option (a): the key file lives in the vault folder (ADR `encrypted-vault-storage-layout`); `resetRegistry()` deletes `vault_encryption` rows first.

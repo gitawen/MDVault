@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 
 test('the schema keeps only framework tables', function (string $table) {
     expect(Schema::hasTable($table))->toBeTrue();
-})->with(['sessions', 'cache', 'jobs', 'settings', 'vaults', 'notes', 'backups']);
+})->with(['sessions', 'cache', 'jobs', 'settings', 'vaults', 'notes', 'backups', 'vault_encryption']);
 
 test('the schema has no authentication tables', function (string $table) {
     expect(Schema::hasTable($table))->toBeFalse();
@@ -39,6 +39,17 @@ test('the backups table has the expected columns', function () {
     ]))->toBeTrue();
 });
 
+test('the vault_encryption table has the expected columns and holds no secrets or content', function () {
+    expect(Schema::hasColumns('vault_encryption', [
+        'id', 'vault_id', 'key_id', 'key_version', 'algorithm', 'kdf_algorithm',
+        'kdf_opslimit', 'kdf_memlimit', 'salt', 'nonce', 'encrypted_key',
+        'format_version', 'header_hash', 'created_at', 'updated_at',
+    ]))->toBeTrue();
+
+    expect(Schema::getColumnListing('vault_encryption'))
+        ->not->toContain('password', 'content', 'key', 'data_key');
+});
+
 test('later-phase tables do not exist yet', function (string $table) {
     expect(Schema::hasTable($table))->toBeFalse();
-})->with(['vault_encryption']);
+})->with(['folders', 'sync_devices', 'remote_accounts']);

@@ -10,4 +10,5 @@ test('every settings page renders its component', function (string $routeName, s
     ['settings.storage.edit', 'settings/Storage'],
     ['settings.editor.edit', 'settings/Editor'],
     ['settings.appearance.edit', 'settings/Appearance'],
+    ['settings.security.edit', 'settings/Security'],
 ]);

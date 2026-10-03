@@ -46,3 +46,12 @@ It is the working proof of the layering and the runtime evidence for "SQLite dat
 - **Negative / trade-offs**: `app/Services/` starts with a single class; the Master Plan's service list only materialises phase by phase. Arch tests need occasional `ignoring()` entries, and each must be justified in the phase's `implementation.md`.
 - **Follow-ups**: Phase 1 adds `SettingsService` and `StoragePathService`, and probably the first contract (a platform path resolver using NativePHP's `documents` disk / `NATIVEPHP_DOCUMENTS_PATH` when running natively).
   - Phase 6: `ZipArchive` only in `ArchiveService`; `BackupService` uses no raw filesystem functions.
+
+## Amendment (Phase 7, 2026-10-03; confirmed at Level 4 sign-off)
+- `sodium_*` calls only in `EncryptionService` (and `VaultKey` for `sodium_memzero`). Arch-enforced by prefix across `app`, `bootstrap`, `config`, `database` and `routes`; `->material(` is allowed only in `EncryptionService`.
+- Plaintext and encrypted note storage use **delegation, not an interface**: `NoteService` checks `is_encrypted` at the entry of each vault-scoped method and delegates to `EncryptedNoteService`. The public `NoteService` API stays the single entry point for controllers, so no `app/Contracts` interface was introduced (convention 4's example is answered this way).
+- Small services split out to break constructor cycles, with the original methods kept as delegates:
+  - `EncryptionHeaderService` (key file read, `inspect`, `headerAt`, `adopt`, `syncMirror`), because `VaultService` and `VaultEncryptionService` would otherwise depend on each other;
+  - `VaultRecoveryService` (crash recovery and the conversion lock), because `VaultService` must call recovery and `VaultEncryptionService` depends on `VaultService`.
+- `VaultKeyService` and `EncryptedNoteService` are bound **`scoped`** (one instance per request): they hold request state (the tokens supplied, opened keys, the decrypted name memo) that must never outlive the request. They are not singletons.
+- `EncryptionService`, `VaultKeyService`, `VaultConversionService` and `VaultRecoveryService` may not log or dump. Conversion failures are reported only through a generic exception with no bindings. `App\Services`, `App\Http` and `App\Support` may not use the `File` facade.

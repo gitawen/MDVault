@@ -6,6 +6,7 @@ use App\Http\Controllers\Settings\BackupRestoreController;
 use App\Http\Controllers\Settings\DatabaseResetController;
 use App\Http\Controllers\Settings\EditorController;
 use App\Http\Controllers\Settings\GeneralController;
+use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\StorageController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,3 +32,6 @@ Route::post('settings/backup/restore/browse', [BackupRestoreController::class, '
 Route::post('settings/backup/restore/inspect', [BackupRestoreController::class, 'inspect'])->name('settings.backup.restore.inspect');
 Route::post('settings/backup/restore', [BackupRestoreController::class, 'store'])->name('settings.backup.restore.store');
 Route::delete('settings/backup/database', [DatabaseResetController::class, 'destroy'])->name('settings.backup.database.destroy');
+
+Route::get('settings/security', [SecurityController::class, 'edit'])->name('settings.security.edit');
+Route::patch('settings/security', [SecurityController::class, 'update'])->name('settings.security.update');

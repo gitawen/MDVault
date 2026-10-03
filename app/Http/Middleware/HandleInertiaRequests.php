@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\SettingKey;
+use App\Services\SettingsService;
 use App\Services\VaultService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -10,6 +12,7 @@ class HandleInertiaRequests extends Middleware
 {
     public function __construct(
         private readonly VaultService $vaults,
+        private readonly SettingsService $settings,
     ) {}
 
     /**
@@ -45,6 +48,10 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'vaults' => fn () => $this->vaults->summaries(),
+            'security' => fn () => [
+                'auto_lock_minutes' => $this->settings->integer(SettingKey::SecurityAutoLockMinutes),
+                'lock_on_screen_lock' => $this->settings->boolean(SettingKey::SecurityLockOnScreenLock),
+            ],
         ];
     }
 }

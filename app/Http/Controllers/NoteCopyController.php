@@ -29,10 +29,21 @@ class NoteCopyController extends Controller
             throw ValidationException::withMessages([$e->field() => $e->getMessage()]);
         }
 
+        // An encrypted note's own title and path are opaque; the client gets
+        // the logical ones (this JSON is never persisted).
+        $title = $copy->title;
+        $path = $copy->relative_path;
+
+        if ($vault->is_encrypted) {
+            $presented = $notes->present($copy);
+            $title = $presented['title'];
+            $path = $presented['relative_path'];
+        }
+
         return response()->json([
             'uuid' => $copy->uuid,
-            'title' => $copy->title,
-            'relative_path' => $copy->relative_path,
+            'title' => $title,
+            'relative_path' => $path,
         ], 201);
     }
 }

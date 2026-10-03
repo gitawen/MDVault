@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useForm, useHttp } from '@inertiajs/vue3';
+import { Lock } from '@lucide/vue';
 import { computed, reactive, ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -200,10 +202,28 @@ function close(): void {
                             class="space-y-2 rounded-md border p-3"
                         >
                             <div>
-                                <p class="font-medium">{{ vault.name }}</p>
+                                <p class="flex items-center gap-2 font-medium">
+                                    {{ vault.name }}
+                                    <Badge
+                                        v-if="vault.is_encrypted"
+                                        variant="outline"
+                                        class="gap-1"
+                                    >
+                                        <Lock class="size-3.5" />
+                                        Encrypted
+                                    </Badge>
+                                </p>
                                 <p class="text-xs text-muted-foreground">
                                     {{ vault.note_count }} note(s),
                                     {{ formatBytes(vault.total_bytes) }}
+                                </p>
+                                <p
+                                    v-if="vault.is_encrypted"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    You'll need its password. It is restored
+                                    locked, and opens with the password it had
+                                    when the backup was made.
                                 </p>
                             </div>
 

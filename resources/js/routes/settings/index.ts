@@ -4,6 +4,7 @@ import storage from './storage'
 import editor from './editor'
 import appearance from './appearance'
 import backup from './backup'
+import security from './security'
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
  * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
@@ -199,6 +200,7 @@ storage: Object.assign(storage, storage),
 editor: Object.assign(editor, editor),
 appearance: Object.assign(appearance, appearance),
 backup: Object.assign(backup, backup),
+security: Object.assign(security, security),
 }
 
 export default settings

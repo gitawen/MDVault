@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\VaultRecoveryService;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Window;
 
@@ -20,6 +21,21 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->minWidth(960)
             ->minHeight(600)
             ->rememberState();
+
+        $this->recoverInterruptedConversions();
+    }
+
+    /**
+     * Repairs any vault conversion a crash interrupted (ADR
+     * `vault-encryption-conversion`). A failure is reported and never fatal.
+     */
+    private function recoverInterruptedConversions(): void
+    {
+        try {
+            app(VaultRecoveryService::class)->recoverAll();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**

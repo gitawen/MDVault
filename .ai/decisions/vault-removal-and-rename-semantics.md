@@ -104,3 +104,6 @@
 |---|---|
 | 2026-09-27 | Initial: unregister by default plus optional OS trash; rename is display name only. |
 | 2026-09-27 | User reversed C2: rename also renames the folder on disk (checks → rename → check → DB, rename-back compensation). The Revision 1 rename decision is superseded. Plan `phase-2-vault-management` Revision 2 (§8). |
+
+## Amendment (Phase 7, 2026-10-03)
+- Decision → Remove, amended by ADR `vault-encryption-conversion` (E7): `deleteStagingDirectory()` also accepts `.mdvault-encrypt-`, `.mdvault-decrypt-` and `.mdvault-original-` folders; after a committed conversion the replaced original is deleted permanently.

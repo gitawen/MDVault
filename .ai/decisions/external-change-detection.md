@@ -75,3 +75,6 @@
   - Phase 7: detection over encrypted names.
   - Phase 8: confirm packaged-app behaviour (focus and visibility events in Electron).
   - Vault disappearing while the editor is dirty re-prompts the unsaved-changes dialog on each check (F1 in the Phase 5 analyst review); skip the full reload while dirty in a later phase.
+
+## Amendment (Phase 7, 2026-10-03)
+- Follow-up resolved: detection on encrypted vaults works on ciphertext without the key.

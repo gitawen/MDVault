@@ -38,6 +38,7 @@ final class NoteService
         private readonly MarkdownService $markdown,
         private readonly SettingsService $settings,
         private readonly DatabaseManager $database,
+        private readonly EncryptedNoteService $encrypted,
     ) {}
 
     /**
@@ -61,16 +62,8 @@ final class NoteService
     public function assertValidFolderName(string $name): void
     {
         try {
-            $this->paths->assertValidFolderName($name);
+            $this->paths->assertValidNoteSegment($name);
         } catch (InvalidStorageRootException) {
-            throw NoteOperationException::invalidName();
-        }
-
-        if (str_starts_with($name, '.')) {
-            throw NoteOperationException::invalidName();
-        }
-
-        if (strcasecmp($name, 'node_modules') === 0) {
             throw NoteOperationException::invalidName();
         }
     }
@@ -88,6 +81,10 @@ final class NoteService
      */
     public function create(Vault $vault, ?string $folder, string $name, ?string $timezone = null): Note
     {
+        if ($vault->is_encrypted) {
+            return $this->encrypted->create($vault, $folder, $name, $timezone);
+        }
+
         $this->assertVaultAvailable($vault);
         $stem = $this->assertValidNoteName($name);
         [$folderRel] = $this->resolveFolder($vault, $folder, 'folder');
@@ -174,6 +171,10 @@ final class NoteService
      */
     public function createCopy(Vault $vault, string $sourcePath, string $content, NoteSaveMode $mode, ?FrontmatterEdit $frontmatter): Note
     {
+        if ($vault->is_encrypted) {
+            return $this->encrypted->createCopy($vault, $sourcePath, $content, $mode, $frontmatter);
+        }
+
         $this->assertVaultAvailable($vault);
 
         if (
@@ -277,6 +278,10 @@ final class NoteService
      */
     public function rename(Note $note, string $name): Note
     {
+        if ($note->vault->is_encrypted) {
+            return $this->encrypted->rename($note, $name);
+        }
+
         $stem = $this->assertValidNoteName($name);
         $currentFolder = $this->parentFolder($note->relative_path);
         [$folderRel] = $this->resolveFolder($note->vault, $currentFolder, 'name');
@@ -289,6 +294,10 @@ final class NoteService
      */
     public function move(Note $note, ?string $folder): Note
     {
+        if ($note->vault->is_encrypted) {
+            return $this->encrypted->move($note, $folder);
+        }
+
         [$folderRel] = $this->resolveFolder($note->vault, $folder, 'folder');
 
         return $this->relocate($note, $folderRel, $note->filename, 'folder');
@@ -301,6 +310,10 @@ final class NoteService
      */
     public function delete(Note $note): bool
     {
+        if ($note->vault->is_encrypted) {
+            return $this->encrypted->delete($note);
+        }
+
         $this->assertVaultAvailable($note->vault);
         $absolute = $this->absolutePath($note);
 
@@ -338,6 +351,10 @@ final class NoteService
      */
     public function createFolder(Vault $vault, ?string $parent, string $name): string
     {
+        if ($vault->is_encrypted) {
+            return $this->encrypted->createFolder($vault, $parent, $name);
+        }
+
         $this->assertVaultAvailable($vault);
         $this->assertValidFolderName($name);
         [$parentRel] = $this->resolveFolder($vault, $parent, 'parent');
@@ -361,6 +378,12 @@ final class NoteService
      */
     public function deleteFolder(Vault $vault, string $path): void
     {
+        if ($vault->is_encrypted) {
+            $this->encrypted->deleteFolder($vault, $path);
+
+            return;
+        }
+
         $this->assertVaultAvailable($vault);
         [$relative, $absolute] = $this->resolveFolder($vault, $path, 'path');
 
@@ -394,6 +417,10 @@ final class NoteService
      */
     public function preview(Note $note): array
     {
+        if ($note->vault->is_encrypted) {
+            return $this->encrypted->preview($note);
+        }
+
         $absolute = $this->absolutePath($note);
 
         if (! $this->files->isFile($absolute)) {
@@ -468,6 +495,10 @@ final class NoteService
      */
     public function save(Note $note, string $content, string $baseHash, NoteSaveMode $mode, ?FrontmatterEdit $frontmatter = null): NoteSaveResult
     {
+        if ($note->vault->is_encrypted) {
+            return $this->encrypted->save($note, $content, $baseHash, $mode, $frontmatter);
+        }
+
         $this->assertVaultAvailable($note->vault);
         $absolute = $this->absolutePath($note);
 
@@ -582,6 +613,10 @@ final class NoteService
      */
     public function present(Note $note): array
     {
+        if ($note->vault->is_encrypted) {
+            return $this->encrypted->present($note);
+        }
+
         return [
             'uuid' => $note->uuid,
             'title' => $note->title,

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property int $id
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  * @property-read Collection<int, Note> $notes
+ * @property-read ?VaultEncryption $encryption
  */
 class Vault extends Model
 {
@@ -73,5 +75,13 @@ class Vault extends Model
     public function notes(): HasMany
     {
         return $this->hasMany(Note::class);
+    }
+
+    /**
+     * @return HasOne<VaultEncryption, $this>
+     */
+    public function encryption(): HasOne
+    {
+        return $this->hasOne(VaultEncryption::class);
     }
 }

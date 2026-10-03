@@ -69,6 +69,11 @@ final class VaultOperationException extends \RuntimeException
         return new self("The vault folder can't be found at {$path}. Reconnect the drive or remove the vault.", $field);
     }
 
+    public static function damagedEncryptionHeader(string $field): self
+    {
+        return new self("This folder looks like an encrypted MDVault vault, but its key file is damaged, so it can't be added. Restore the key file from a backup of this vault.", $field);
+    }
+
     public static function notAbsolute(): self
     {
         return new self('Enter a full (absolute) folder path.', 'path');

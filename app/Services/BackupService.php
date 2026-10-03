@@ -7,6 +7,7 @@ use App\Enums\IndexMode;
 use App\Enums\RestoreAction;
 use App\Enums\VaultStatus;
 use App\Exceptions\BackupException;
+use App\Exceptions\EncryptionException;
 use App\Exceptions\InvalidStorageRootException;
 use App\Exceptions\NoteOperationException;
 use App\Models\Backup;
@@ -14,6 +15,7 @@ use App\Models\Note;
 use App\Models\Vault;
 use App\Support\BackupInspection;
 use App\Support\BackupResult;
+use App\Support\EncryptionHeader;
 use App\Support\RestoreResult;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\DatabaseManager;
@@ -33,7 +35,11 @@ final class BackupService
 
     public const FORMAT = 'mdvault-backup';
 
-    public const FORMAT_VERSION = 1;
+    /**
+     * Format 2 (Phase 7, ADR `encrypted-vault-backups`) adds encrypted
+     * vaults, copied as ciphertext. The reader still accepts format 1.
+     */
+    public const FORMAT_VERSION = 2;
 
     public const DATABASE_VERSION = 1;
 
@@ -138,6 +144,9 @@ final class BackupService
         private readonly StoragePathService $paths,
         private readonly DatabaseManager $database,
         private readonly Repository $config,
+        private readonly EncryptionService $encryption,
+        private readonly EncryptionHeaderService $headers,
+        private readonly VaultEncryptionService $vaultEncryption,
         /**
          * Defaults to `AGGREGATE_RATIO_ALLOWANCE_BYTES` so the container
          * resolves normal production behaviour with no wiring. Exists as a
@@ -229,9 +238,32 @@ final class BackupService
                 throw BackupException::vaultBusy($selectedVault->name);
             }
 
+            $encryptionInfo = null;
+
+            if ($selectedVault->is_encrypted) {
+                // The key file travels in the archive; recreate it from the
+                // registry mirror if it is missing. No password is needed.
+                try {
+                    $this->vaultEncryption->ensureHeaderOnDisk($selectedVault);
+                    $encryptionInfo = $this->headers->headerAt($selectedVault->path);
+                } catch (EncryptionException) {
+                    $encryptionInfo = null;
+                }
+
+                if ($encryptionInfo === null) {
+                    if ($vault !== null) {
+                        throw BackupException::encryptedKeyUnavailable($selectedVault->name);
+                    }
+
+                    $skipped[] = $selectedVault->name;
+
+                    continue;
+                }
+            }
+
             $scan = $this->files->scan(
                 $selectedVault->path,
-                fn (string $relative, string $name, bool $isDir): bool => ! $this->index->isIgnoredName($name, $isDir),
+                fn (string $relative, string $name, bool $isDir): bool => $this->acceptsInBackup($selectedVault, $relative, $name, $isDir),
             );
 
             if ($scan['unreadable'] !== []) {
@@ -259,7 +291,7 @@ final class BackupService
                     throw BackupException::unreadable($selectedVault->name, [$relativePath]);
                 }
 
-                if ($this->index->isIndexableFileName(basename($relativePath))) {
+                if ($this->index->isIndexableFor($selectedVault, basename($relativePath))) {
                     $row = $rows->get($relativePath);
 
                     if ($row === null) {
@@ -300,8 +332,14 @@ final class BackupService
                 'uuid' => $selectedVault->uuid,
                 'name' => $selectedVault->name,
                 'description' => $selectedVault->description,
-                'is_encrypted' => false,
-                'encryption' => null,
+                'is_encrypted' => $encryptionInfo !== null,
+                'encryption' => $encryptionInfo === null ? null : [
+                    'format' => 'mdvault-encrypted-vault',
+                    'format_version' => EncryptionService::FORMAT_VERSION,
+                    'key_id' => $encryptionInfo->keyId,
+                    'cipher' => EncryptionService::CIPHER,
+                    'kdf' => EncryptionService::KDF_ALGORITHM,
+                ],
                 'archive_path' => self::VAULTS_PREFIX.$selectedVault->name,
                 'created_at' => $selectedVault->created_at->toIso8601ZuluString(),
                 'directories' => $scan['directories'],
@@ -477,6 +515,32 @@ final class BackupService
     }
 
     /**
+     * Whether the backup scan includes an entry. Plaintext vaults skip
+     * hidden entries as before. An encrypted vault contributes only its own
+     * files (`<id>.mdenc` notes, hex folders with their `folder.mdenc`, and
+     * the key file): a plaintext file someone dropped in is never copied
+     * into the archive (ADR `encrypted-vault-backups`).
+     */
+    private function acceptsInBackup(Vault $vault, string $relative, string $name, bool $isDir): bool
+    {
+        if ($this->index->isIgnoredName($name, $isDir)) {
+            return false;
+        }
+
+        if (! $vault->is_encrypted) {
+            return true;
+        }
+
+        if ($isDir) {
+            return $this->index->encryptedFolderDirectories([$relative]) !== [];
+        }
+
+        return $this->index->isEncryptedNotePath($relative)
+            || $relative === EncryptionHeaderService::HEADER_FILENAME
+            || ($name === EncryptedNoteService::FOLDER_NAME_FILE && $this->index->encryptedFolderDirectories([$this->parentDirectoryOf($relative)]) !== []);
+    }
+
+    /**
      * @return array{0: list<Vault>, 1: list<string>}
      *
      * @throws BackupException
@@ -490,10 +554,6 @@ final class BackupService
                 throw BackupException::vaultMissing($vault->name);
             }
 
-            if ($vault->is_encrypted) {
-                throw BackupException::encryptedNotSupported($vault->name);
-            }
-
             return [[$vault], []];
         }
 
@@ -501,7 +561,7 @@ final class BackupService
         $skipped = [];
 
         foreach ($this->vaults->all() as $candidate) {
-            if ($candidate->status === VaultStatus::Missing || $candidate->is_encrypted) {
+            if ($candidate->status === VaultStatus::Missing) {
                 $skipped[] = $candidate->name;
 
                 continue;
@@ -546,6 +606,12 @@ final class BackupService
         $entriesByName = [];
 
         foreach ($entries as $entry) {
+            if (isset($entriesByName[$entry['name']])) {
+                $problems[] = "\u{201c}{$entry['name']}\u{201d} appears more than once in the archive.";
+
+                continue;
+            }
+
             $entriesByName[$entry['name']] = $entry;
 
             if ($entry['is_symlink']) {
@@ -732,9 +798,19 @@ final class BackupService
             $isEncrypted = $vaultData['is_encrypted'] ?? null;
             $hasEncryptionKey = array_key_exists('encryption', $vaultData);
             $encryptionValue = $hasEncryptionKey ? $vaultData['encryption'] : 'missing';
+            $encryptedVault = false;
+            $manifestKeyId = null;
 
-            if ($isEncrypted !== false || $encryptionValue !== null) {
-                $problems[] = "\u{201c}{$name}\u{201d} is encrypted, which this version of MDVault can't restore.";
+            if ($formatVersion >= 2 && $isEncrypted === true) {
+                $manifestKeyId = $this->encryptionKeyId($encryptionValue);
+
+                if ($manifestKeyId === null) {
+                    $problems[] = "\u{201c}{$name}\u{201d} has invalid encryption details.";
+                } else {
+                    $encryptedVault = true;
+                }
+            } elseif ($isEncrypted !== false || $encryptionValue !== null) {
+                $problems[] = "\u{201c}{$name}\u{201d} is encrypted, which this backup format can't restore.";
             }
 
             $allowedDirEntries[self::VAULTS_PREFIX."{$name}/"] = true;
@@ -759,6 +835,10 @@ final class BackupService
                 }
 
                 $dirProblem = $this->relativePathProblem($directory);
+
+                if ($dirProblem === null && $encryptedVault && ! $this->isEncryptedFolderPath($directory)) {
+                    $dirProblem = "“{$name}/{$directory}” isn't a folder an encrypted vault can contain.";
+                }
 
                 if ($dirProblem !== null) {
                     $problems[] = $dirProblem;
@@ -788,7 +868,7 @@ final class BackupService
             $normalizedFiles = [];
 
             foreach ($notes as $noteData) {
-                $parsed = $this->parseRegistryEntry($noteData, isNote: true);
+                $parsed = $this->parseRegistryEntry($noteData, isNote: true, encrypted: $encryptedVault);
 
                 if ($parsed['problem'] !== null) {
                     $problems[] = $parsed['problem'];
@@ -806,6 +886,12 @@ final class BackupService
                 }
 
                 $vaultPaths[$pathKey] = true;
+
+                if ($encryptedVault && ! $this->index->isEncryptedNotePath($relativePath)) {
+                    $problems[] = "“{$name}/{$relativePath}” isn't a note an encrypted vault can contain.";
+
+                    continue;
+                }
 
                 if (isset($seenNoteUuids[$parsed['uuid']])) {
                     $problems[] = "The note UUID \u{201c}{$parsed['uuid']}\u{201d} appears more than once in the manifest.";
@@ -859,6 +945,18 @@ final class BackupService
 
                 $parentDir = $this->parentDirectoryOf($relativePath);
 
+                if ($encryptedVault && ! $this->isEncryptedVaultSupportFile($relativePath, $parentDir)) {
+                    $problems[] = "\u{201c}{$name}/{$relativePath}\u{201d} isn't a file an encrypted vault can contain.";
+
+                    continue;
+                }
+
+                if (! $encryptedVault && $this->isEncryptionArtifact($relativePath)) {
+                    $problems[] = "\u{201c}{$name}/{$relativePath}\u{201d} is an encryption file, but this vault isn't encrypted.";
+
+                    continue;
+                }
+
                 if (! isset($declaredDirs[$parentDir])) {
                     $problems[] = "\u{201c}{$name}/{$relativePath}\u{201d}'s folder isn't listed in the manifest.";
 
@@ -876,10 +974,23 @@ final class BackupService
                 $totalBytes += $parsed['file_size'];
             }
 
+            $encryptionDetails = null;
+
+            if ($manifestKeyId !== null) {
+                $keyProblem = null;
+                $encryptionDetails = $this->readArchivedKeyFile($archive, $name, $manifestKeyId, $normalizedFiles, $keyProblem);
+
+                if ($encryptionDetails === null) {
+                    $problems[] = $keyProblem ?? "“{$name}”'s key file is missing or damaged.";
+                }
+            }
+
             $normalizedVaults[] = [
                 'uuid' => is_string($uuid) ? $uuid : '',
                 'name' => $name,
                 'description' => $description,
+                'is_encrypted' => $encryptedVault,
+                'encryption' => $encryptionDetails,
                 'archive_path' => self::VAULTS_PREFIX.$name,
                 'created_at' => $vaultCreatedAt,
                 'directories' => $normalizedDirectories,
@@ -1047,9 +1158,119 @@ final class BackupService
     }
 
     /**
+     * The `key_id` of a format-2 manifest's `encryption` object, or null
+     * when it isn't exactly the object MDVault writes: the same five keys
+     * with the supported format, cipher and KDF, and a UUID key id.
+     */
+    private function encryptionKeyId(mixed $encryption): ?string
+    {
+        if (! is_array($encryption) || array_is_list($encryption)) {
+            return null;
+        }
+
+        $keys = array_keys($encryption);
+        sort($keys);
+
+        if ($keys !== ['cipher', 'format', 'format_version', 'kdf', 'key_id']) {
+            return null;
+        }
+
+        $keyId = $encryption['key_id'];
+
+        if (
+            $encryption['format'] !== 'mdvault-encrypted-vault'
+            || $encryption['format_version'] !== EncryptionService::FORMAT_VERSION
+            || $encryption['cipher'] !== EncryptionService::CIPHER
+            || $encryption['kdf'] !== EncryptionService::KDF_ALGORITHM
+            || ! is_string($keyId)
+            || preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $keyId) !== 1
+        ) {
+            return null;
+        }
+
+        return $keyId;
+    }
+
+    /**
+     * A folder path an encrypted vault can contain: every segment a 32-hex id.
+     */
+    private function isEncryptedFolderPath(string $path): bool
+    {
+        return $this->index->encryptedFolderDirectories([$path]) !== [];
+    }
+
+    /**
+     * Files only an encrypted vault may contain (key file, `.mdenc` files).
+     */
+    private function isEncryptionArtifact(string $relativePath): bool
+    {
+        return strcasecmp(basename($relativePath), EncryptionHeaderService::HEADER_FILENAME) === 0
+            || str_ends_with(mb_strtolower($relativePath), '.mdenc');
+    }
+
+    /**
+     * The only non-note files an encrypted vault holds: its key file at the
+     * root and a `folder.mdenc` name file inside each folder.
+     */
+    private function isEncryptedVaultSupportFile(string $relativePath, string $parentDir): bool
+    {
+        return $relativePath === EncryptionHeaderService::HEADER_FILENAME
+            || (basename($relativePath) === EncryptedNoteService::FOLDER_NAME_FILE && $parentDir !== '' && $this->isEncryptedFolderPath($parentDir));
+    }
+
+    /**
+     * Reads and checks the key file an encrypted vault's archive entry
+     * carries: it must be listed, match its declared size and hash, parse as
+     * a key file (no password needed) and carry the manifest's `key_id`.
+     *
+     * @param  list<array<string, mixed>>  $normalizedFiles
+     * @return array{header: EncryptionHeader, header_hash: string, key_id: string}|null
+     */
+    private function readArchivedKeyFile(string $archive, string $vaultName, string $manifestKeyId, array $normalizedFiles, ?string &$problem): ?array
+    {
+        $listed = null;
+
+        foreach ($normalizedFiles as $file) {
+            if ($file['relative_path'] === EncryptionHeaderService::HEADER_FILENAME) {
+                $listed = $file;
+            }
+        }
+
+        if ($listed === null) {
+            $problem = "\u{201c}{$vaultName}\u{201d} is encrypted but its backup has no key file.";
+
+            return null;
+        }
+
+        $bytes = $this->archives->readEntry($archive, self::VAULTS_PREFIX.$vaultName.'/'.EncryptionHeaderService::HEADER_FILENAME, EncryptionService::MAX_HEADER_BYTES);
+
+        if ($bytes === null || strlen($bytes) !== $listed['file_size'] || ! hash_equals($listed['file_hash'], $this->hashes->hashString($bytes))) {
+            $problem = "\u{201c}{$vaultName}\u{201d}'s key file is damaged.";
+
+            return null;
+        }
+
+        try {
+            $header = $this->encryption->parseHeader($bytes);
+        } catch (EncryptionException) {
+            $problem = "\u{201c}{$vaultName}\u{201d}'s key file is damaged.";
+
+            return null;
+        }
+
+        if ($header->keyId !== $manifestKeyId) {
+            $problem = "\u{201c}{$vaultName}\u{201d}'s key file doesn't match its manifest.";
+
+            return null;
+        }
+
+        return ['header' => $header, 'header_hash' => $listed['file_hash'], 'key_id' => $header->keyId];
+    }
+
+    /**
      * @return array{problem: ?string, relative_path: ?string, file_size: ?int, file_hash: ?string, modified_at: ?int, uuid: ?string, created_at: ?string, updated_at: ?string}
      */
-    private function parseRegistryEntry(mixed $entry, bool $isNote): array
+    private function parseRegistryEntry(mixed $entry, bool $isNote, bool $encrypted = false): array
     {
         $empty = ['problem' => null, 'relative_path' => null, 'file_size' => null, 'file_hash' => null, 'modified_at' => null, 'uuid' => null, 'created_at' => null, 'updated_at' => null];
 
@@ -1069,7 +1290,7 @@ final class BackupService
             return [...$empty, 'relative_path' => $relativePath, 'problem' => $pathProblem];
         }
 
-        if ($isNote && ! str_ends_with(mb_strtolower($relativePath), '.md')) {
+        if ($isNote && ! str_ends_with(mb_strtolower($relativePath), $encrypted ? '.mdenc' : '.md')) {
             return [...$empty, 'relative_path' => $relativePath, 'problem' => "\u{201c}{$relativePath}\u{201d} isn't a Markdown note path."];
         }
 
@@ -1270,6 +1491,7 @@ final class BackupService
                 'uuid' => $vaultData['uuid'],
                 'name' => $vaultData['name'],
                 'description' => $vaultData['description'],
+                'is_encrypted' => $vaultData['is_encrypted'],
                 'note_count' => count($vaultData['notes']),
                 'file_count' => count($vaultData['files']),
                 'total_bytes' => $totalBytes,
@@ -1486,6 +1708,8 @@ final class BackupService
                 'vault_uuid' => $vaultUuid,
                 'name' => $name,
                 'description' => $vaultData['description'],
+                'is_encrypted' => $vaultData['is_encrypted'],
+                'encryption' => $vaultData['encryption'],
                 'created_at' => $vaultData['created_at'],
                 'directories' => $vaultData['directories'],
                 'archive_path' => $vaultData['archive_path'],
@@ -1540,7 +1764,7 @@ final class BackupService
                         'description' => $item['description'],
                         'path' => $staging.DIRECTORY_SEPARATOR.'v'.$i,
                         'relative_path' => $item['name'],
-                        'is_encrypted' => false,
+                        'is_encrypted' => $item['is_encrypted'],
                         'status' => VaultStatus::Active,
                         'created_at' => $item['created_at'] ?? now(),
                         'updated_at' => $item['created_at'] ?? now(),
@@ -1548,10 +1772,16 @@ final class BackupService
                     $vaultModel->timestamps = false;
                     $vaultModel->save();
 
+                    // An encrypted vault is restored locked: its key file travels
+                    // with it, and the mirror row is built from that file.
+                    if ($item['encryption'] !== null) {
+                        $this->headers->syncMirror($vaultModel, $item['encryption']['header'], $item['encryption']['header_hash']);
+                    }
+
                     $noteRows = [];
 
                     foreach ($item['notes'] as $note) {
-                        $attributes = $this->index->newNoteAttributes($note['relative_path'], $note['file_size'], $note['file_hash']);
+                        $attributes = $this->index->newNoteAttributes($note['relative_path'], $note['file_size'], $note['file_hash'], encrypted: $item['is_encrypted']);
                         $attributes['uuid'] = $note['uuid'];
                         $attributes['vault_id'] = $vaultModel->id;
                         $attributes['created_at'] = $note['created_at'] !== null ? Carbon::parse($note['created_at'])->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s');

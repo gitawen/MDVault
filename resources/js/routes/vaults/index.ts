@@ -1,5 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
 import existing from './existing'
+import encrypted from './encrypted'
+import encryption from './encryption'
 import notes from './notes'
 import folders from './folders'
 import changes from './changes'
@@ -449,6 +451,164 @@ open.post = (args: { vault: string | { uuid: string } } | [vault: string | { uui
     
     open.form = openForm
 /**
+* @see \App\Http\Controllers\VaultUnlockController::unlock
+ * @see app/Http/Controllers/VaultUnlockController.php:18
+ * @route '/vaults/{vault}/unlock'
+ */
+export const unlock = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: unlock.url(args, options),
+    method: 'post',
+})
+
+unlock.definition = {
+    methods: ["post"],
+    url: '/vaults/{vault}/unlock',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\VaultUnlockController::unlock
+ * @see app/Http/Controllers/VaultUnlockController.php:18
+ * @route '/vaults/{vault}/unlock'
+ */
+unlock.url = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { vault: args }
+    }
+
+            if (typeof args === 'object' && !Array.isArray(args) && 'uuid' in args) {
+            args = { vault: args.uuid }
+        }
+    
+    if (Array.isArray(args)) {
+        args = {
+                    vault: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        vault: typeof args.vault === 'object'
+                ? args.vault.uuid
+                : args.vault,
+                }
+
+    return unlock.definition.url
+            .replace('{vault}', parsedArgs.vault.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\VaultUnlockController::unlock
+ * @see app/Http/Controllers/VaultUnlockController.php:18
+ * @route '/vaults/{vault}/unlock'
+ */
+unlock.post = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: unlock.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\VaultUnlockController::unlock
+ * @see app/Http/Controllers/VaultUnlockController.php:18
+ * @route '/vaults/{vault}/unlock'
+ */
+    const unlockForm = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: unlock.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\VaultUnlockController::unlock
+ * @see app/Http/Controllers/VaultUnlockController.php:18
+ * @route '/vaults/{vault}/unlock'
+ */
+        unlockForm.post = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: unlock.url(args, options),
+            method: 'post',
+        })
+    
+    unlock.form = unlockForm
+/**
+* @see \App\Http\Controllers\VaultLockController::lock
+ * @see app/Http/Controllers/VaultLockController.php:17
+ * @route '/vaults/{vault}/lock'
+ */
+export const lock = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: lock.url(args, options),
+    method: 'post',
+})
+
+lock.definition = {
+    methods: ["post"],
+    url: '/vaults/{vault}/lock',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\VaultLockController::lock
+ * @see app/Http/Controllers/VaultLockController.php:17
+ * @route '/vaults/{vault}/lock'
+ */
+lock.url = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { vault: args }
+    }
+
+            if (typeof args === 'object' && !Array.isArray(args) && 'uuid' in args) {
+            args = { vault: args.uuid }
+        }
+    
+    if (Array.isArray(args)) {
+        args = {
+                    vault: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        vault: typeof args.vault === 'object'
+                ? args.vault.uuid
+                : args.vault,
+                }
+
+    return lock.definition.url
+            .replace('{vault}', parsedArgs.vault.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\VaultLockController::lock
+ * @see app/Http/Controllers/VaultLockController.php:17
+ * @route '/vaults/{vault}/lock'
+ */
+lock.post = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: lock.url(args, options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\VaultLockController::lock
+ * @see app/Http/Controllers/VaultLockController.php:17
+ * @route '/vaults/{vault}/lock'
+ */
+    const lockForm = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: lock.url(args, options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\VaultLockController::lock
+ * @see app/Http/Controllers/VaultLockController.php:17
+ * @route '/vaults/{vault}/lock'
+ */
+        lockForm.post = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: lock.url(args, options),
+            method: 'post',
+        })
+    
+    lock.form = lockForm
+/**
 * @see \App\Http\Controllers\VaultIndexController::__invoke
  * @see app/Http/Controllers/VaultIndexController.php:16
  * @route '/vaults/{vault}/reindex'
@@ -535,6 +695,10 @@ existing: Object.assign(existing, existing),
 update: Object.assign(update, update),
 destroy: Object.assign(destroy, destroy),
 open: Object.assign(open, open),
+encrypted: Object.assign(encrypted, encrypted),
+lock: Object.assign(lock, lock),
+unlock: Object.assign(unlock, unlock),
+encryption: Object.assign(encryption, encryption),
 notes: Object.assign(notes, notes),
 folders: Object.assign(folders, folders),
 reindex: Object.assign(reindex, reindex),

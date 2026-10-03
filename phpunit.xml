@@ -29,6 +29,9 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <env name="MDVAULT_KDF_OPSLIMIT" value="1"/>
+        <env name="MDVAULT_KDF_MEMLIMIT" value="8192"/>
+        <env name="MDVAULT_ALLOW_WEAK_KDF" value="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

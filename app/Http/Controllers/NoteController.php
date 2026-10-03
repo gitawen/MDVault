@@ -19,18 +19,25 @@ class NoteController extends Controller
     {
         $note = $this->attempt(fn (): Note => $notes->create($vault, $request->validated('folder'), $request->validated('name'), $request->validated('timezone')));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => "Note \u{201c}{$note->title}\u{201d} created."]);
+        // Encrypted vaults never put a decrypted name in a toast (the toast
+        // is flashed to the session).
+        $message = $vault->is_encrypted ? 'Note created.' : "Note \u{201c}{$note->title}\u{201d} created.";
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return to_route('notes.show', $note->uuid);
     }
 
     public function update(UpdateNoteRequest $request, Note $note, NoteService $notes): RedirectResponse
     {
-        $before = $note->relative_path;
+        // A rename in an encrypted vault rewrites the file in place, so the
+        // opaque path doesn't change: the ciphertext hash does.
+        $before = $note->vault->is_encrypted ? $note->file_hash : $note->relative_path;
 
         $this->attempt(fn (): Note => $notes->rename($note, $request->validated('name')));
 
-        $message = $note->relative_path !== $before ? 'Note renamed.' : 'Nothing to change.';
+        $after = $note->vault->is_encrypted ? $note->file_hash : $note->relative_path;
+        $message = $after !== $before ? 'Note renamed.' : 'Nothing to change.';
 
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
@@ -44,8 +51,9 @@ class NoteController extends Controller
 
         $this->attempt(fn (): Note => $notes->move($note, $folder));
 
+        $destination = $note->vault->is_encrypted ? 'the new folder' : ($folder ?: 'the top level');
         $message = $note->relative_path !== $before
-            ? 'Note moved to '.($folder ?: 'the top level').'.'
+            ? "Note moved to {$destination}."
             : 'Nothing to change.';
 
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
@@ -55,13 +63,15 @@ class NoteController extends Controller
 
     public function destroy(Note $note, NoteService $notes): RedirectResponse
     {
+        $encrypted = $note->vault->is_encrypted;
         $title = $note->title;
 
         $trashed = $this->attempt(fn (): bool => $notes->delete($note));
 
+        $subject = $encrypted ? 'Note' : "Note \u{201c}{$title}\u{201d}";
         $message = $trashed
-            ? "Note \u{201c}{$title}\u{201d} moved to the Recycle Bin / Trash."
-            : "Note \u{201c}{$title}\u{201d} was already gone from disk and has been removed from the list.";
+            ? "{$subject} moved to the Recycle Bin / Trash."
+            : "{$subject} was already gone from disk and has been removed from the list.";
 
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 

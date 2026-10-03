@@ -137,6 +137,91 @@ final class NoteOperationException extends \RuntimeException
         return new self("MDVault couldn't find a free name for a copy of \u{201c}{$relative}\u{201d}. Rename or move some notes and try again. Your text is still in the editor.", 'content');
     }
 
+    /*
+     * Generic factories for encrypted vaults (ADR `encrypted-vault-key-custody`):
+     * none of these messages contains a note name, folder name or path.
+     */
+
+    public static function encryptedNameTaken(string $field): self
+    {
+        return new self('That name is already used in this folder. Choose another name.', $field);
+    }
+
+    public static function encryptedFolderNotFound(string $field): self
+    {
+        return new self("That folder can't be found in this vault. Re-index the vault to refresh the list.", $field);
+    }
+
+    public static function encryptedCreateFailed(string $field): self
+    {
+        return new self('It could not be created. Check that MDVault can write to the vault folder.', $field);
+    }
+
+    public static function encryptedUnreadable(): self
+    {
+        return new self("This note couldn't be decrypted. It may be damaged, or it may belong to a different vault.", 'content');
+    }
+
+    public static function encryptedFileMissing(string $field): self
+    {
+        return new self('The file for this note is missing. Re-index the vault to update the list.', $field);
+    }
+
+    public static function encryptedMoveFailed(string $field): self
+    {
+        return new self("The note couldn't be renamed or moved. Close any programs using it and try again. Nothing was changed.", $field);
+    }
+
+    public static function encryptedMoveRollbackFailed(string $field): self
+    {
+        return new self("The note was moved, but MDVault couldn't save the change or move it back. Re-index the vault to pick up its new location.", $field);
+    }
+
+    public static function encryptedTrashFailed(): self
+    {
+        return new self('The note could not be moved to the Recycle Bin / Trash. Close any programs using it and try again. The note was not deleted.', 'note');
+    }
+
+    public static function encryptedFolderNotEmpty(): self
+    {
+        return new self("This folder isn't empty (it may contain notes, other folders or other files). Only empty folders can be deleted.", 'path');
+    }
+
+    public static function encryptedFolderDeleteFailed(): self
+    {
+        return new self('The folder could not be deleted. Close any programs using it and try again.', 'path');
+    }
+
+    public static function encryptedSaveLocked(): self
+    {
+        return new self("This note couldn't be saved because another program is using it. Close that program and try again. Your text is still in the editor; the file on disk wasn't changed.", 'content');
+    }
+
+    public static function encryptedSaveWriteFailed(): self
+    {
+        return new self("This note couldn't be saved: MDVault couldn't write the new version (the disk may be full, or the folder isn't writable). Your text is still in the editor; the file on disk wasn't changed.", 'content');
+    }
+
+    public static function encryptedReadOnlyFile(): self
+    {
+        return new self("This note's file is read-only, so MDVault won't change it. Make it writable in your file manager and try again. Your text is still in the editor.", 'content');
+    }
+
+    public static function encryptedNotEditable(): self
+    {
+        return new self("This note can't be edited in MDVault (it is larger than 1 MB, isn't valid UTF-8, or isn't a regular file). Nothing was changed.", 'content');
+    }
+
+    public static function encryptedSaveUnreadable(): self
+    {
+        return new self("MDVault couldn't read this note to check it before saving. Close any programs that may be locking it and try again. Your text is still in the editor.", 'content');
+    }
+
+    public static function encryptedCopyNameUnavailable(): self
+    {
+        return new self("MDVault couldn't find a free name for a copy of this note. Rename or move some notes and try again. Your text is still in the editor.", 'content');
+    }
+
     public static function invalidFrontmatter(): self
     {
         return new self("The frontmatter can't contain a line of three dashes (---), because that would end it early and change the note. Remove that line and try again. Nothing on disk was changed.", 'frontmatter');

@@ -158,3 +158,6 @@
 - **Follow-ups**:
   - Phase 7: restoring encrypted vaults (`vault_encryption` rows from the manifest, locked state).
   - Optional later: replace-in-place with a Recycle Bin pre-step, per-note restore, restoring to a chosen location, progress and cancel.
+
+## Amendment (Phase 7, 2026-10-03)
+- Follow-up: format 2, see ADR `encrypted-vault-backups`.

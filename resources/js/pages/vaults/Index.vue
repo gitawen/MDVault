@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
+import { Lock } from '@lucide/vue';
 import { computed } from 'vue';
 import Heading from '@/components/Heading.vue';
 import BackupVaultButton from '@/components/backups/BackupVaultButton.vue';
@@ -7,7 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AddExistingVaultDialog from '@/components/vaults/AddExistingVaultDialog.vue';
+import ChangeVaultPasswordDialog from '@/components/vaults/ChangeVaultPasswordDialog.vue';
 import CreateVaultDialog from '@/components/vaults/CreateVaultDialog.vue';
+import DecryptVaultDialog from '@/components/vaults/DecryptVaultDialog.vue';
+import EncryptVaultDialog from '@/components/vaults/EncryptVaultDialog.vue';
 import RemoveVaultDialog from '@/components/vaults/RemoveVaultDialog.vue';
 import RenameVaultDialog from '@/components/vaults/RenameVaultDialog.vue';
 import VaultStatusBadge from '@/components/vaults/VaultStatusBadge.vue';
@@ -60,6 +64,14 @@ function openVault(uuid: string) {
                             Current
                         </Badge>
                         <VaultStatusBadge :status="vault.status" />
+                        <Badge
+                            v-if="vault.is_encrypted"
+                            variant="outline"
+                            class="gap-1"
+                        >
+                            <Lock class="size-3.5" />
+                            Encrypted
+                        </Badge>
                     </div>
                 </CardHeader>
                 <CardContent class="space-y-3">
@@ -84,6 +96,14 @@ function openVault(uuid: string) {
                             Open
                         </Button>
                         <RenameVaultDialog :vault="vault" />
+                        <EncryptVaultDialog
+                            v-if="!vault.is_encrypted"
+                            :vault="vault"
+                        />
+                        <template v-else>
+                            <ChangeVaultPasswordDialog :vault="vault" />
+                            <DecryptVaultDialog :vault="vault" />
+                        </template>
                         <BackupVaultButton :vault="vault" />
                         <RemoveVaultDialog
                             :vault="vault"

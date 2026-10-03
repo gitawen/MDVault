@@ -18,6 +18,7 @@ export type BackupInspectionVault = {
     uuid: string;
     name: string;
     description: string | null;
+    is_encrypted: boolean;
     note_count: number;
     file_count: number;
     total_bytes: number;

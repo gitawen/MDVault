@@ -5,6 +5,7 @@ import {
     HardDrive,
     Palette,
     PenLine,
+    ShieldCheck,
     SlidersHorizontal,
 } from '@lucide/vue';
 import Heading from '@/components/Heading.vue';
@@ -16,6 +17,7 @@ import { edit as editAppearance } from '@/routes/settings/appearance';
 import { edit as editBackup } from '@/routes/settings/backup';
 import { edit as editEditor } from '@/routes/settings/editor';
 import { edit as editGeneral } from '@/routes/settings/general';
+import { edit as editSecurity } from '@/routes/settings/security';
 import { edit as editStorage } from '@/routes/settings/storage';
 import type { NavItem } from '@/types';
 
@@ -39,6 +41,11 @@ const sidebarNavItems: NavItem[] = [
         title: 'Editor',
         href: editEditor(),
         icon: PenLine,
+    },
+    {
+        title: 'Security',
+        href: editSecurity(),
+        icon: ShieldCheck,
     },
     {
         title: 'Appearance',

@@ -1,4 +1,5 @@
 import type { Directive } from 'vue';
+import type { SecuritySettings } from '@/types/security';
 import type { VaultSummary } from '@/types/vaults';
 
 // Extend ImportMeta interface for Vite...
@@ -20,6 +21,7 @@ declare module '@inertiajs/core' {
             name: string;
             sidebarOpen: boolean;
             vaults: VaultSummary[];
+            security: SecuritySettings;
             [key: string]: unknown;
         };
     }

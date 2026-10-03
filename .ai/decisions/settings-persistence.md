@@ -52,3 +52,6 @@ PHPStan runs at level 7. Settings must survive restarts and must never make the 
   - Phase 6 adds no `backup.*` keys (H3, H7); settings are not included in backup format 1. Phase 7 adds `security.*`.
   - If settings export/backup is added, it should read through `SettingsService`.
 - Phase 4 Revision 4 adds `editor.new_note_template_enabled` (boolean, default true) and `editor.new_note_template` (string, default in code). An empty template is refused while enabled, because `null` means "revert to default".
+
+## Amendment (Phase 7, 2026-10-03)
+- Follow-up: Phase 7 adds `security.auto_lock_minutes` and `security.lock_on_screen_lock`.

@@ -80,7 +80,7 @@ store.post = (args: { vault: string | { uuid: string } } | [vault: string | { uu
     store.form = storeForm
 /**
 * @see \App\Http\Controllers\FolderController::destroy
- * @see app/Http/Controllers/FolderController.php:25
+ * @see app/Http/Controllers/FolderController.php:27
  * @route '/vaults/{vault}/folders'
  */
 export const destroy = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -95,7 +95,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\FolderController::destroy
- * @see app/Http/Controllers/FolderController.php:25
+ * @see app/Http/Controllers/FolderController.php:27
  * @route '/vaults/{vault}/folders'
  */
 destroy.url = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions) => {
@@ -128,7 +128,7 @@ destroy.url = (args: { vault: string | { uuid: string } } | [vault: string | { u
 
 /**
 * @see \App\Http\Controllers\FolderController::destroy
- * @see app/Http/Controllers/FolderController.php:25
+ * @see app/Http/Controllers/FolderController.php:27
  * @route '/vaults/{vault}/folders'
  */
 destroy.delete = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -138,7 +138,7 @@ destroy.delete = (args: { vault: string | { uuid: string } } | [vault: string | 
 
     /**
 * @see \App\Http\Controllers\FolderController::destroy
- * @see app/Http/Controllers/FolderController.php:25
+ * @see app/Http/Controllers/FolderController.php:27
  * @route '/vaults/{vault}/folders'
  */
     const destroyForm = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -153,7 +153,7 @@ destroy.delete = (args: { vault: string | { uuid: string } } | [vault: string | 
 
             /**
 * @see \App\Http\Controllers\FolderController::destroy
- * @see app/Http/Controllers/FolderController.php:25
+ * @see app/Http/Controllers/FolderController.php:27
  * @route '/vaults/{vault}/folders'
  */
         destroyForm.delete = (args: { vault: string | { uuid: string } } | [vault: string | { uuid: string } ] | string | { uuid: string }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

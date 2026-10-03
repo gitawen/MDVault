@@ -6,8 +6,10 @@ use App\Enums\VaultStatus;
 use App\Models\Backup;
 use App\Models\Note;
 use App\Models\Vault;
+use App\Models\VaultEncryption;
 use App\Services\SettingsService;
 use App\Services\StoragePathService;
+use App\Services\VaultEncryptionService;
 use App\Services\VaultIndexService;
 use App\Services\VaultService;
 use Illuminate\Database\QueryException;
@@ -155,4 +157,18 @@ test('resetRegistry is atomic: a DB failure leaves everything unchanged', functi
     expect(Vault::count())->toBe(1)
         ->and(Note::count())->toBe(1)
         ->and($this->settings->string(SettingKey::CurrentVault))->toBe($vault->uuid);
+});
+
+test('resetRegistry removes vault_encryption rows and never touches the key file', function () {
+    [$vault] = encryptedVault('Secrets');
+    $keyFile = $vault->path.DIRECTORY_SEPARATOR.VaultEncryptionService::HEADER_FILENAME;
+    $bytes = File::get($keyFile);
+
+    expect(VaultEncryption::count())->toBe(1);
+
+    $this->vaults->resetRegistry();
+
+    expect(VaultEncryption::count())->toBe(0)
+        ->and(Vault::count())->toBe(0)
+        ->and(File::get($keyFile))->toBe($bytes);
 });

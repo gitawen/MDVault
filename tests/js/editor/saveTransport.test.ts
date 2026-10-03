@@ -161,6 +161,19 @@ describe('mapSaveResult', () => {
         });
     });
 
+    it('maps a 423 (the vault was locked) to a locked message, never a conflict', () => {
+        const outcome = mapSaveResult({
+            kind: 'httpException',
+            status: 423,
+            data: { message: 'This vault is locked.', reason: 'locked' },
+        });
+
+        expect(outcome).toEqual({
+            kind: 'error',
+            message: 'This vault is locked. Unlock it to keep editing.',
+        });
+    });
+
     it('maps a network error to a message that keeps the text safe', () => {
         const outcome = mapSaveResult({ kind: 'network' });
 

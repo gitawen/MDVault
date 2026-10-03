@@ -716,3 +716,57 @@ test('discardTempFile (through replaceFile) never removes the target on any fail
     app(FileStorageService::class)->replaceFile($target, 'b');
     expect(File::exists($target))->toBeTrue();
 });
+
+// --- conversion prefixes and inventory (Phase 7, T13) -----------------------
+
+test('deleteStagingDirectory accepts the conversion prefixes and nothing else', function (string $prefix) {
+    $folder = $this->tmp.DIRECTORY_SEPARATOR.$prefix.'abc';
+    File::makeDirectory($folder.DIRECTORY_SEPARATOR.'nested', 0755, true);
+    File::put($folder.DIRECTORY_SEPARATOR.'nested'.DIRECTORY_SEPARATOR.'a.mdenc', 'x');
+
+    expect(app(FileStorageService::class)->deleteStagingDirectory($folder))->toBeTrue()
+        ->and(is_dir($folder))->toBeFalse();
+})->with([
+    'encrypt' => FileStorageService::ENCRYPT_STAGING_PREFIX,
+    'decrypt' => FileStorageService::DECRYPT_STAGING_PREFIX,
+    'original' => FileStorageService::CONVERSION_ORIGINAL_PREFIX,
+]);
+
+test('deleteStagingDirectory still refuses a look-alike prefix', function () {
+    $folder = $this->tmp.DIRECTORY_SEPARATOR.'.mdvault-encryptor-abc';
+    File::makeDirectory($folder);
+
+    expect(app(FileStorageService::class)->deleteStagingDirectory($folder))->toBeFalse()
+        ->and(is_dir($folder))->toBeTrue();
+});
+
+test('inventory lists dot entries, nested files and directories without filtering', function () {
+    File::makeDirectory($this->tmp.DIRECTORY_SEPARATOR.'.git', 0755, true);
+    File::put($this->tmp.DIRECTORY_SEPARATOR.'.git'.DIRECTORY_SEPARATOR.'HEAD', 'ref');
+    File::makeDirectory($this->tmp.DIRECTORY_SEPARATOR.'Work', 0755, true);
+    File::put($this->tmp.DIRECTORY_SEPARATOR.'Work'.DIRECTORY_SEPARATOR.'a.md', 'x');
+    File::put($this->tmp.DIRECTORY_SEPARATOR.'photo.png', 'png');
+
+    $inventory = app(FileStorageService::class)->inventory($this->tmp);
+
+    expect(array_column($inventory['files'], 'path'))->toBe(['.git/HEAD', 'Work/a.md', 'photo.png'])
+        ->and($inventory['directories'])->toBe(['.git', 'Work'])
+        ->and($inventory['symlinks'])->toBe([])
+        ->and($inventory['unreadable'])->toBe([]);
+});
+
+test('inventory lists a symlink and does not follow it', function () {
+    $real = $this->tmp.DIRECTORY_SEPARATOR.'RealTarget';
+    File::makeDirectory($real);
+    File::put($real.DIRECTORY_SEPARATOR.'inside.md', 'x');
+
+    $root = $this->tmp.DIRECTORY_SEPARATOR.'Vault';
+    File::makeDirectory($root);
+    symlink($real, $root.DIRECTORY_SEPARATOR.'link');
+
+    $inventory = app(FileStorageService::class)->inventory($root);
+
+    expect($inventory['symlinks'])->toBe(['link'])
+        ->and($inventory['files'])->toBe([])
+        ->and($inventory['directories'])->toBe([]);
+})->skipOnWindows();

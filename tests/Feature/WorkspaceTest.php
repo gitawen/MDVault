@@ -201,7 +201,6 @@ test('removed auth and account routes are gone', function (string $uri) {
     '/user/confirm-password',
     '/dashboard',
     '/settings/profile',
-    '/settings/security',
     '/.well-known/passkey-endpoints',
 ]);
 

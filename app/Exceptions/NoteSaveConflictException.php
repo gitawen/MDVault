@@ -32,6 +32,27 @@ final class NoteSaveConflictException extends \RuntimeException
         );
     }
 
+    /**
+     * Generic (no name or path) variants for encrypted vaults.
+     */
+    public static function encryptedChanged(string $currentHash): self
+    {
+        return new self(
+            "This note was changed outside MDVault after you opened it. Your edits haven't been saved yet.",
+            'changed',
+            $currentHash,
+        );
+    }
+
+    public static function encryptedMissing(): self
+    {
+        return new self(
+            'The file for this note is no longer there. It may have been moved, renamed or deleted outside MDVault. Your text is still in the editor.',
+            'missing',
+            null,
+        );
+    }
+
     public function reason(): string
     {
         return $this->reason;

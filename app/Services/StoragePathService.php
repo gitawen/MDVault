@@ -275,6 +275,22 @@ final class StoragePathService
     }
 
     /**
+     * A note or folder name inside a vault: a valid folder name that also
+     * isn't hidden (leading dot) and isn't `node_modules`, since the indexer
+     * ignores both. Shared by plaintext and encrypted vaults.
+     *
+     * @throws InvalidStorageRootException
+     */
+    public function assertValidNoteSegment(string $name): void
+    {
+        $this->assertValidFolderName($name);
+
+        if (str_starts_with($name, '.') || strcasecmp($name, 'node_modules') === 0) {
+            throw InvalidStorageRootException::invalidFolderName();
+        }
+    }
+
+    /**
      * Forget the stored root, reverting to the default (the folder name is
      * kept, so the default becomes Documents/<folder name>). Creates
      * nothing.

@@ -34,6 +34,18 @@ final class FileStorageService
      */
     public const RESTORE_STAGING_PREFIX = '.mdvault-restore-';
 
+    /**
+     * Prefixes of the sibling folders a vault conversion uses (ADR
+     * `vault-encryption-conversion`): the staging folder it builds, and the
+     * replaced original it parks beside the vault until the conversion has
+     * committed. `deleteStagingDirectory()` accepts them too.
+     */
+    public const ENCRYPT_STAGING_PREFIX = '.mdvault-encrypt-';
+
+    public const DECRYPT_STAGING_PREFIX = '.mdvault-decrypt-';
+
+    public const CONVERSION_ORIGINAL_PREFIX = '.mdvault-original-';
+
     public const REPLACE_ATTEMPTS = 3;
 
     private const STREAM_CHUNK_BYTES = 1024 * 1024;
@@ -482,12 +494,26 @@ final class FileStorageService
     /**
      * The ONLY recursive delete in MDVault (ADR `backup-restore-semantics`,
      * H9). Accepts only a non-symlink directory whose basename starts with
-     * RESTORE_STAGING_PREFIX; uses `Filesystem::deleteDirectory` (does not
-     * follow links inside it). The result is checked afterwards.
+     * RESTORE_STAGING_PREFIX or, since Phase 7 (ADR
+     * `vault-encryption-conversion`), a conversion prefix
+     * (ENCRYPT_STAGING_PREFIX, DECRYPT_STAGING_PREFIX,
+     * CONVERSION_ORIGINAL_PREFIX); uses `Filesystem::deleteDirectory` (does
+     * not follow links inside it). The result is checked afterwards.
      */
     public function deleteStagingDirectory(string $path): bool
     {
-        if (! str_starts_with(basename($path), self::RESTORE_STAGING_PREFIX) || ! is_dir($path) || is_link($path)) {
+        $basename = basename($path);
+        $allowed = false;
+
+        foreach ([self::RESTORE_STAGING_PREFIX, self::ENCRYPT_STAGING_PREFIX, self::DECRYPT_STAGING_PREFIX, self::CONVERSION_ORIGINAL_PREFIX] as $prefix) {
+            if (str_starts_with($basename, $prefix)) {
+                $allowed = true;
+
+                break;
+            }
+        }
+
+        if (! $allowed || ! is_dir($path) || is_link($path)) {
             return false;
         }
 
@@ -805,6 +831,75 @@ final class FileStorageService
         usort($unreadable, 'strcmp');
 
         return ['files' => $files, 'directories' => $directories, 'unreadable' => $unreadable];
+    }
+
+    /**
+     * Everything under $root, unfiltered and without following links: dot
+     * entries are included, and symlinks/junctions are listed (never
+     * descended into). Used by the conversion preflight, which must see
+     * what `scan()` hides. Every list is '/'-separated relative to $root
+     * and sorted with strcmp; `unreadable` lists directories that could
+     * not be listed ('' means the root).
+     *
+     * @return array{files: list<array{path: string, size: int, mtime: ?int}>, directories: list<string>, symlinks: list<string>, unreadable: list<string>}
+     */
+    public function inventory(string $root): array
+    {
+        $files = [];
+        $directories = [];
+        $symlinks = [];
+        $unreadable = [];
+
+        /** @var list<string> $stack */
+        $stack = [''];
+
+        while ($stack !== []) {
+            $relativeDir = array_shift($stack);
+
+            try {
+                $iterator = new \FilesystemIterator($this->joinRelative($root, $relativeDir), \FilesystemIterator::SKIP_DOTS);
+            } catch (\Throwable) {
+                $unreadable[] = $relativeDir;
+
+                continue;
+            }
+
+            for ($iterator->rewind(); $iterator->valid(); $iterator->next()) {
+                $name = $iterator->getFilename();
+                $entryRelative = $relativeDir === '' ? $name : $relativeDir.'/'.$name;
+
+                if ($iterator->isLink()) {
+                    $symlinks[] = $entryRelative;
+                } elseif ($iterator->isDir()) {
+                    $directories[] = $entryRelative;
+                    $stack[] = $entryRelative;
+                } else {
+                    try {
+                        $size = $iterator->getSize();
+                    } catch (\Throwable) {
+                        $size = 0;
+                    }
+
+                    try {
+                        $mtime = $iterator->getMTime();
+                        $mtime = $mtime > 0 ? $mtime : null;
+                    } catch (\Throwable) {
+                        $mtime = null;
+                    }
+
+                    $files[] = ['path' => $entryRelative, 'size' => $size, 'mtime' => $mtime];
+                }
+            }
+
+            unset($iterator);
+        }
+
+        usort($files, fn (array $a, array $b): int => strcmp($a['path'], $b['path']));
+        usort($directories, 'strcmp');
+        usort($symlinks, 'strcmp');
+        usort($unreadable, 'strcmp');
+
+        return ['files' => $files, 'directories' => $directories, 'symlinks' => $symlinks, 'unreadable' => $unreadable];
     }
 
     public function samePath(string $a, string $b): bool

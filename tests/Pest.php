@@ -3,10 +3,18 @@
 use App\Contracts\Trash;
 use App\Contracts\UserDirectories;
 use App\Exceptions\NoteOperationException;
+use App\Models\Vault;
+use App\Services\EncryptionService;
 use App\Services\SettingsService;
+use App\Services\VaultEncryptionService;
+use App\Services\VaultKeyService;
+use App\Services\VaultService;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -297,4 +305,111 @@ function fakeTrash(bool $available = true, bool $deletes = true): object
     app()->instance(Trash::class, $fake);
 
     return $fake;
+}
+
+/**
+ * Creates an encrypted vault by hand (key file, mirror, unlocked session)
+ * and returns it with its unlock token. The caller must have called
+ * fakeDocumentsDirectory() first.
+ *
+ * @return array{0: Vault, 1: string}
+ */
+function encryptedVault(string $name, string $password = 'correct horse battery'): array
+{
+    $vault = app(VaultService::class)->create($name);
+    $encryption = app(EncryptionService::class);
+    $service = app(VaultEncryptionService::class);
+
+    [$header] = $encryption->newVaultKey($password);
+    $bytes = $encryption->encodeHeader($header);
+    File::put($vault->path.DIRECTORY_SEPARATOR.VaultEncryptionService::HEADER_FILENAME, $bytes);
+    $service->adopt($vault, $header, hash('sha256', $bytes));
+
+    $token = $service->unlock($vault->refresh(), $password);
+
+    return [$vault->refresh(), $token];
+}
+
+/**
+ * Sends the unlock token for $vault with every following request.
+ */
+function withVaultToken(Illuminate\Foundation\Testing\TestCase $test, Vault $vault, string $token): Illuminate\Foundation\Testing\TestCase
+{
+    return $test->withHeader(VaultKeyService::HEADER, $vault->uuid.':'.$token);
+}
+
+/**
+ * Fails if any needle (case-insensitive) occurs in the bytes OR the name of
+ * any file or folder under $dir.
+ *
+ * @param  list<string>  $needles
+ */
+function assertNoNeedlesUnder(string $dir, array $needles): void
+{
+    $needles = array_values(array_filter($needles, fn (string $n): bool => $n !== ''));
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST,
+    );
+
+    foreach ($iterator as $item) {
+        $relative = str_replace($dir, '', $item->getPathname());
+
+        foreach ($needles as $needle) {
+            expect(stripos($relative, $needle))->toBeFalse("A name under {$dir} contains a needle.");
+
+            if ($item->isFile()) {
+                expect(stripos((string) file_get_contents($item->getPathname()), $needle))->toBeFalse("A file under {$dir} contains a needle.");
+            }
+        }
+    }
+}
+
+/**
+ * Fails if any needle (case-insensitive) occurs in any row of any table.
+ *
+ * @param  list<string>  $needles
+ */
+function assertNoNeedlesInDatabase(array $needles): void
+{
+    $needles = array_values(array_filter($needles, fn (string $n): bool => $n !== ''));
+    $tables = DB::select("select name from sqlite_master where type = 'table' and name not like 'sqlite_%'");
+
+    foreach ($tables as $table) {
+        foreach (DB::table($table->name)->get() as $row) {
+            $json = (string) json_encode($row, JSON_INVALID_UTF8_SUBSTITUTE);
+
+            foreach ($needles as $needle) {
+                expect(stripos($json, $needle))->toBeFalse("Table {$table->name} contains a needle.");
+            }
+        }
+    }
+}
+
+/**
+ * Records every log message (plus its serialized context and any exception
+ * message and trace) written from now on. The returned collection fills as
+ * the test runs.
+ *
+ * @return Collection<int, string>
+ */
+function captureLogs(): Collection
+{
+    $logs = new Collection;
+
+    Event::listen(MessageLogged::class, function (MessageLogged $event) use ($logs): void {
+        $context = $event->context;
+        $exception = $context['exception'] ?? null;
+        unset($context['exception']);
+
+        $text = $event->message.' '.json_encode($context, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+        if ($exception instanceof Throwable) {
+            $text .= ' '.$exception->getMessage().' '.$exception->getTraceAsString();
+        }
+
+        $logs->push($text);
+    });
+
+    return $logs;
 }

@@ -11,6 +11,7 @@ final readonly class IndexResult
     /**
      * @param  list<array{type: 'created'|'modified'|'moved'|'deleted', uuid: string, path: string, from: ?string, content_changed: bool}>  $changes
      * @param  list<string>  $orphanTempFiles
+     * @param  list<string>  $unencryptedFiles  encrypted vaults only: readable `.md` files that were not indexed
      */
     public function __construct(
         public int $added,
@@ -24,6 +25,7 @@ final readonly class IndexResult
         public bool $stale = false,
         public array $orphanTempFiles = [],
         public ?string $treeSignature = null,
+        public array $unencryptedFiles = [],
     ) {}
 
     public function hasChanges(): bool

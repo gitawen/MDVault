@@ -17,7 +17,9 @@ class FolderController extends Controller
     {
         $relative = $this->attempt(fn (): string => $notes->createFolder($vault, $request->validated('parent'), $request->validated('name')));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => "Folder \u{201c}{$relative}\u{201d} created."]);
+        $message = $vault->is_encrypted ? 'Folder created.' : "Folder \u{201c}{$relative}\u{201d} created.";
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return back();
     }

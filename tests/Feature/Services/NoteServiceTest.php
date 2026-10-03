@@ -658,9 +658,14 @@ test('saving unchanged content is a no-op that leaves the modification time unto
     $note = $this->service->create($this->vault, null, 'a');
     $path = $this->vault->path.DIRECTORY_SEPARATOR.'a.md';
     File::put($path, "# Same\n");
+    // Bring the registry in line with the disk first, so the save is a true
+    // no-op; otherwise reconcile() rightly catches up the stale hash and the
+    // updated_at check depends on whether a second boundary was crossed.
+    app(VaultIndexService::class)->reconcile($this->vault, IndexMode::Full);
     $note = $note->fresh();
     $baseHash = hash('sha256', "# Same\n");
     $before = $note->updated_at;
+    $this->travel(5)->seconds();
 
     $fake = failFileMoves([1, 2, 3]);
     $result = $this->service->save($note, "# Same\n", $baseHash, NoteSaveMode::Rich);

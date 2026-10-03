@@ -2,6 +2,11 @@ import WorkspaceController from './WorkspaceController'
 import Settings from './Settings'
 import VaultController from './VaultController'
 import ExistingVaultController from './ExistingVaultController'
+import EncryptedVaultController from './EncryptedVaultController'
+import VaultLockController from './VaultLockController'
+import VaultUnlockController from './VaultUnlockController'
+import VaultEncryptionController from './VaultEncryptionController'
+import VaultPasswordController from './VaultPasswordController'
 import NoteController from './NoteController'
 import NoteContentController from './NoteContentController'
 import NoteDiskController from './NoteDiskController'
@@ -14,6 +19,11 @@ const Controllers = {
 Settings: Object.assign(Settings, Settings),
 VaultController: Object.assign(VaultController, VaultController),
 ExistingVaultController: Object.assign(ExistingVaultController, ExistingVaultController),
+EncryptedVaultController: Object.assign(EncryptedVaultController, EncryptedVaultController),
+VaultLockController: Object.assign(VaultLockController, VaultLockController),
+VaultUnlockController: Object.assign(VaultUnlockController, VaultUnlockController),
+VaultEncryptionController: Object.assign(VaultEncryptionController, VaultEncryptionController),
+VaultPasswordController: Object.assign(VaultPasswordController, VaultPasswordController),
 NoteController: Object.assign(NoteController, NoteController),
 NoteContentController: Object.assign(NoteContentController, NoteContentController),
 NoteDiskController: Object.assign(NoteDiskController, NoteDiskController),

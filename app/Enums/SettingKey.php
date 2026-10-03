@@ -20,14 +20,16 @@ enum SettingKey: string
     case EditorNewNoteTemplate = 'editor.new_note_template';
     case CheckExternalChanges = 'app.check_external_changes';
     case CurrentVault = 'app.current_vault';
+    case SecurityAutoLockMinutes = 'security.auto_lock_minutes';
+    case SecurityLockOnScreenLock = 'security.lock_on_screen_lock';
 
     public function type(): SettingType
     {
         return match ($this) {
             self::StorageRootPath, self::StorageFolderName, self::AppearanceTheme, self::EditorFontFamily, self::EditorNewNoteTemplate, self::CurrentVault => SettingType::String,
-            self::EditorFontSize => SettingType::Integer,
+            self::EditorFontSize, self::SecurityAutoLockMinutes => SettingType::Integer,
             self::EditorLineHeight => SettingType::Float,
-            self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorNewNoteTemplateEnabled, self::CheckExternalChanges => SettingType::Boolean,
+            self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorNewNoteTemplateEnabled, self::CheckExternalChanges, self::SecurityLockOnScreenLock => SettingType::Boolean,
         };
     }
 
@@ -38,6 +40,7 @@ enum SettingKey: string
             self::AppearanceTheme => SettingGroup::Appearance,
             self::EditorFontSize, self::EditorFontFamily, self::EditorLineHeight, self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorNewNoteTemplateEnabled, self::EditorNewNoteTemplate => SettingGroup::Editor,
             self::CheckExternalChanges, self::CurrentVault => SettingGroup::General,
+            self::SecurityAutoLockMinutes, self::SecurityLockOnScreenLock => SettingGroup::Security,
         };
     }
 
@@ -56,6 +59,8 @@ enum SettingKey: string
             self::EditorNewNoteTemplate => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
             self::CheckExternalChanges => true,
             self::CurrentVault => null,
+            self::SecurityAutoLockMinutes => 15,
+            self::SecurityLockOnScreenLock => true,
         };
     }
 

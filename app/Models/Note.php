@@ -33,6 +33,8 @@ class Note extends Model
 
     public const MIME_TYPE = 'text/markdown';
 
+    public const ENCRYPTED_MIME_TYPE = 'application/vnd.mdvault.note+encrypted';
+
     /**
      * @var list<string>
      */

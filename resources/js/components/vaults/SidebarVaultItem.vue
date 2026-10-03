@@ -6,10 +6,12 @@ import {
     FolderClosed,
     FolderOpen,
     FolderPlus,
+    Lock,
+    LockOpen,
     RefreshCw,
     TriangleAlert,
 } from '@lucide/vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import NoteTree from '@/components/notes/NoteTree.vue';
 import {
     SidebarMenuAction,
@@ -17,7 +19,8 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
-import { reindex } from '@/routes/vaults';
+import { forget } from '@/lib/vault/keyring';
+import { lock, reindex } from '@/routes/vaults';
 import type { NoteTreeNode, VaultSummary } from '@/types';
 
 const props = defineProps<{
@@ -37,6 +40,27 @@ const { isMobile, setOpenMobile } = useSidebar();
 
 const treeRef = ref<InstanceType<typeof NoteTree> | null>(null);
 const reindexing = ref(false);
+const locking = ref(false);
+
+const isEncrypted = computed(() => props.vault.is_encrypted);
+const showLock = computed(
+    () => props.vault.is_encrypted && props.vault.is_unlocked,
+);
+
+function lockVault() {
+    locking.value = true;
+
+    router.post(
+        lock.url(props.vault.uuid),
+        {},
+        {
+            onSuccess: () => forget(props.vault.uuid),
+            onFinish: () => {
+                locking.value = false;
+            },
+        },
+    );
+}
 
 function runReindex() {
     reindexing.value = true;
@@ -68,16 +92,26 @@ function onNoteSelected() {
             as="button"
             :aria-expanded="hasTree ? expanded : undefined"
             :class="{
-                'group-has-data-[sidebar=menu-action]/menu-item:pr-20': hasTree,
+                'group-has-data-[sidebar=menu-action]/menu-item:pr-20':
+                    hasTree && !showLock,
+                'group-has-data-[sidebar=menu-action]/menu-item:pr-26':
+                    hasTree && showLock,
+                'group-has-data-[sidebar=menu-action]/menu-item:pr-8':
+                    !hasTree && showLock,
             }"
             @click="emit('activate')"
         >
             <TriangleAlert v-if="vault.status === 'missing'" />
+            <Lock v-else-if="isEncrypted && !vault.is_unlocked" />
+            <LockOpen v-else-if="isEncrypted" />
             <FolderOpen v-else-if="expanded" />
             <FolderClosed v-else />
             <span class="truncate">{{ vault.name }}</span>
             <span v-if="vault.status === 'missing'" class="sr-only">
                 (folder missing)
+            </span>
+            <span v-else-if="isEncrypted" class="sr-only">
+                ({{ vault.is_unlocked ? 'encrypted, unlocked' : 'locked' }})
             </span>
             <ChevronRight
                 v-if="canExpand"
@@ -85,6 +119,18 @@ function onNoteSelected() {
                 :class="{ 'rotate-90': expanded }"
             />
         </SidebarMenuButton>
+
+        <SidebarMenuAction
+            v-if="showLock"
+            show-on-hover
+            :class="hasTree ? 'right-19' : 'right-1'"
+            title="Lock vault"
+            aria-label="Lock vault"
+            :disabled="locking"
+            @click="lockVault"
+        >
+            <Lock />
+        </SidebarMenuAction>
 
         <template v-if="hasTree">
             <SidebarMenuAction

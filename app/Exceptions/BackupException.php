@@ -80,9 +80,9 @@ final class BackupException extends \RuntimeException
         return new self("The vault \u{201c}{$name}\u{201d}'s folder can't be found. Reconnect the drive, or remove the vault.", 'destination');
     }
 
-    public static function encryptedNotSupported(string $name): self
+    public static function encryptedKeyUnavailable(string $name): self
     {
-        return new self("The vault \u{201c}{$name}\u{201d} is encrypted, which backups don't support yet.", 'destination');
+        return new self("The vault \u{201c}{$name}\u{201d}'s key file is missing or damaged, so it can't be backed up.", 'destination');
     }
 
     public static function vaultBusy(string $name): self

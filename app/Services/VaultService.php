@@ -5,10 +5,12 @@ namespace App\Services;
 use App\Contracts\UserDirectories;
 use App\Enums\SettingKey;
 use App\Enums\VaultStatus;
+use App\Exceptions\EncryptionException;
 use App\Exceptions\InvalidStorageRootException;
 use App\Exceptions\VaultOperationException;
 use App\Models\Note;
 use App\Models\Vault;
+use App\Models\VaultEncryption;
 use App\Support\RegistryResetResult;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
@@ -27,6 +29,9 @@ final class VaultService
         private readonly FileStorageService $files,
         private readonly UserDirectories $directories,
         private readonly DatabaseManager $database,
+        private readonly VaultKeyService $keys,
+        private readonly EncryptionHeaderService $headers,
+        private readonly VaultRecoveryService $recovery,
     ) {}
 
     /**
@@ -151,14 +156,31 @@ final class VaultService
         $this->assertValidName($name);
         $this->assertNameAvailable($name, null);
 
-        return Vault::query()->create([
-            'name' => $name,
-            'description' => $description,
-            'path' => $canonical,
-            'relative_path' => $this->files->relativeTo($canonical, $this->paths->rootPath()),
-            'status' => VaultStatus::Active,
-            'is_encrypted' => false,
-        ]);
+        // A folder holding an MDVault key file is an encrypted vault (ADR
+        // `encrypted-vault-storage-layout`): it is registered locked, with
+        // the key file mirrored. A damaged key file is refused.
+        try {
+            $inspected = $this->headers->inspect($canonical);
+        } catch (EncryptionException) {
+            throw VaultOperationException::damagedEncryptionHeader('path');
+        }
+
+        return $this->database->connection()->transaction(function () use ($name, $description, $canonical, $inspected): Vault {
+            $vault = Vault::query()->create([
+                'name' => $name,
+                'description' => $description,
+                'path' => $canonical,
+                'relative_path' => $this->files->relativeTo($canonical, $this->paths->rootPath()),
+                'status' => VaultStatus::Active,
+                'is_encrypted' => false,
+            ]);
+
+            if ($inspected !== null) {
+                $this->headers->adopt($vault, $inspected[0], $inspected[1]);
+            }
+
+            return $vault;
+        });
     }
 
     /**
@@ -283,6 +305,8 @@ final class VaultService
 
             $vault->delete();
         });
+
+        $this->keys->forget($vault);
     }
 
     /**
@@ -293,6 +317,7 @@ final class VaultService
      */
     public function open(Vault $vault): Vault
     {
+        $this->recovery->recover($vault);
         $this->refreshStatus($vault);
 
         if ($vault->status === VaultStatus::Missing) {
@@ -306,6 +331,14 @@ final class VaultService
 
     public function close(): void
     {
+        // Closing an encrypted vault locks it (ADR `encrypted-vault-key-custody`).
+        $uuid = $this->settings->string(SettingKey::CurrentVault);
+        $current = $uuid === null ? null : Vault::query()->where('uuid', $uuid)->first();
+
+        if ($current !== null && $current->is_encrypted) {
+            $this->keys->forget($current);
+        }
+
         $this->settings->forget(SettingKey::CurrentVault);
     }
 
@@ -330,6 +363,7 @@ final class VaultService
             $missing = Vault::query()->where('status', VaultStatus::Missing)->count();
             $notes = Note::query()->count();
 
+            VaultEncryption::query()->delete();
             Note::query()->delete();
             Vault::query()->delete();
 
@@ -369,7 +403,15 @@ final class VaultService
      */
     public function refreshStatus(Vault $vault): Vault
     {
-        $expected = $this->files->isDirectory($vault->path) ? VaultStatus::Active : VaultStatus::Missing;
+        $present = $this->files->isDirectory($vault->path);
+
+        // A folder that is missing mid-conversion is repaired, not reported
+        // (ADR `vault-encryption-conversion`).
+        if (! $present && $this->recovery->recover($vault) !== null) {
+            $present = $this->files->isDirectory($vault->path);
+        }
+
+        $expected = $present ? VaultStatus::Active : VaultStatus::Missing;
 
         if ($vault->status !== $expected) {
             $vault->update(['status' => $expected]);
@@ -396,7 +438,7 @@ final class VaultService
     }
 
     /**
-     * @return array{uuid: string, name: string, description: ?string, path: string, relative_path: ?string, status: string, is_current: bool, is_encrypted: bool}
+     * @return array{uuid: string, name: string, description: ?string, path: string, relative_path: ?string, status: string, is_current: bool, is_encrypted: bool, is_unlocked: bool}
      */
     public function present(Vault $vault): array
     {
@@ -409,11 +451,12 @@ final class VaultService
             'status' => $vault->status->value,
             'is_current' => $this->settings->string(SettingKey::CurrentVault) === $vault->uuid,
             'is_encrypted' => $vault->is_encrypted,
+            'is_unlocked' => $vault->is_encrypted && $this->keys->isUnlocked($vault),
         ];
     }
 
     /**
-     * @return list<array{uuid: string, name: string, description: ?string, path: string, relative_path: ?string, status: string, is_current: bool, is_encrypted: bool}>
+     * @return list<array{uuid: string, name: string, description: ?string, path: string, relative_path: ?string, status: string, is_current: bool, is_encrypted: bool, is_unlocked: bool}>
      */
     public function summaries(): array
     {

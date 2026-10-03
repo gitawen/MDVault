@@ -43,6 +43,21 @@ final class VaultIndexService
      */
     public const ORPHAN_MIN_AGE_SECONDS = 60;
 
+    /**
+     * An encrypted vault's note file name (ADR `encrypted-vault-storage-layout`).
+     */
+    public const ENCRYPTED_NOTE_PATTERN = '/^[0-9a-f]{32}\.mdenc$/';
+
+    /**
+     * An encrypted vault's folder name.
+     */
+    public const ENCRYPTED_FOLDER_PATTERN = '/^[0-9a-f]{32}$/';
+
+    /**
+     * At most this many unencrypted `.md` files are reported per scan.
+     */
+    public const UNENCRYPTED_REPORT_LIMIT = 100;
+
     public function __construct(
         private readonly FileStorageService $files,
         private readonly FileHashService $hashes,
@@ -58,6 +73,89 @@ final class VaultIndexService
     {
         return ! $this->isIgnoredName($name, false)
             && strcasecmp(pathinfo($name, PATHINFO_EXTENSION), 'md') === 0;
+    }
+
+    /**
+     * Whether a file named $name is a note of $vault: `<32hex>.mdenc` in an
+     * encrypted vault, a visible `.md` file otherwise.
+     */
+    public function isIndexableFor(Vault $vault, string $name): bool
+    {
+        if ($vault->is_encrypted) {
+            return preg_match(self::ENCRYPTED_NOTE_PATTERN, $name) === 1;
+        }
+
+        return $this->isIndexableFileName($name);
+    }
+
+    /**
+     * Whether $relative (a vault-relative path of a file) is a valid encrypted
+     * note location: every folder segment is a 32-hex id and the file is a
+     * `<32hex>.mdenc`.
+     */
+    public function isEncryptedNotePath(string $relative): bool
+    {
+        $segments = explode('/', $relative);
+        $name = array_pop($segments);
+
+        foreach ($segments as $segment) {
+            if (preg_match(self::ENCRYPTED_FOLDER_PATTERN, $segment) !== 1) {
+                return false;
+            }
+        }
+
+        return preg_match(self::ENCRYPTED_NOTE_PATTERN, (string) $name) === 1;
+    }
+
+    /**
+     * The directories of an encrypted vault that are folders (every segment
+     * a 32-hex id); foreign directories are not part of the tree.
+     *
+     * @param  list<string>  $directories
+     * @return list<string>
+     */
+    public function encryptedFolderDirectories(array $directories): array
+    {
+        return array_values(array_filter($directories, function (string $directory): bool {
+            foreach (explode('/', $directory) as $segment) {
+                if (preg_match(self::ENCRYPTED_FOLDER_PATTERN, $segment) !== 1) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
+    }
+
+    /**
+     * A cheap listing of readable `.md` files in an encrypted vault (E11
+     * warning): at most 20 entries and 32 folders deep, never indexing or
+     * reading them. Works while the vault is locked.
+     *
+     * @return list<string>
+     */
+    public function unencryptedFilesIn(Vault $vault): array
+    {
+        $found = [];
+
+        $this->files->scan(
+            $vault->path,
+            function (string $relative, string $name, bool $isDir) use (&$found): bool {
+                if ($isDir) {
+                    return ! $this->isIgnoredName($name, true) && substr_count($relative, '/') < 32;
+                }
+
+                if (count($found) < 20 && $this->isIndexableFileName($name)) {
+                    $found[] = $relative;
+                }
+
+                return false;
+            },
+        );
+
+        sort($found);
+
+        return $found;
     }
 
     /**
@@ -108,9 +206,14 @@ final class VaultIndexService
         /** @var list<string> $orphanCandidates */
         $orphanCandidates = [];
 
+        $encrypted = $vault->is_encrypted;
+
+        /** @var list<string> $unencryptedFiles */
+        $unencryptedFiles = [];
+
         $scan = $this->files->scan(
             $vault->path,
-            function (string $relative, string $name, bool $isDir) use (&$orphanCandidates): bool {
+            function (string $relative, string $name, bool $isDir) use (&$orphanCandidates, &$unencryptedFiles, $encrypted): bool {
                 if ($isDir) {
                     return ! $this->isIgnoredName($name, true);
                 }
@@ -121,9 +224,27 @@ final class VaultIndexService
                     return false;
                 }
 
+                if ($encrypted) {
+                    if ($this->isEncryptedNotePath($relative)) {
+                        return true;
+                    }
+
+                    // E11: a plaintext note inside an encrypted vault is
+                    // never indexed or imported, only reported.
+                    if (count($unencryptedFiles) < self::UNENCRYPTED_REPORT_LIMIT && $this->isIndexableFileName($name)) {
+                        $unencryptedFiles[] = $relative;
+                    }
+
+                    return false;
+                }
+
                 return $this->isIndexableFileName($name);
             },
         );
+
+        if ($encrypted) {
+            $scan['directories'] = $this->encryptedFolderDirectories($scan['directories']);
+        }
 
         if (in_array('', $scan['unreadable'], true)) {
             throw NoteOperationException::vaultUnavailable($vault->path);
@@ -260,7 +381,7 @@ final class VaultIndexService
         // Leftover files are inserted.
         $inserts = [];
         foreach ($remainingFiles as $path => $file) {
-            $inserts[] = $this->insertAttributes($path, $file);
+            $inserts[] = $this->insertAttributes($path, $file, $encrypted);
         }
 
         // Orphans: only `.mdvault-save-*` files old enough not to be a
@@ -285,6 +406,7 @@ final class VaultIndexService
             skipped: $skipped,
             directories: $scan['directories'],
             orphans: $orphans,
+            unencryptedFiles: $unencryptedFiles,
         );
     }
 
@@ -354,7 +476,7 @@ final class VaultIndexService
 
                 return [
                     'changes' => $changes,
-                    'treeSignature' => $this->treeSignature($plan->directories, $vault->notes()->pluck('relative_path', 'uuid')->all()),
+                    'treeSignature' => $this->treeSignatureFor($vault, $plan->directories),
                 ];
             });
         } catch (QueryException $e) {
@@ -379,6 +501,7 @@ final class VaultIndexService
             stale: false,
             orphanTempFiles: $plan->orphans,
             treeSignature: $outcome['treeSignature'],
+            unencryptedFiles: $plan->unencryptedFiles,
         );
     }
 
@@ -402,6 +525,28 @@ final class VaultIndexService
         usort($pairs, 'strcmp');
 
         return hash('sha256', json_encode([$dirs, $pairs], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * The tree signature for $vault's current rows. Encrypted vaults hash
+     * `path\0file_hash` per note: a rename rewrites the ciphertext but keeps
+     * the opaque path, so the hash is what tells the client the tree changed.
+     *
+     * @param  list<string>  $directories
+     */
+    public function treeSignatureFor(Vault $vault, array $directories): string
+    {
+        if (! $vault->is_encrypted) {
+            return $this->treeSignature($directories, $vault->notes()->pluck('relative_path', 'uuid')->all());
+        }
+
+        $pairs = [];
+
+        foreach ($vault->notes()->get(['uuid', 'relative_path', 'file_hash']) as $note) {
+            $pairs[$note->uuid] = $note->relative_path."\0".$note->file_hash;
+        }
+
+        return $this->treeSignature($directories, $pairs);
     }
 
     /**
@@ -532,21 +677,21 @@ final class VaultIndexService
      *
      * @return array<string, mixed>
      */
-    public function newNoteAttributes(string $relativePath, int $size, string $hash): array
+    public function newNoteAttributes(string $relativePath, int $size, string $hash, bool $encrypted = false): array
     {
-        return $this->insertAttributes($relativePath, ['size' => $size, 'hash' => $hash, 'mtime' => null]);
+        return $this->insertAttributes($relativePath, ['size' => $size, 'hash' => $hash, 'mtime' => null], $encrypted);
     }
 
     /**
      * @param  array{size: int, hash: string, mtime: ?int}  $file
      * @return array<string, mixed>
      */
-    private function insertAttributes(string $path, array $file): array
+    private function insertAttributes(string $path, array $file, bool $encrypted = false): array
     {
         return [
             ...$this->moveAttributes($path, $file),
-            'mime_type' => Note::MIME_TYPE,
-            'is_encrypted' => false,
+            'mime_type' => $encrypted ? Note::ENCRYPTED_MIME_TYPE : Note::MIME_TYPE,
+            'is_encrypted' => $encrypted,
         ];
     }
 

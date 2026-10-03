@@ -9,4 +9,5 @@ export type VaultSummary = {
     status: VaultStatus;
     is_current: boolean;
     is_encrypted: boolean;
+    is_unlocked: boolean;
 };

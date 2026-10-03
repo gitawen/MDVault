@@ -86,7 +86,7 @@ test('the manifest keys, counts and per-note UUIDs are correct, with no absolute
 
     expect($manifest['application'])->toBe('MDVault')
         ->and($manifest['format'])->toBe('mdvault-backup')
-        ->and($manifest['format_version'])->toBe(1)
+        ->and($manifest['format_version'])->toBe(2)
         ->and($manifest['database_version'])->toBe(1)
         ->and($manifest['hash_algorithm'])->toBe('sha256')
         ->and($manifest['scope'])->toBe('all')
