@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('mime_type', 100)->default('text/markdown');
             $table->unsignedBigInteger('file_size')->default(0);
             $table->string('file_hash', 64);
+            $table->unsignedBigInteger('file_mtime')->nullable();
             $table->boolean('is_encrypted')->default(false);
             $table->timestamps();
 
