@@ -1,4 +1,5 @@
 import WorkspaceController from './WorkspaceController'
+import DirectoryBrowserController from './DirectoryBrowserController'
 import Settings from './Settings'
 import VaultController from './VaultController'
 import ExistingVaultController from './ExistingVaultController'
@@ -16,6 +17,7 @@ import VaultIndexController from './VaultIndexController'
 import VaultChangeController from './VaultChangeController'
 const Controllers = {
     WorkspaceController: Object.assign(WorkspaceController, WorkspaceController),
+DirectoryBrowserController: Object.assign(DirectoryBrowserController, DirectoryBrowserController),
 Settings: Object.assign(Settings, Settings),
 VaultController: Object.assign(VaultController, VaultController),
 ExistingVaultController: Object.assign(ExistingVaultController, ExistingVaultController),

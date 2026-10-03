@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import DirectoryBrowserDialog from '@/components/DirectoryBrowserDialog.vue';
 import type { StorageSettings } from '@/types';
 
 const props = defineProps<{
@@ -33,6 +34,7 @@ const form = useForm({
 
 const page = usePage();
 const browsing = ref(false);
+const browserOpen = ref(false);
 
 // The location is server-derived (Save, reset to default), so keep it in
 // sync whenever it actually changes there. Choosing a folder does NOT change
@@ -128,6 +130,18 @@ function chooseFolder() {
     );
 }
 
+function onChooseFolderClick() {
+    if (props.canBrowse) {
+        chooseFolder();
+    } else {
+        browserOpen.value = true;
+    }
+}
+
+function onLocationSelected(path: string) {
+    form.location = path;
+}
+
 function useDefaultLocation() {
     router.delete(destroy.url(), { preserveScroll: true });
 }
@@ -189,11 +203,10 @@ function useDefaultLocation() {
                     Save
                 </Button>
                 <Button
-                    v-if="canBrowse"
                     type="button"
                     variant="outline"
                     :disabled="browsing"
-                    @click="chooseFolder"
+                    @click="onChooseFolderClick"
                 >
                     Choose folder…
                 </Button>
@@ -230,5 +243,13 @@ function useDefaultLocation() {
                 </p>
             </div>
         </div>
+
+        <DirectoryBrowserDialog
+            v-model:open="browserOpen"
+            title="Choose storage location"
+            description="Select the parent directory where your vaults will be stored."
+            :initial-path="form.location || null"
+            @select="onLocationSelected"
+        />
     </div>
 </template>

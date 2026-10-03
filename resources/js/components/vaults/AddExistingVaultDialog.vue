@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import DirectoryBrowserDialog from '@/components/DirectoryBrowserDialog.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,12 +17,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { browse, store } from '@/routes/vaults/existing';
 
-defineProps<{
+const props = defineProps<{
     canBrowse: boolean;
 }>();
 
 const open = ref(false);
 const browsing = ref(false);
+const browserOpen = ref(false);
 
 const form = useForm({
     path: '',
@@ -32,6 +34,25 @@ const form = useForm({
 type PickedFolderFlash = {
     pickedFolder?: { path: string; name: string };
 };
+
+function onChooseFolderClick() {
+    if (props.canBrowse) {
+        chooseFolder();
+    } else {
+        browserOpen.value = true;
+    }
+}
+
+function onFolderSelected(path: string) {
+    form.path = path;
+    if (!form.name) {
+        const normalized = path.replace(/\\/g, '/');
+        const parts = normalized.split('/').filter(Boolean);
+        if (parts.length > 0) {
+            form.name = parts[parts.length - 1];
+        }
+    }
+}
 
 function chooseFolder() {
     browsing.value = true;
@@ -95,11 +116,10 @@ function submit() {
                             class="flex-1"
                         />
                         <Button
-                            v-if="canBrowse"
                             type="button"
                             variant="outline"
                             :disabled="browsing"
-                            @click="chooseFolder"
+                            @click="onChooseFolderClick"
                         >
                             Choose folder…
                         </Button>
@@ -139,4 +159,12 @@ function submit() {
             </form>
         </DialogContent>
     </Dialog>
+
+    <DirectoryBrowserDialog
+        v-model:open="browserOpen"
+        title="Choose vault folder"
+        description="Select an existing folder containing Markdown notes."
+        :initial-path="form.path || null"
+        @select="onFolderSelected"
+    />
 </template>

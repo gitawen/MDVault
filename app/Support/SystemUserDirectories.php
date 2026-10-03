@@ -35,7 +35,7 @@ final class SystemUserDirectories implements UserDirectories
         return $home.$separator.'Documents';
     }
 
-    private function homeDirectory(): ?string
+    public function homeDirectory(): ?string
     {
         if ($this->isWindows()) {
             $home = $this->env('USERPROFILE');

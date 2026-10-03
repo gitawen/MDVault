@@ -79,6 +79,11 @@ function fakeDocumentsDirectory(?string $path): void
         {
             return $this->path;
         }
+
+        public function homeDirectory(): ?string
+        {
+            return $this->path !== null ? dirname($this->path) : null;
+        }
     });
 }
 
