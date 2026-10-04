@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import {
     Archive,
     HardDrive,
@@ -8,6 +8,13 @@ import {
     ShieldCheck,
     SlidersHorizontal,
 } from '@lucide/vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+} from '@/components/ui/select';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/settings/appearance';
@@ -51,55 +58,165 @@ const sidebarNavItems: NavItem[] = [
     },
 ];
 
-const { isCurrentOrParentUrl } = useCurrentUrl();
+const { isCurrentOrParentUrl, currentUrl } = useCurrentUrl();
+
+const activeItem = computed(
+    () =>
+        sidebarNavItems.find((item) => isCurrentOrParentUrl(item.href)) ??
+        sidebarNavItems[0],
+);
+
+const activeHref = computed(() => toUrl(activeItem.value.href));
+
+function onSelectMobileTab(value: unknown) {
+    if (typeof value === 'string' && value !== activeHref.value) {
+        router.visit(value);
+    }
+}
+
+const navScrollRef = ref<HTMLElement | null>(null);
+const canScrollLeft = ref(false);
+const canScrollRight = ref(false);
+
+function updateScrollIndicators() {
+    const el = navScrollRef.value;
+    if (!el) {
+        return;
+    }
+
+    canScrollLeft.value = el.scrollLeft > 6;
+    canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 6;
+}
+
+function scrollToActiveTab(smooth = true) {
+    nextTick(() => {
+        if (!navScrollRef.value) {
+            return;
+        }
+
+        const activeEl = navScrollRef.value.querySelector<HTMLElement>(
+            '[data-active="true"]',
+        );
+
+        if (activeEl) {
+            activeEl.scrollIntoView({
+                behavior: smooth ? 'smooth' : 'auto',
+                inline: 'center',
+                block: 'nearest',
+            });
+        }
+
+        updateScrollIndicators();
+    });
+}
+
+onMounted(() => {
+    scrollToActiveTab(false);
+    updateScrollIndicators();
+});
+
+watch(currentUrl, () => {
+    scrollToActiveTab(true);
+});
 </script>
 
 <template>
-    <div class="mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-8">
+    <div class="mx-auto w-full min-w-0 max-w-5xl px-3 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
         <!-- Settings Page Header -->
-        <header class="mb-8 border-b border-border/50 pb-6">
+        <header class="mb-6 sm:mb-8 border-b border-border/50 pb-5 sm:pb-6">
             <div class="flex items-center gap-3">
                 <div
-                    class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-2xs"
+                    class="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-2xs"
                 >
-                    <SlidersHorizontal class="h-5 w-5" />
+                    <SlidersHorizontal class="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                 </div>
-                <div>
-                    <h1 class="text-2xl font-semibold tracking-tight">
+                <div class="min-w-0 flex-1">
+                    <h1 class="text-xl sm:text-2xl font-semibold tracking-tight truncate">
                         Settings
                     </h1>
-                    <p class="text-sm text-muted-foreground">
+                    <p class="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-none">
                         Manage your vault preferences, editor typography, and storage configurations.
                     </p>
                 </div>
             </div>
         </header>
 
-        <!-- Mobile Navigation (Horizontal Scrollable Pills) -->
-        <div class="mb-6 lg:hidden">
-            <nav
-                class="flex gap-1.5 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1.5 no-scrollbar"
-                aria-label="Settings mobile"
-            >
-                <Link
-                    v-for="item in sidebarNavItems"
-                    :key="toUrl(item.href)"
-                    :href="item.href"
-                    :class="[
-                        'flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150',
-                        isCurrentOrParentUrl(item.href)
-                            ? 'bg-background text-foreground shadow-2xs border border-border/80'
-                            : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
-                    ]"
+        <!-- Mobile Navigation (Quick Select Dropdown + Auto-centering Scrollable Pills) -->
+        <div class="mb-6 w-full min-w-0 space-y-3 lg:hidden">
+            <!-- Mobile Section Dropdown Menu (Direct Jump) -->
+            <div class="sm:hidden">
+                <Select
+                    :model-value="activeHref"
+                    @update:model-value="onSelectMobileTab"
                 >
-                    <component :is="item.icon" class="h-3.5 w-3.5" />
-                    <span>{{ item.title }}</span>
-                </Link>
-            </nav>
+                    <SelectTrigger class="w-full h-10 bg-card border-border/70 text-xs font-medium">
+                        <div class="flex items-center gap-2 truncate">
+                            <component
+                                :is="activeItem.icon"
+                                class="h-3.5 w-3.5 text-primary shrink-0"
+                            />
+                            <span class="truncate">{{ activeItem.title }} Settings</span>
+                        </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="item in sidebarNavItems"
+                            :key="toUrl(item.href)"
+                            :value="toUrl(item.href)"
+                        >
+                            <div class="flex items-center gap-2">
+                                <component
+                                    :is="item.icon"
+                                    class="h-3.5 w-3.5 text-muted-foreground"
+                                />
+                                <span>{{ item.title }}</span>
+                            </div>
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <!-- Horizontal Scrollable Pills with Scroll Hint Gradients -->
+            <div class="relative w-full min-w-0">
+                <!-- Left Scroll Hint Fade -->
+                <div
+                    v-if="canScrollLeft"
+                    class="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-background via-background/80 to-transparent transition-opacity"
+                />
+
+                <nav
+                    ref="navScrollRef"
+                    class="flex w-full min-w-0 gap-1.5 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1.5 no-scrollbar touch-pan-x overscroll-x-contain"
+                    aria-label="Settings mobile navigation"
+                    @scroll.passive="updateScrollIndicators"
+                >
+                    <Link
+                        v-for="item in sidebarNavItems"
+                        :key="toUrl(item.href)"
+                        :href="item.href"
+                        :data-active="isCurrentOrParentUrl(item.href)"
+                        :class="[
+                            'flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150',
+                            isCurrentOrParentUrl(item.href)
+                                ? 'bg-background text-foreground shadow-2xs border border-border/80'
+                                : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
+                        ]"
+                    >
+                        <component :is="item.icon" class="h-3.5 w-3.5" />
+                        <span>{{ item.title }}</span>
+                    </Link>
+                </nav>
+
+                <!-- Right Scroll Hint Fade -->
+                <div
+                    v-if="canScrollRight"
+                    class="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-l from-background via-background/80 to-transparent transition-opacity"
+                />
+            </div>
         </div>
 
         <!-- Desktop Navigation & Content Grid -->
-        <div class="flex flex-col lg:flex-row lg:items-start lg:gap-10">
+        <div class="flex w-full min-w-0 flex-col lg:flex-row lg:items-start lg:gap-10">
             <!-- Desktop Sidebar Rail -->
             <aside class="hidden lg:block lg:w-60 lg:shrink-0">
                 <div class="sticky top-6 space-y-4">
@@ -138,8 +255,8 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
             </aside>
 
             <!-- Main Settings Content Area -->
-            <main class="flex-1 min-w-0 max-w-3xl">
-                <section class="space-y-8">
+            <main class="w-full flex-1 min-w-0 max-w-3xl">
+                <section class="w-full min-w-0 space-y-6 sm:space-y-8">
                     <slot />
                 </section>
             </main>
