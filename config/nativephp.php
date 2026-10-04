@@ -8,7 +8,7 @@ return [
      * It is used to determine if the app needs to be updated.
      * Increment this value every time you release a new version of your app.
      */
-    'version' => env('NATIVEPHP_APP_VERSION', '0.1.0'),
+    'version' => env('NATIVEPHP_APP_VERSION', '1.0.0'),
 
     /**
      * The ID of your application. This should be a unique identifier
@@ -31,12 +31,12 @@ return [
     /**
      * The author of your application.
      */
-    'author' => env('NATIVEPHP_APP_AUTHOR'),
+    'author' => env('NATIVEPHP_APP_AUTHOR', 'MDVault'),
 
     /**
      * The copyright notice for your application.
      */
-    'copyright' => env('NATIVEPHP_APP_COPYRIGHT'),
+    'copyright' => env('NATIVEPHP_APP_COPYRIGHT', 'Copyright © 2026 MDVault'),
 
     /**
      * The description of your application.
@@ -75,6 +75,8 @@ return [
         'NATIVEPHP_AZURE_ENDPOINT',
         'NATIVEPHP_AZURE_CERTIFICATE_PROFILE_NAME',
         'NATIVEPHP_AZURE_CODE_SIGNING_ACCOUNT_NAME',
+        'APP_DEBUG',
+        'APP_ENV',
     ],
 
     /**
@@ -87,7 +89,22 @@ return [
         'temp',
         'content',
         'node_modules',
-        '*/tests',
+        'tests',
+        'tests/**',
+        '.ai',
+        '.ai/**',
+        '.agents',
+        '.agents/**',
+        '.gemini',
+        '.gemini/**',
+        '.claude',
+        '.claude/**',
+        'docs',
+        'docs/**',
+        'phpunit.xml',
+        'phpstan.neon',
+        'pint.json',
+        'components.json',
         'public/hot',
         'bootstrap/cache/*.php',
     ],
@@ -108,7 +125,7 @@ return [
          * Supported: "github", "s3", "spaces"
          * Note: The "s3" provider is compatible with S3-compatible services like Cloudflare R2.
          */
-        'default' => env('NATIVEPHP_UPDATER_PROVIDER', 'spaces'),
+        'default' => env('NATIVEPHP_UPDATER_PROVIDER', 'github'),
 
         'providers' => [
             'github' => [
@@ -167,7 +184,7 @@ return [
      * Define your own scripts to run before and after the build process.
      */
     'prebuild' => [
-        // 'npm run build',
+        'npm run build',
     ],
 
     'postbuild' => [

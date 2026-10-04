@@ -20,6 +20,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->height(800)
             ->minWidth(960)
             ->minHeight(600)
+            ->preventLeaveDomain()
             ->rememberState();
 
         $this->recoverInterruptedConversions();

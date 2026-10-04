@@ -27,5 +27,6 @@ test('the main window opens with the MDVault configuration', function () {
         'minWidth' => 960,
         'minHeight' => 600,
         'rememberState' => true,
+        'preventLeaveDomain' => true,
     ]);
 });
