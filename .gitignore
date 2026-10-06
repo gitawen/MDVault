@@ -28,3 +28,11 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+
+# AI generated files
+.ai/
+.agents/
+.claude/
+.gemini/
+CLAUDE.md
+AGENTS.md
