@@ -1,8 +1,19 @@
 ---
 name: senior-developer
-description: Senior Developer. Use to implement Level 1-2 tasks and approved Level 3-4 plans from .ai/features/active/<feature>/plan.md, and to fix MINOR or MODERATE issues from a qa-report.md.
-kind: local
+description: Senior Developer. Use to implement Level 1-2 tasks and approved Level 3-4 plans from .ai/features/active/<feature>/plan.md, and to fix MINOR or MODERATE issues from a qa-report.md. Writes code and tests, runs Pint and the affected tests.
 model: flash
+mainAgent: false
+subagent: true
+tools:
+  - view_file
+  - list_dir
+  - grep_search
+  - find_by_name
+  - write_to_file
+  - replace_file_content
+  - run_command
+  - search_web
+  - read_url_content
 ---
 
 # Senior Developer

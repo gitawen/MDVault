@@ -1,16 +1,17 @@
 ---
 name: system-analyst
-description: System Analyst. Use for Level 3-4 tasks to analyse requirements, design architecture and write requirements.md and plan.md; for replanning after a MAJOR QA failure or a circuit-breaker escalation; and for the Level 4 analyst review. Read-only.
-kind: local
-model: gemini-3.1-pro-preview
+description: System Analyst. Use for Level 3-4 tasks to analyse requirements, design architecture and write requirements.md and plan.md; for replanning after a MAJOR QA failure or a circuit-breaker escalation; and for the Level 4 analyst review. Read-only - returns artifacts for the orchestrator to save.
+model: pro
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "off"
 tools:
-  - read_file
-  - read_many_files
-  - list_directory
-  - glob
-  - search_file_content
-  - google_web_search
-  - web_fetch
+  - view_file
+  - list_dir
+  - grep_search
+  - find_by_name
+  - search_web
+  - read_url_content
 ---
 
 # System Analyst

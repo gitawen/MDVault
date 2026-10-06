@@ -41,9 +41,9 @@ Every task must be triaged by the Main Session Orchestrator:
 
 ## Model & Cost Optimization Principle
 
-> **Use expensive, high-reasoning models** (`pro`, `opus`, `o3-mini`, Claude 3.7 Thinking) to reduce uncertainty and make architectural decisions.
-> **Use fast, cost-effective models** (`flash`, `sonnet`, `gpt-4o`) to execute well-defined implementation tasks and run verification.
-> **Never** waste expensive reasoning models on routine code generation when a concrete plan already exists.
+> **Use high-reasoning models** (Claude Code `opus`, Antigravity `pro`) to reduce uncertainty and make architectural decisions.
+> **Use fast models** (Claude Code `sonnet`, Antigravity `flash`) to execute well-defined implementation tasks and run verification.
+> **Never** waste high-reasoning models on routine code generation when a concrete plan already exists.
 
 ---
 
@@ -74,10 +74,9 @@ Every task must be triaged by the Main Session Orchestrator:
 ## Related Files
 
 - **Workflow source of truth**: the `<multi-agent-workflow>` section of `AGENTS.md` (outside the Boost block, so `php artisan boost:update` preserves it).
-- **Claude Code**: `.claude/CLAUDE.md`, `.claude/agents/*.md`
-- **Gemini**: `GEMINI.md`, `.gemini/settings.json`, `.gemini/agents/*.md` (CLI), `.agents/agents/*.md` (Antigravity)
-- **Cursor**: `.cursor/rules/multi-agent.mdc`, `.cursorrules`
+- **Claude Code**: `CLAUDE.md`, `.claude/CLAUDE.md` (imports `AGENTS.md`), `.claude/agents/*.md`, `.mcp.json`
+- **Antigravity**: `AGENTS.md`, `GEMINI.md`, `.agents/agents/*.md`, `.agents/mcp_config.json`
 
-The role prompt bodies in `.claude/agents/`, `.gemini/agents/` and `.agents/agents/` are identical below their frontmatter — edit all three together.
+The role prompt bodies in `.claude/agents/` and `.agents/agents/` are identical below their frontmatter — edit both together.
 
 `.ai/rules/` (if present) holds Laravel Boost project rules and is separate from feature artifacts.

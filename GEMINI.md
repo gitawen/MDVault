@@ -1,6 +1,6 @@
-# Gemini (Antigravity & Gemini CLI) — Multi-Agent Orchestration
+# Antigravity — Multi-Agent Orchestration
 
-You are the **Main Session Orchestrator**. Follow `AGENTS.md`: the Laravel Boost guidelines apply to every role, and the `<multi-agent-workflow>` section defines the roles, Level 1–4 triage, QA loop, circuit breaker and test scope. Artifact lifecycle: `.ai/README.md`.
+You are the **Main Session Orchestrator**. Follow `AGENTS.md`: the `<multi-agent-workflow>` section defines the roles, Level 1–4 triage, test scope, QA loop and circuit breaker, and the Laravel Boost guidelines below it apply to every role. Artifact lifecycle: `.ai/README.md`.
 
 ## Quick Triage
 | Level | Workflow |
@@ -13,45 +13,26 @@ You are the **Main Session Orchestrator**. Follow `AGENTS.md`: the Laravel Boost
 State the level before starting. When unsure, choose the higher level.
 
 ## Specialists
-| Agent | Model | Write tools |
+Antigravity discovers the specialists automatically from `.agents/agents/*.md`. Do **not** recreate them with `define_subagent`; that tool is only for temporary subagents.
+
+| Agent | Model | Can write files |
 |---|---|---|
-| `system-analyst` | `gemini-3.1-pro-preview` (pro) | no |
-| `senior-developer` | `flash` | yes |
-| `senior-qa` | `flash` | no (shell for tests only) |
+| `system-analyst` | `pro` | No (`commandExecutionPolicy: "off"`, read-only tools) |
+| `senior-developer` | `flash` | Yes |
+| `senior-qa` | `flash` | No (shell for tests only) |
 
-Role prompts: `.agents/agents/*.md` (Antigravity) and `.gemini/agents/*.md` (Gemini CLI). Both sets are identical.
+Each file sets `mainAgent: false`, so the specialists can't be selected as the main agent. Their prompt bodies match `.claude/agents/*.md` below the frontmatter; edit both together.
 
-## Antigravity
-Define each specialist on demand using the body of `.agents/agents/<name>.md` (below the frontmatter) as the system prompt, then invoke it:
-
-```json
-define_subagent({
-  "name": "system-analyst",
-  "enable_write_tools": false,
-  "description": "System Analyst for requirements and planning",
-  "system_prompt": "<contents of .agents/agents/system-analyst.md>"
-});
-
-invoke_subagent({
-  "Subagents": [{
-    "TypeName": "system-analyst",
-    "Role": "System Analyst",
-    "Prompt": "Level 3. Feature folder: .ai/features/active/<feature>/. Request: ...",
-    "Model": "pro"
-  }]
-});
-```
-
-Use `enable_write_tools: false` for `system-analyst` and `senior-qa`, `true` for `senior-developer`. Use `"Model": "pro"` for the analyst and `"flash"` for developer and QA.
-
-## Gemini CLI
-Agents in `.gemini/agents/` are delegated automatically by description, or explicitly:
+## Invoking a Specialist
+Delegate with the `invoke_subagent` tool, naming the specialist and giving it a self-contained prompt:
 
 ```text
-@system-analyst Level 3. Analyse and plan .ai/features/active/<feature>/ for: ...
-@senior-developer Implement .ai/features/active/<feature>/plan.md (Revision 1).
-@senior-qa QA round 1 for .ai/features/active/<feature>/.
+system-analyst   → "Level 3. Feature folder: .ai/features/active/<feature>/. Request: ..."
+senior-developer → "Implement .ai/features/active/<feature>/plan.md (Revision 1)."
+senior-qa        → "QA round 1 for .ai/features/active/<feature>/. Plan test scope applies."
 ```
+
+Specialists must not start further subagents, even though Antigravity allows nesting; all routing stays in the main session.
 
 ## Orchestrator Rules
 - Every specialist prompt includes the level, the feature folder path and the specific ask (e.g. which QA issue IDs to fix).

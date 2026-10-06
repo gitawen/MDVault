@@ -1,93 +1,80 @@
-# Universal Multi-Agent Software Development Framework
+<multi-agent-workflow>
 
-This repository is governed by a structured, multi-agent software engineering workflow. The main session acts as the **Workflow Orchestrator**, coordinating specialized roles and managing artifact state in `.ai/`.
+# Multi-Agent Workflow (Claude Code & Antigravity)
 
----
-
-## 1. Core Development Philosophy
-> **Use expensive, high-reasoning models** (`pro`, `opus`, `o3-mini`, Claude 3.7 Thinking) to reduce uncertainty, analyze requirements, and make architectural decisions.
-> **Use fast, efficient models** (`flash`, `sonnet`, `gpt-4o`) to execute well-defined implementation tasks and run verification.
-> **Never** use expensive reasoning models for routine code generation when a concrete plan already exists.
+This repository uses a multi-agent engineering workflow. The **main session is the Workflow Orchestrator**: it triages each request, delegates to three specialist subagents and manages artifact state in `.ai/`. Supported tools: **Claude Code** and **Antigravity**.
 
 ---
 
-## 2. 4-Level Task Classification & Routing
-
-Every request must be classified by the orchestrator before taking action:
-
-### LEVEL 1 — Mechanical
-- **Examples**: Typo, formatting, copy changes, simple documentation, one-line bug fix.
-- **Workflow**: `senior-developer` → Test → Done.
-- *No analyst or formal planning required.*
-
-### LEVEL 2 — Routine Development
-- **Examples**: Standard CRUD, single migration, standard controller/action, Form Request, ordinary Vue component, standard test.
-- **Workflow**: `senior-developer` → Test → `senior-qa` (when verification needed).
-- *Skip formal planning if requirements and architecture are obvious.*
-
-### LEVEL 3 — Complex Development
-- **Examples**: Multi-module feature, business logic, DB schema changes, external service integration, substantial refactoring.
-- **Workflow**: `system-analyst` (Draft `requirements.md` & `plan.md`) → `senior-developer` (`implementation.md`) → `senior-qa` (`qa-report.md`) → Complete / Replan.
-
-### LEVEL 4 — Architectural
-- **Examples**: System redesign, core data model overhaul, security/auth architecture, critical performance changes.
-- **Workflow**: `system-analyst` (Deep analysis & ADR in `.ai/decisions/` + `plan.md`) → `senior-developer` → `senior-qa` → `system-analyst` final sign-off.
+## 1. Model Principle
+> Use **high-reasoning models** to reduce uncertainty and make architectural decisions: Claude Code `opus`, Antigravity `pro`.
+> Use **fast models** to implement well-defined plans and run verification: Claude Code `sonnet`, Antigravity `flash`.
+> Never use the high-reasoning model for routine code generation when a concrete plan already exists.
 
 ---
 
-## 3. Agent Roles & Specifications
+## 2. Task Classification (Level 1–4)
 
-### 1. System Analyst
-- **Role**: Requirements engineering, architectural design, planning, decomposing tasks, reviewing major defects.
-- **Tools**: Read-only tools (`view_file`, `list_dir`, `grep_search`, `find_by_name`, web search, read-only MCP). **No write tools**.
-- **Model**: `gemini-3.1-pro-preview` / `pro` | Claude `opus` | `o3-mini` | Claude 3.7 Sonnet (Thinking).
-- **Artifacts**: Writes `.ai/features/active/<feature>/requirements.md`, `plan.md`, `.ai/decisions/<decision>.md`.
+State the level before starting. When unsure, choose the higher level.
 
-### 2. Senior Developer
-- **Role**: Implementation strictly adhering to an approved `plan.md`.
-- **Tools**: Full development tools (`view_file`, `write_to_file`, `replace_file_content`, `run_command`).
-- **Model**: `gemini-3.8-flash` / `flash` | Claude `sonnet` | `gpt-4o`.
-- **Artifacts**: Maintains `.ai/features/active/<feature>/implementation.md`.
-- **Standard**: Follows PHP 8.4 / Laravel 13 standards, Vue 3 single-root elements, Wayfinder routing, runs Pint and Pest.
+| Level | Examples | Workflow |
+|---|---|---|
+| **1 — Mechanical** | Typo, formatting, copy change, simple docs, one-line fix | Orchestrator (or `senior-developer`) → test → done |
+| **2 — Routine** | Standard CRUD, single migration, controller/action, Form Request, ordinary Vue component | `senior-developer` → test → `senior-qa` when auth, validation, data integrity or many files are involved |
+| **3 — Complex** | Multi-module feature, business logic, schema change, external integration, major refactor | `system-analyst` (`requirements.md` + `plan.md`) → `senior-developer` (`implementation.md`) → `senior-qa` (`qa-report.md`) → complete / replan |
+| **4 — Architectural** | System redesign, core data model, security/auth architecture, critical performance | `system-analyst` (deep analysis + ADR in `.ai/decisions/` + `plan.md`) → `senior-developer` → `senior-qa` → `system-analyst` final review |
 
-### 3. Senior QA Engineer
-- **Role**: Rigorous, skeptical verification against requirements and test suites.
-- **Tools**: Inspection and test execution tools (`view_file`, `run_command` for Pest/Pint). **No production code write tools**.
-- **Model**: `gemini-3.8-flash` / `flash` | Claude `sonnet` | `gpt-4o`.
-- **Artifacts**: Produces `.ai/features/active/<feature>/qa-report.md`.
-- **Defect Classification**: MINOR (Developer fixes directly), MODERATE (Developer resolves within design), MAJOR (Escalate to System Analyst).
+Level 2+: the orchestrator does not write application code or tests itself.
 
 ---
 
-## 4. Shared Artifact Lifecycle (`.ai/`)
+## 3. Roles
 
-```text
-.ai/
-├── README.md
-├── features/
-│   ├── active/             # In-progress features
-│   │   └── <feature-name>/
-│   │       ├── requirements.md
-│   │       ├── plan.md
-│   │       ├── implementation.md
-│   │       └── qa-report.md
-│   └── completed/          # Features that passed QA verification
-│       └── <feature-name>/
-├── decisions/              # Architectural Decision Records (ADRs)
-└── templates/              # Standard templates for all agents
-```
+| Role | Claude Code model | Antigravity model | Write tools | Produces |
+|---|---|---|---|---|
+| `system-analyst` | `opus` | `pro` | No (read-only + web + Boost MCP) | `requirements.md`, `plan.md`, `.ai/decisions/<decision>.md` |
+| `senior-developer` | `sonnet` | `flash` | Yes | Code, tests, `implementation.md` |
+| `senior-qa` | `sonnet` | `flash` | No (shell for tests only) | `qa-report.md` with MINOR / MODERATE / MAJOR issues |
 
-When a feature passes QA with zero open critical or high-severity issues, the folder is moved from `.ai/features/active/<feature-name>/` to `.ai/features/completed/<feature-name>/`.
+`system-analyst` and `senior-qa` cannot write files. They return each artifact preceded by `<!-- path: ... -->` and the orchestrator saves it to that path verbatim.
 
 ---
 
-## 5. Escalation & Anti-Loop Circuit Breaker
-- **Minor Defect**: Senior Developer fixes directly → Senior QA re-tests.
-- **Moderate Defect**: Senior Developer clarifies and fixes within existing design → Senior QA re-tests.
-- **Major Defect**: Halt implementation → Escalate to System Analyst to revise `plan.md`.
-- **Circuit Breaker Rule**: If any defect survives **3 fix attempts**, stop implementation immediately. Escalate to the **System Analyst** for root-cause analysis and architectural review.
+## 4. Test Scope (QA)
+- The test files/directories named in the plan's test scope (Level 3–4), or the tests covering the changed files (Level 2): `php artisan test --compact <paths>`.
+- Related feature directories the change could plausibly break.
+- `vendor/bin/phpstan analyse` when PHP changed; `npm run types:check` when Vue/TypeScript changed.
+- QA does **not** run the full suite. At completion the orchestrator asks the user to run `php artisan test --compact`.
 
 ---
+
+## 5. QA Loop & Circuit Breaker
+- **MINOR** → `senior-developer` fixes directly → `senior-qa` re-tests.
+- **MODERATE** → `senior-developer` fixes within the existing design → `senior-qa` re-tests.
+- **MAJOR** → halt; `system-analyst` replans and updates `plan.md`.
+- **Circuit breaker**: any defect that survives **3 fix attempts** stops implementation and goes to `system-analyst` for root-cause analysis.
+- **PASS** (no open critical/high issues): Level 4 gets a `system-analyst` review first; then move `.ai/features/active/<feature>/` to `.ai/features/completed/<feature>/`.
+
+---
+
+## 6. Orchestrator Rules
+- Subagents start with no conversation context. Every prompt includes the **level**, the **feature folder path** and the **specific ask** (e.g. which QA issue IDs to fix).
+- Subagents do not start other subagents (Claude Code forbids it; in Antigravity it is allowed but not used here). All routing happens in the main session.
+- Relay subagent results to the user in brief.
+
+---
+
+## 7. Tool Setup
+
+| | Claude Code | Antigravity |
+|---|---|---|
+| Orchestrator instructions | `CLAUDE.md`, `.claude/CLAUDE.md` (imports this file) | `AGENTS.md` (this file), `GEMINI.md` |
+| Subagent definitions | `.claude/agents/*.md` (auto-discovered) | `.agents/agents/*.md` (auto-discovered) |
+| Invoke a subagent | `Agent` tool with `subagent_type="system-analyst"` | `invoke_subagent` tool naming `system-analyst` |
+| Boost MCP config | `.mcp.json` | `.agents/mcp_config.json` |
+
+The role prompt bodies in `.claude/agents/` and `.agents/agents/` are identical below their frontmatter: edit both together. Artifact lifecycle: `.ai/README.md`.
+</multi-agent-workflow>
 
 <laravel-boost-guidelines>
 === foundation rules ===

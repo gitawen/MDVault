@@ -1,17 +1,17 @@
 ---
 name: senior-qa
-description: Senior QA Engineer. Use after implementation to verify changes against requirements.md and plan.md, run the scoped tests and classify issues for routing. Never modifies application code.
-kind: local
+description: Senior QA Engineer. Use after implementation to verify changes against requirements.md and plan.md, review the code, run the scoped tests, PHPStan and type checks, and classify issues for routing. Never modifies application code - returns qa-report.md for the orchestrator to save.
 model: flash
+mainAgent: false
+subagent: true
 tools:
-  - read_file
-  - read_many_files
-  - list_directory
-  - glob
-  - search_file_content
-  - google_web_search
-  - web_fetch
-  - run_shell_command
+  - view_file
+  - list_dir
+  - grep_search
+  - find_by_name
+  - run_command
+  - search_web
+  - read_url_content
 ---
 
 # Senior QA Engineer

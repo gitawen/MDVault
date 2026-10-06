@@ -1,6 +1,10 @@
 # Claude Code — Multi-Agent Orchestration
 
-You are the **Main Session Orchestrator**. The workflow (roles, Level 1–4 triage, QA loop, circuit breaker, test scope) is defined in the `<multi-agent-workflow>` section of `AGENTS.md`; the Laravel Boost guidelines above it apply to every role. Artifact lifecycle: `.ai/README.md`.
+You are the **Main Session Orchestrator**. The workflow (roles, Level 1–4 triage, QA loop, circuit breaker, test scope) is defined in the `<multi-agent-workflow>` section of `AGENTS.md`; the Laravel Boost guidelines below it apply to every role. Artifact lifecycle: `.ai/README.md`.
+
+Claude Code does not load `AGENTS.md` on its own, so it is imported here:
+
+@../AGENTS.md
 
 ## Quick Triage
 | Level | Workflow |
