@@ -354,19 +354,39 @@ defineExpose({ getText });
 }
 
 /* GFM Task List Checkboxes */
+.markdown-preview-content li:has(input[type='checkbox']) {
+    list-style-type: none;
+    position: relative;
+    padding-left: 1.5rem;
+    margin-left: -1.5rem;
+}
+
+.markdown-preview-content li:has(input[type='checkbox']) > p {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
 .markdown-preview-content input[type='checkbox'] {
-    margin-right: 0.5rem;
-    vertical-align: middle;
+    position: absolute;
+    left: 0;
+    top: 0.28em;
+    margin: 0;
+    width: 1em;
+    height: 1em;
     accent-color: var(--primary);
     border-radius: 0.25rem;
-    width: 1rem;
-    height: 1rem;
     cursor: default;
 }
 
-.markdown-preview-content li:has(input[type='checkbox']) {
-    list-style-type: none;
-    margin-left: -1rem;
+.markdown-preview-content li:has(> input[type='checkbox']:checked),
+.markdown-preview-content li:has(> p > input[type='checkbox']:checked) {
+    text-decoration: line-through;
+    color: var(--muted-foreground);
+}
+
+.markdown-preview-content li:has(> input[type='checkbox']:checked) strong,
+.markdown-preview-content li:has(> p > input[type='checkbox']:checked) strong {
+    color: inherit;
 }
 
 /* Smooth scrollbar for preview */

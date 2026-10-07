@@ -396,14 +396,19 @@ export function livePreview(): Extension {
                 color: 'var(--muted-foreground)',
             },
             '.cm-md-task-widget': {
-                display: 'inline-block',
-                verticalAlign: 'middle',
+                display: 'inline-flex',
+                alignItems: 'center',
+                verticalAlign: '-0.15em',
             },
             '.cm-md-task-checkbox': {
                 cursor: 'pointer',
-                marginRight: '0.4em',
+                margin: '0',
+                marginRight: '0.1em',
+                width: '1em',
+                height: '1em',
                 verticalAlign: 'middle',
                 accentColor: 'var(--primary)',
+                borderRadius: '0.25rem',
             },
         }),
     ];
