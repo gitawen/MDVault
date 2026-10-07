@@ -45,7 +45,14 @@ defineProps<Props>();
                 stroke="#fff"
                 stroke-width="26"
             />
-            <rect x="166" y="240" width="180" height="142" rx="26" fill="#fff" />
+            <rect
+                x="166"
+                y="240"
+                width="180"
+                height="142"
+                rx="26"
+                fill="#fff"
+            />
             <path
                 d="M209 348V280l47 41 47-41v68"
                 fill="none"

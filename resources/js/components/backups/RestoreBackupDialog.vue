@@ -156,8 +156,8 @@ function close(): void {
                         <AlertDescription>
                             <ul class="list-disc pl-4">
                                 <li
-                                    v-for="(problem, index) in state
-                                        .inspection.problems"
+                                    v-for="(problem, index) in state.inspection
+                                        .problems"
                                     :key="index"
                                 >
                                     {{ problem }}
@@ -193,9 +193,7 @@ function close(): void {
                         </p>
                     </div>
 
-                    <div
-                        class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1"
-                    >
+                    <div class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
                         <div
                             v-for="vault in state.inspection.vaults"
                             :key="vault.uuid"

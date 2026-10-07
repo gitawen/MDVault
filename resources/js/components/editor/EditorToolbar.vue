@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/core';
+import type { EditorView } from '@codemirror/view';
 import {
     Bold,
     Code,
+    Code2,
+    Columns2,
+    Eye,
     Heading1,
     Heading2,
     Heading3,
@@ -11,14 +14,15 @@ import {
     List,
     ListOrdered,
     ListTodo,
-    MoreHorizontal,
     Minus,
+    MoreHorizontal,
     Pilcrow,
     Quote,
     Redo2,
     RemoveFormatting,
     SquareCode,
     Strikethrough,
+    Table as TableIcon,
     Undo2,
 } from '@lucide/vue';
 import { ref } from 'vue';
@@ -31,33 +35,42 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import LinkDialog from '@/components/editor/LinkDialog.vue';
+import { linkAt } from '@/lib/editor/codemirrorCommands';
 import {
     toolbarCommands,
     type ToolbarCommandId,
 } from '@/lib/editor/toolbarCommands';
-import { useEditorTick } from '@/lib/editor/useEditorTick';
 
 const props = defineProps<{
-    editor: Editor | undefined;
+    view?: EditorView | undefined;
+    displayMode?: 'code' | 'split' | 'preview';
+    /**
+     * Bumped by `SourceEditor.vue`'s CodeMirror `onUpdate` callback on every
+     * doc/selection/focus change — the sole reactivity source for the
+     * toolbar's active/enabled state (FR-01/FR-02).
+     */
+    revision?: number;
 }>();
 
-const tick = useEditorTick(() => props.editor);
+const emit = defineEmits<{
+    'update:displayMode': [mode: 'code' | 'split' | 'preview'];
+}>();
 
 function isActive(id: ToolbarCommandId): boolean {
-    void tick.value;
+    void props.revision;
 
-    return props.editor ? toolbarCommands[id].isActive(props.editor) : false;
+    return props.view ? toolbarCommands[id].isActive(props.view) : false;
 }
 
 function canRun(id: ToolbarCommandId): boolean {
-    void tick.value;
+    void props.revision;
 
-    return props.editor ? toolbarCommands[id].canRun(props.editor) : false;
+    return props.view ? toolbarCommands[id].canRun(props.view) : false;
 }
 
 function run(id: ToolbarCommandId): void {
-    if (props.editor) {
-        toolbarCommands[id].run(props.editor);
+    if (props.view) {
+        toolbarCommands[id].run(props.view);
     }
 }
 
@@ -71,9 +84,7 @@ function title(id: ToolbarCommandId): string {
 
 /**
  * The overflow menu (below `md`) holds the less-used commands; the icon
- * buttons above stay visible at every width. `md:hidden`/`md:inline-flex`
- * (in the template) switch between the two, not JS, so this is purely a
- * data table for the dropdown's contents.
+ * buttons above stay visible at every width.
  */
 const overflowCommandIcons: Record<ToolbarCommandId, unknown> = {
     undo: Undo2,
@@ -93,6 +104,7 @@ const overflowCommandIcons: Record<ToolbarCommandId, unknown> = {
     codeBlock: SquareCode,
     horizontalRule: Minus,
     clearFormatting: RemoveFormatting,
+    table: TableIcon,
 };
 
 const overflowCommands: ToolbarCommandId[] = [
@@ -103,6 +115,7 @@ const overflowCommands: ToolbarCommandId[] = [
     'blockquote',
     'codeBlock',
     'horizontalRule',
+    'table',
     'clearFormatting',
 ];
 
@@ -113,23 +126,35 @@ function openLinkDialog(): void {
 }
 
 function currentHref(): string {
-    return props.editor ? (props.editor.getAttributes('link').href ?? '') : '';
+    const view = props.view;
+    if (!view) {
+        return '';
+    }
+    return linkAt(view.state, view.state.selection.main.head)?.href ?? '';
 }
+
+defineExpose({ openLinkDialog });
 </script>
 
 <template>
     <div
         role="toolbar"
         aria-label="Formatting"
-        class="sticky top-0 z-10 flex shrink-0 items-center gap-1.5 border-b border-border/70 bg-card/95 backdrop-blur-xs px-2 py-1.5 overflow-x-auto no-scrollbar touch-pan-x"
+        class="no-scrollbar sticky top-0 z-10 flex shrink-0 touch-pan-x items-center gap-1.5 overflow-x-auto border-b border-border/70 bg-card/95 px-2 py-1.5 backdrop-blur-xs"
     >
         <!-- History Group -->
-        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+        <div
+            class="flex shrink-0 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5"
+        >
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all"
-                :class="isActive('undo') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isActive('undo')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('undo')"
                 :disabled="!canRun('undo')"
                 :title="title('undo')"
@@ -140,8 +165,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all"
-                :class="isActive('redo') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isActive('redo')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('redo')"
                 :disabled="!canRun('redo')"
                 :title="title('redo')"
@@ -154,12 +183,18 @@ function currentHref(): string {
         <Separator orientation="vertical" class="h-5 shrink-0" />
 
         <!-- Inline Formatting Group -->
-        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+        <div
+            class="flex shrink-0 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5"
+        >
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all"
-                :class="isActive('bold') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isActive('bold')
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('bold')"
                 :disabled="!canRun('bold')"
                 :title="title('bold')"
@@ -170,8 +205,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all"
-                :class="isActive('italic') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isActive('italic')
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('italic')"
                 :disabled="!canRun('italic')"
                 :title="title('italic')"
@@ -182,8 +221,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all hidden sm:inline-flex"
-                :class="isActive('strike') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                class="hidden size-7 rounded-sm transition-all sm:inline-flex sm:size-7.5"
+                :class="
+                    isActive('strike')
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('strike')"
                 :disabled="!canRun('strike')"
                 :title="title('strike')"
@@ -194,8 +237,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all hidden sm:inline-flex"
-                :class="isActive('code') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                class="hidden size-7 rounded-sm transition-all sm:inline-flex sm:size-7.5"
+                :class="
+                    isActive('code')
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('code')"
                 :disabled="!canRun('code')"
                 :title="title('code')"
@@ -208,12 +255,18 @@ function currentHref(): string {
         <Separator orientation="vertical" class="h-5 shrink-0" />
 
         <!-- Headings Group -->
-        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+        <div
+            class="flex shrink-0 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5"
+        >
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all"
-                :class="isActive('h1') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isActive('h1')
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('h1')"
                 :disabled="!canRun('h1')"
                 :title="title('h1')"
@@ -224,8 +277,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all"
-                :class="isActive('h2') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isActive('h2')
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('h2')"
                 :disabled="!canRun('h2')"
                 :title="title('h2')"
@@ -236,8 +293,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all hidden sm:inline-flex"
-                :class="isActive('h3') ? 'bg-background text-foreground shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                class="hidden size-7 rounded-sm transition-all sm:inline-flex sm:size-7.5"
+                :class="
+                    isActive('h3')
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('h3')"
                 :disabled="!canRun('h3')"
                 :title="title('h3')"
@@ -250,12 +311,18 @@ function currentHref(): string {
         <Separator orientation="vertical" class="h-5 shrink-0" />
 
         <!-- Lists Group -->
-        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+        <div
+            class="flex shrink-0 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5"
+        >
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all"
-                :class="isActive('bulletList') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isActive('bulletList')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('bulletList')"
                 :disabled="!canRun('bulletList')"
                 :title="title('bulletList')"
@@ -266,8 +333,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all"
-                :class="isActive('orderedList') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isActive('orderedList')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('orderedList')"
                 :disabled="!canRun('orderedList')"
                 :title="title('orderedList')"
@@ -278,8 +349,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all hidden sm:inline-flex"
-                :class="isActive('taskList') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="hidden size-7 rounded-sm transition-all sm:inline-flex sm:size-7.5"
+                :class="
+                    isActive('taskList')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('taskList')"
                 :disabled="!canRun('taskList')"
                 :title="title('taskList')"
@@ -292,13 +367,15 @@ function currentHref(): string {
         <Separator orientation="vertical" class="h-5 shrink-0" />
 
         <!-- Links & Blocks Group -->
-        <div class="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5 border border-border/40">
+        <div
+            class="flex shrink-0 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5"
+        >
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all text-muted-foreground hover:text-foreground"
+                class="size-7 rounded-sm text-muted-foreground transition-all hover:text-foreground sm:size-7.5"
                 :aria-pressed="false"
-                :disabled="!editor"
+                :disabled="!props.view"
                 title="Link (Ctrl+K)"
                 @click="openLinkDialog"
             >
@@ -307,8 +384,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all hidden md:inline-flex"
-                :class="isActive('blockquote') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="hidden size-7 rounded-sm transition-all sm:size-7.5 md:inline-flex"
+                :class="
+                    isActive('blockquote')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('blockquote')"
                 :disabled="!canRun('blockquote')"
                 :title="title('blockquote')"
@@ -319,8 +400,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all hidden md:inline-flex"
-                :class="isActive('codeBlock') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="hidden size-7 rounded-sm transition-all sm:size-7.5 md:inline-flex"
+                :class="
+                    isActive('codeBlock')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('codeBlock')"
                 :disabled="!canRun('codeBlock')"
                 :title="title('codeBlock')"
@@ -331,8 +416,12 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all hidden md:inline-flex"
-                :class="isActive('horizontalRule') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="hidden size-7 rounded-sm transition-all sm:size-7.5 md:inline-flex"
+                :class="
+                    isActive('horizontalRule')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('horizontalRule')"
                 :disabled="!canRun('horizontalRule')"
                 :title="title('horizontalRule')"
@@ -343,14 +432,34 @@ function currentHref(): string {
             <Button
                 variant="ghost"
                 size="icon-sm"
-                class="size-7 sm:size-7.5 rounded-sm transition-all hidden md:inline-flex"
-                :class="isActive('clearFormatting') ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'"
+                class="hidden size-7 rounded-sm transition-all sm:size-7.5 md:inline-flex"
+                :class="
+                    isActive('clearFormatting')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
                 :aria-pressed="isActive('clearFormatting')"
                 :disabled="!canRun('clearFormatting')"
                 :title="title('clearFormatting')"
                 @click="run('clearFormatting')"
             >
                 <RemoveFormatting class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="hidden size-7 rounded-sm transition-all sm:size-7.5 md:inline-flex"
+                :class="
+                    isActive('table')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
+                :aria-pressed="isActive('table')"
+                :disabled="!canRun('table')"
+                :title="title('table')"
+                @click="run('table')"
+            >
+                <TableIcon class="size-3.5 sm:size-4" />
             </Button>
         </div>
 
@@ -360,7 +469,7 @@ function currentHref(): string {
                 <Button
                     variant="ghost"
                     size="icon-sm"
-                    class="size-7 sm:size-7.5 shrink-0 rounded-sm md:hidden text-muted-foreground hover:text-foreground"
+                    class="size-7 shrink-0 rounded-sm text-muted-foreground hover:text-foreground sm:size-7.5 md:hidden"
                     title="More formatting"
                     aria-label="More formatting"
                 >
@@ -385,9 +494,61 @@ function currentHref(): string {
             </DropdownMenuContent>
         </DropdownMenu>
 
+        <!-- View Mode Segmented Control (Editor / Split / Preview) -->
+        <div
+            v-if="displayMode"
+            class="ml-auto flex shrink-0 items-center gap-0.5 rounded-md border border-border/40 bg-muted/40 p-0.5"
+        >
+            <Button
+                variant="ghost"
+                size="sm"
+                class="h-7 cursor-pointer rounded-sm px-2 text-xs transition-all sm:px-2.5"
+                :class="
+                    displayMode === 'code'
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
+                title="Editor only"
+                @click="emit('update:displayMode', 'code')"
+            >
+                <Code2 class="size-3.5" />
+                <span class="hidden sm:inline">Editor</span>
+            </Button>
+            <Button
+                variant="ghost"
+                size="sm"
+                class="hidden h-7 cursor-pointer rounded-sm px-2 text-xs transition-all sm:inline-flex sm:px-2.5"
+                :class="
+                    displayMode === 'split'
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
+                title="Side-by-side Editor and Live Preview"
+                @click="emit('update:displayMode', 'split')"
+            >
+                <Columns2 class="size-3.5" />
+                <span class="hidden md:inline">Split</span>
+            </Button>
+            <Button
+                variant="ghost"
+                size="sm"
+                class="h-7 cursor-pointer rounded-sm px-2 text-xs transition-all sm:px-2.5"
+                :class="
+                    displayMode === 'preview'
+                        ? 'bg-background font-semibold text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
+                title="Rendered Markdown Preview only"
+                @click="emit('update:displayMode', 'preview')"
+            >
+                <Eye class="size-3.5" />
+                <span class="hidden sm:inline">Preview</span>
+            </Button>
+        </div>
+
         <LinkDialog
             v-model:open="linkDialogOpen"
-            :editor="editor"
+            :view="props.view"
             :initial-href="currentHref()"
         />
     </div>

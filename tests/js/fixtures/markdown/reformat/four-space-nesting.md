@@ -1,4 +1,0 @@
-- one
-    - nested one
-    - nested two
-- two

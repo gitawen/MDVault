@@ -1,6 +1,6 @@
 # ADR: Markdown conversion location, library and round-trip fidelity
 
-- **Status**: Accepted (F1, F2, F3, F10 approved; delivered in Phase 4, 2026-09-29)
+- **Status**: Superseded by .ai/decisions/codemirror-unified-editor.md (2026-10-07). Originally accepted (F1, F2, F3, F10 approved; delivered in Phase 4, 2026-09-29) — kept below as the historical record of why the TipTap↔Markdown converter existed; it and the fidelity machinery it describes were deleted by `.ai/decisions/retire-tiptap-rich-mode.md`.
 - **Date**: 2026-09-29
 - **Phase**: Master Plan Phase 4, Tiptap Editor (§2, §20, §21, §41, §42, §53; Rules 1, 5, 8; §61 item 16)
 

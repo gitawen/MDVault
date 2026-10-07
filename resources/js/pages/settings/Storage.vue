@@ -171,9 +171,12 @@ function useDefaultLocation() {
 
         <!-- Section Header -->
         <div class="space-y-1">
-            <h2 class="text-xl font-semibold tracking-tight">Storage Location</h2>
+            <h2 class="text-xl font-semibold tracking-tight">
+                Storage Location
+            </h2>
             <p class="text-sm text-muted-foreground">
-                Designate where MDVault writes new vaults and organizes internal document directories.
+                Designate where MDVault writes new vaults and organizes internal
+                document directories.
             </p>
         </div>
 
@@ -182,13 +185,18 @@ function useDefaultLocation() {
             <Card class="border-border/60 shadow-xs">
                 <CardHeader class="pb-4">
                     <div class="flex items-center gap-2.5">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <div
+                            class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                        >
                             <HardDrive class="h-4 w-4" />
                         </div>
                         <div>
-                            <CardTitle class="text-base font-medium">Root Storage Paths</CardTitle>
+                            <CardTitle class="text-base font-medium"
+                                >Root Storage Paths</CardTitle
+                            >
                             <CardDescription>
-                                Set the base directory and root vault subfolder name.
+                                Set the base directory and root vault subfolder
+                                name.
                             </CardDescription>
                         </div>
                     </div>
@@ -196,7 +204,10 @@ function useDefaultLocation() {
                 <CardContent class="space-y-5">
                     <!-- Base Location Field -->
                     <div class="grid gap-2">
-                        <Label for="location" class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <Label
+                            for="location"
+                            class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+                        >
                             Base Directory
                         </Label>
                         <div class="flex flex-col gap-2 sm:flex-row">
@@ -209,7 +220,9 @@ function useDefaultLocation() {
                                     class="bg-background pr-9 font-mono text-sm"
                                     placeholder="C:\Users\..."
                                 />
-                                <Folder class="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Folder
+                                    class="pointer-events-none absolute top-2.5 right-3 h-4 w-4 text-muted-foreground"
+                                />
                             </div>
                             <Button
                                 type="button"
@@ -223,13 +236,19 @@ function useDefaultLocation() {
                             </Button>
                         </div>
                         <InputError
-                            :message="form.errors.location ?? page.props.errors.location"
+                            :message="
+                                form.errors.location ??
+                                page.props.errors.location
+                            "
                         />
                     </div>
 
                     <!-- Folder Name Field -->
                     <div class="grid gap-2 sm:max-w-md">
-                        <Label for="folder_name" class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <Label
+                            for="folder_name"
+                            class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+                        >
                             Subfolder Name
                         </Label>
                         <Input
@@ -241,21 +260,35 @@ function useDefaultLocation() {
                             class="bg-background font-mono text-sm"
                         />
                         <InputError
-                            :message="form.errors.folder_name ?? page.props.errors.folder_name"
+                            :message="
+                                form.errors.folder_name ??
+                                page.props.errors.folder_name
+                            "
                         />
                     </div>
 
                     <!-- Resolved Path Banner -->
-                    <div class="rounded-xl border border-border/60 bg-muted/30 p-4 shadow-2xs">
-                        <div class="flex items-center justify-between gap-2 mb-1.5">
-                            <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div
+                        class="rounded-xl border border-border/60 bg-muted/30 p-4 shadow-2xs"
+                    >
+                        <div
+                            class="mb-1.5 flex items-center justify-between gap-2"
+                        >
+                            <span
+                                class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+                            >
                                 Active Vaults Destination
                             </span>
-                            <Badge variant="outline" class="font-mono text-[11px]">
+                            <Badge
+                                variant="outline"
+                                class="font-mono text-[11px]"
+                            >
                                 Auto-resolved
                             </Badge>
                         </div>
-                        <p class="font-mono text-sm font-semibold tracking-tight text-foreground break-all">
+                        <p
+                            class="font-mono text-sm font-semibold tracking-tight break-all text-foreground"
+                        >
                             {{ previewPath || '—' }}
                         </p>
                     </div>
@@ -265,20 +298,29 @@ function useDefaultLocation() {
             <!-- Directory Diagnostics & Defaults Card -->
             <Card class="border-border/60 shadow-xs">
                 <CardHeader class="pb-3">
-                    <CardTitle class="text-base font-medium">Directory Health & Defaults</CardTitle>
-                    <CardDescription>Status check on selected filesystem target.</CardDescription>
+                    <CardTitle class="text-base font-medium"
+                        >Directory Health & Defaults</CardTitle
+                    >
+                    <CardDescription
+                        >Status check on selected filesystem
+                        target.</CardDescription
+                    >
                 </CardHeader>
                 <CardContent class="space-y-4">
                     <div class="flex flex-wrap items-center gap-2">
                         <Badge
                             v-if="storage.exists"
                             variant="secondary"
-                            class="gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                            class="gap-1.5 border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                         >
                             <CheckCircle2 class="h-3.5 w-3.5" />
                             Folder exists on disk
                         </Badge>
-                        <Badge v-else variant="outline" class="gap-1.5 text-muted-foreground">
+                        <Badge
+                            v-else
+                            variant="outline"
+                            class="gap-1.5 text-muted-foreground"
+                        >
                             <Info class="h-3.5 w-3.5" />
                             Will be created when needed
                         </Badge>
@@ -294,10 +336,16 @@ function useDefaultLocation() {
                     </div>
 
                     <!-- Default Path Details -->
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 p-3 text-xs">
+                    <div
+                        class="flex flex-col justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 p-3 text-xs sm:flex-row sm:items-center"
+                    >
                         <div class="space-y-0.5">
-                            <span class="font-medium text-foreground">System Default:</span>
-                            <p class="font-mono text-muted-foreground break-all">
+                            <span class="font-medium text-foreground"
+                                >System Default:</span
+                            >
+                            <p
+                                class="font-mono break-all text-muted-foreground"
+                            >
                                 {{ storage.default_path }}
                             </p>
                         </div>
@@ -315,18 +363,26 @@ function useDefaultLocation() {
                     </div>
 
                     <p class="text-xs leading-relaxed text-muted-foreground">
-                        Changing storage location does not automatically move existing vault directories on disk.
-                        The folder specified above is created inside your chosen directory unless the location you select is already named that.
+                        Changing storage location does not automatically move
+                        existing vault directories on disk. The folder specified
+                        above is created inside your chosen directory unless the
+                        location you select is already named that.
                     </p>
                 </CardContent>
             </Card>
 
             <!-- Bottom Action Bar -->
-            <div class="flex items-center justify-between border-t border-border/60 pt-4">
+            <div
+                class="flex items-center justify-between border-t border-border/60 pt-4"
+            >
                 <p class="text-xs text-muted-foreground">
                     Directory changes will apply to all subsequent new vaults.
                 </p>
-                <Button type="submit" :disabled="form.processing" class="min-w-28 gap-1.5">
+                <Button
+                    type="submit"
+                    :disabled="form.processing"
+                    class="min-w-28 gap-1.5"
+                >
                     <Check v-if="!form.processing" class="h-4 w-4" />
                     <span>Save Location</span>
                 </Button>

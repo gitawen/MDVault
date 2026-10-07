@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Editor } from '@tiptap/core';
+import type { EditorView } from '@codemirror/view';
 import { ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,10 +12,21 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    insertLink,
+    linkAt,
+    removeLink,
+} from '@/lib/editor/codemirrorCommands';
+import { isAllowedHref } from '@/lib/editor/linkProtocols';
 
 const props = defineProps<{
-    editor: Editor | undefined;
-    initialHref: string;
+    view?: EditorView | undefined;
+    initialHref?: string;
+}>();
+
+const emit = defineEmits<{
+    apply: [href: string];
+    remove: [];
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -25,40 +36,52 @@ const error = ref<string | null>(null);
 
 watch(open, (isOpen) => {
     if (isOpen) {
-        href.value = props.initialHref;
+        href.value = props.initialHref ?? '';
         error.value = null;
     }
 });
 
 function apply(): void {
-    if (!props.editor) {
-        return;
-    }
-
-    error.value = null;
-    const chain = props.editor.chain().focus().extendMarkRange('link');
     const trimmed = href.value.trim();
+    const active = props.view;
+    error.value = null;
 
-    const applied =
-        trimmed === ''
-            ? chain.unsetLink().run()
-            : chain.setLink({ href: trimmed }).run();
-
-    if (!applied) {
-        error.value = "That link type isn't allowed.";
-
+    if (!active) {
+        open.value = false;
         return;
     }
 
+    if (trimmed === '') {
+        removeLink(active);
+    } else {
+        if (!isAllowedHref(trimmed)) {
+            error.value = "That link type isn't allowed.";
+            return;
+        }
+
+        const existing = linkAt(active.state, active.state.selection.main.head);
+        if (existing) {
+            insertLink(active, trimmed, existing.text, {
+                from: existing.from,
+                to: existing.to,
+            });
+        } else {
+            insertLink(active, trimmed);
+        }
+    }
+
+    emit('apply', trimmed);
     open.value = false;
 }
 
 function remove(): void {
-    if (!props.editor) {
-        return;
+    const active = props.view;
+
+    if (active) {
+        removeLink(active);
     }
 
-    props.editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    emit('remove');
     open.value = false;
 }
 </script>

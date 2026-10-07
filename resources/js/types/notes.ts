@@ -30,6 +30,12 @@ export type NoteDetail = {
     file_hash: string;
     updated_at: string | null;
     content: string | null;
+    /**
+     * Server-side only since the rich/source editor bifurcation was
+     * retired: no client code reads `body`/`frontmatter`/`frontmatter_yaml`
+     * anymore. Left in the payload because trimming it is a backend change
+     * deferred to a follow-up feature, not because the client uses it.
+     */
     body: string | null;
     frontmatter: string | null;
     frontmatter_yaml: string | null;

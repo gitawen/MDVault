@@ -1,14 +1,38 @@
-import { Editor } from '@tiptap/core';
+import { history } from '@codemirror/commands';
+import { EditorState, type TransactionSpec } from '@codemirror/state';
 import { describe, expect, it } from 'vite-plus/test';
-import { markdownExtensions } from '../../../resources/js/lib/markdown/extensions';
+import type { CommandTarget } from '../../../resources/js/lib/editor/codemirrorCommands';
 import {
     toolbarCommands,
     type ToolbarCommandId,
 } from '../../../resources/js/lib/editor/toolbarCommands';
 
-const HTML_TAG_PATTERN = /<[a-z][^>]*>/i;
+/**
+ * Drives the single CodeMirror command table — this is the direct
+ * regression test for FR-04/FR-05/FR-06 (Paragraph/Divider/Clear formatting
+ * were a no-op, destructive, and a no-op respectively in the old TipTap
+ * branch) and for FR-08/FR-11 (one code path, plus the new Table command).
+ */
+function createCodeMirrorTarget(
+    initialText: string,
+    from = 0,
+    to = initialText.length,
+): CommandTarget {
+    let state = EditorState.create({
+        doc: initialText,
+        selection: { anchor: from, head: to },
+    });
+    return {
+        get state() {
+            return state;
+        },
+        dispatch(tr: TransactionSpec) {
+            state = state.update(tr).state;
+        },
+    };
+}
 
-const expectedMarkdown: Record<ToolbarCommandId, string> = {
+const expectedCodeMirrorMarkdown: Record<ToolbarCommandId, string> = {
     undo: 'para text',
     redo: 'para text',
     bold: '**para text**',
@@ -24,38 +48,23 @@ const expectedMarkdown: Record<ToolbarCommandId, string> = {
     taskList: '- [ ] para text',
     blockquote: '> para text',
     codeBlock: '```\npara text\n```',
-    horizontalRule: '---',
+    horizontalRule: 'para text\n\n---',
     clearFormatting: 'para text',
+    table: 'para text\n\n| Header 1 | Header 2 |\n| --- | --- |\n| Cell 1 | Cell 2 |',
 };
-
-function editorWithSelectedText(): Editor {
-    const editor = new Editor({
-        element: null,
-        extensions: markdownExtensions(),
-        content: 'para text',
-        contentType: 'markdown',
-    });
-
-    editor.commands.selectAll();
-
-    return editor;
-}
 
 describe('toolbarCommands', () => {
     for (const [id, command] of Object.entries(toolbarCommands) as [
         ToolbarCommandId,
         (typeof toolbarCommands)[ToolbarCommandId],
     ][]) {
-        it(`${id} produces the expected Markdown with no raw HTML`, () => {
-            const editor = editorWithSelectedText();
+        it(`${id} produces the expected Markdown`, () => {
+            const target = createCodeMirrorTarget('para text');
 
-            command.run(editor);
-            const markdown = editor.getMarkdown().replace(/\n+$/, '');
+            command.run(target);
+            const markdown = target.state.doc.toString().replace(/\n+$/, '');
 
-            expect(markdown).toBe(expectedMarkdown[id]);
-            expect(markdown).not.toMatch(HTML_TAG_PATTERN);
-
-            editor.destroy();
+            expect(markdown).toBe(expectedCodeMirrorMarkdown[id]);
         });
     }
 
@@ -63,33 +72,26 @@ describe('toolbarCommands', () => {
         expect(Object.keys(toolbarCommands)).not.toContain('link');
     });
 
-    it('setLink serialises a link around the selected text', () => {
-        const editor = editorWithSelectedText();
+    it('undo/redo canRun is driven by history depth, not just editor presence (FR-02)', () => {
+        let state = EditorState.create({
+            doc: 'hello',
+            extensions: [history()],
+        });
+        const target: CommandTarget = {
+            get state() {
+                return state;
+            },
+            dispatch(tr: TransactionSpec) {
+                state = state.update(tr).state;
+            },
+        };
 
-        editor
-            .chain()
-            .focus()
-            .extendMarkRange('link')
-            .setLink({ href: 'https://example.com' })
-            .run();
+        // Freshly created state: nothing to undo or redo yet.
+        expect(toolbarCommands.undo.canRun(target)).toBe(false);
+        expect(toolbarCommands.redo.canRun(target)).toBe(false);
 
-        expect(editor.getMarkdown()).toBe('[para text](https://example.com)');
-
-        editor.destroy();
-    });
-
-    it('rejects an unsafe protocol and creates no link', () => {
-        const editor = editorWithSelectedText();
-
-        editor
-            .chain()
-            .focus()
-            .extendMarkRange('link')
-            .setLink({ href: 'javascript:alert(1)' })
-            .run();
-
-        expect(editor.getMarkdown()).toBe('para text');
-
-        editor.destroy();
+        target.dispatch({ changes: { from: 5, insert: '!' } });
+        expect(toolbarCommands.undo.canRun(target)).toBe(true);
+        expect(toolbarCommands.redo.canRun(target)).toBe(false);
     });
 });

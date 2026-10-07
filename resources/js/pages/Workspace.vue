@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { FileText, FolderArchive, FolderOpen, LogOut, TriangleAlert } from '@lucide/vue';
+import {
+    FileText,
+    FolderArchive,
+    FolderOpen,
+    LogOut,
+    TriangleAlert,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 import StatusBar from '@/components/StatusBar.vue';
 import NoteEditor from '@/components/editor/NoteEditor.vue';
@@ -70,19 +76,24 @@ defineOptions({
 
         <div
             v-if="currentVault && currentVault.status === 'active'"
-            class="flex items-center justify-between gap-2 border-b border-border/70 bg-card/40 px-3 sm:px-4 py-2"
+            class="flex items-center justify-between gap-2 border-b border-border/70 bg-card/40 px-3 py-2 sm:px-4"
         >
             <div class="flex min-w-0 items-center gap-2.5">
-                <div class="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <div
+                    class="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+                >
                     <FolderArchive class="size-4" />
                 </div>
                 <div class="flex min-w-0 flex-col">
                     <div class="flex items-center gap-1.5">
-                        <span class="truncate font-semibold text-xs sm:text-sm text-foreground">{{ currentVault.name }}</span>
+                        <span
+                            class="truncate text-xs font-semibold text-foreground sm:text-sm"
+                            >{{ currentVault.name }}</span
+                        >
                         <VaultStatusBadge :status="currentVault.status" />
                     </div>
                     <span
-                        class="min-w-0 truncate font-mono text-[11px] text-muted-foreground hidden md:block max-w-sm"
+                        class="hidden max-w-sm min-w-0 truncate font-mono text-[11px] text-muted-foreground md:block"
                         :title="currentVault.path"
                     >
                         {{ currentVault.path }}
@@ -98,7 +109,7 @@ defineOptions({
                 <Button
                     variant="ghost"
                     size="sm"
-                    class="h-7 px-2 sm:px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1"
+                    class="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground sm:px-2.5"
                     @click="closeVault"
                 >
                     <LogOut class="size-3.5" />
@@ -107,7 +118,11 @@ defineOptions({
             </div>
         </div>
 
-        <Alert v-else-if="currentVault" variant="destructive" class="m-3 sm:m-4">
+        <Alert
+            v-else-if="currentVault"
+            variant="destructive"
+            class="m-3 sm:m-4"
+        >
             <AlertDescription>
                 This vault's folder can't be found at {{ currentVault.path }}.
                 Reconnect the drive, or
@@ -119,11 +134,13 @@ defineOptions({
 
         <div
             v-else
-            class="flex items-center gap-2 border-b border-border/70 bg-card/40 px-3 sm:px-4 py-2 text-xs sm:text-sm text-muted-foreground"
+            class="flex items-center gap-2 border-b border-border/70 bg-card/40 px-3 py-2 text-xs text-muted-foreground sm:px-4 sm:text-sm"
         >
             <FolderOpen class="size-4 text-muted-foreground" />
             <span>No vault open.</span>
-            <Link :href="index()" class="underline font-medium text-foreground hover:text-primary"
+            <Link
+                :href="index()"
+                class="font-medium text-foreground underline hover:text-primary"
                 >Open or create a vault</Link
             >
         </div>
@@ -131,7 +148,7 @@ defineOptions({
         <Alert
             v-if="encryption?.inconsistent && currentVault"
             variant="destructive"
-            class="mx-3 sm:mx-4 mt-3 sm:mt-4"
+            class="mx-3 mt-3 sm:mx-4 sm:mt-4"
         >
             <TriangleAlert />
             <AlertTitle>This vault's key file needs attention</AlertTitle>
@@ -144,7 +161,7 @@ defineOptions({
 
         <Alert
             v-if="encryption && encryption.unencrypted_files.length > 0"
-            class="mx-3 sm:mx-4 mt-3 sm:mt-4"
+            class="mx-3 mt-3 sm:mx-4 sm:mt-4"
         >
             <TriangleAlert />
             <AlertTitle>Unencrypted files in an encrypted vault</AlertTitle>
@@ -168,7 +185,7 @@ defineOptions({
         <OrphanSaveNotice
             v-if="orphanTempFiles.length > 0"
             :paths="orphanTempFiles"
-            class="mx-3 sm:mx-4 mt-3 sm:mt-4"
+            class="mx-3 mt-3 sm:mx-4 sm:mt-4"
         />
 
         <div
@@ -192,14 +209,19 @@ defineOptions({
                 />
                 <div
                     v-else
-                    class="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border/80 p-8 text-center bg-muted/10 min-h-[300px]"
+                    class="flex min-h-[300px] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/10 p-8 text-center"
                 >
-                    <div class="flex size-12 items-center justify-center rounded-full bg-muted/70 text-muted-foreground mb-3">
+                    <div
+                        class="mb-3 flex size-12 items-center justify-center rounded-full bg-muted/70 text-muted-foreground"
+                    >
                         <FileText class="size-6 text-muted-foreground/80" />
                     </div>
-                    <h3 class="text-sm font-semibold text-foreground">No note selected</h3>
-                    <p class="mt-1 text-xs text-muted-foreground max-w-xs">
-                        Select a note from the sidebar, or create a new one to begin writing.
+                    <h3 class="text-sm font-semibold text-foreground">
+                        No note selected
+                    </h3>
+                    <p class="mt-1 max-w-xs text-xs text-muted-foreground">
+                        Select a note from the sidebar, or create a new one to
+                        begin writing.
                     </p>
                 </div>
             </main>
@@ -209,12 +231,17 @@ defineOptions({
             v-else
             class="flex flex-1 flex-col items-center justify-center p-6 text-center text-sm text-muted-foreground"
         >
-            <div class="flex size-14 items-center justify-center rounded-2xl bg-muted/60 text-muted-foreground mb-3">
+            <div
+                class="mb-3 flex size-14 items-center justify-center rounded-2xl bg-muted/60 text-muted-foreground"
+            >
                 <FolderArchive class="size-7 text-primary/70" />
             </div>
-            <h3 class="text-base font-semibold text-foreground">Welcome to MDVault</h3>
-            <p class="mt-1 text-xs text-muted-foreground max-w-sm">
-                Open an existing markdown vault on your device, or create a brand new vault to start organizing your knowledge.
+            <h3 class="text-base font-semibold text-foreground">
+                Welcome to MDVault
+            </h3>
+            <p class="mt-1 max-w-sm text-xs text-muted-foreground">
+                Open an existing markdown vault on your device, or create a
+                brand new vault to start organizing your knowledge.
             </p>
             <div class="mt-4">
                 <Button size="sm" as-child>

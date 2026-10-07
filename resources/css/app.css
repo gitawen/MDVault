@@ -184,190 +184,147 @@
 }
 
 @layer components {
-    .tiptap-content {
-        @apply min-h-48 outline-none;
-    }
+    /* GitHub-style Markdown rendering for the CodeMirror preview pane.
+       Sizes are em-relative so the font_size editor preference (set inline
+       on the wrapper element in SourceEditor.vue) scales the whole
+       document, headings included — kept in sync with the live-preview
+       decorations' heading scale. */
 
-    /* GitHub-style Markdown rendering. Sizes are em-relative so the
-       font_size editor preference (set inline on the wrapper element in
-       TiptapEditor.vue) scales the whole document, headings included. */
-
-    .tiptap-content > :first-child {
+    .markdown-content > :first-child {
         @apply mt-0;
     }
 
-    .tiptap-content h1,
-    .tiptap-content h2,
-    .tiptap-content h3,
-    .tiptap-content h4,
-    .tiptap-content h5,
-    .tiptap-content h6 {
-        @apply font-semibold text-foreground tracking-tight;
+    .markdown-content h1,
+    .markdown-content h2,
+    .markdown-content h3,
+    .markdown-content h4,
+    .markdown-content h5,
+    .markdown-content h6 {
+        @apply font-semibold tracking-tight text-foreground;
         line-height: 1.25;
     }
 
-    .tiptap-content h1 {
+    .markdown-content h1 {
         @apply mt-8 mb-4 border-b border-border/80 pb-2 text-[2em];
     }
 
-    .tiptap-content h2 {
+    .markdown-content h2 {
         @apply mt-6 mb-4 border-b border-border/70 pb-2 text-[1.5em];
     }
 
-    .tiptap-content h3 {
+    .markdown-content h3 {
         @apply mt-6 mb-3 text-[1.25em];
     }
 
-    .tiptap-content h4 {
+    .markdown-content h4 {
         @apply mt-5 mb-2 text-[1em];
     }
 
-    .tiptap-content h5 {
+    .markdown-content h5 {
         @apply mt-4 mb-2 text-[0.875em];
     }
 
-    .tiptap-content h6 {
+    .markdown-content h6 {
         @apply mt-4 mb-2 text-[0.85em] text-muted-foreground;
     }
 
-    .tiptap-content p {
+    .markdown-content p {
         @apply my-3 leading-relaxed;
     }
 
-    .tiptap-content a {
-        @apply cursor-pointer font-medium text-blue-600 dark:text-blue-400 underline decoration-blue-500/60 underline-offset-3 transition-all hover:text-blue-700 dark:hover:text-blue-300 hover:decoration-blue-600 dark:hover:decoration-blue-400 hover:bg-blue-50/70 dark:hover:bg-blue-950/50 rounded-xs px-0.5 -mx-0.5;
+    .markdown-content a {
+        @apply -mx-0.5 cursor-pointer rounded-xs px-0.5 font-medium text-blue-600 underline decoration-blue-500/60 underline-offset-3 transition-all hover:bg-blue-50/70 hover:text-blue-700 hover:decoration-blue-600 dark:text-blue-400 dark:hover:bg-blue-950/50 dark:hover:text-blue-300 dark:hover:decoration-blue-400;
     }
 
-    .tiptap-content strong {
+    .markdown-content strong {
         @apply font-semibold text-foreground;
     }
 
-    .tiptap-content s {
+    .markdown-content s {
         @apply text-muted-foreground line-through;
     }
 
-    .tiptap-content ul,
-    .tiptap-content ol {
+    .markdown-content ul,
+    .markdown-content ol {
         @apply my-3 list-outside pl-6;
     }
 
-    .tiptap-content ul {
+    .markdown-content ul {
         @apply list-disc;
     }
 
-    .tiptap-content ol {
+    .markdown-content ol {
         @apply list-decimal;
     }
 
-    .tiptap-content li {
+    .markdown-content li {
         @apply my-1;
     }
 
-    .tiptap-content li > p {
+    .markdown-content li > p {
         @apply my-1;
     }
 
-    .tiptap-content li > ul,
-    .tiptap-content li > ol {
+    .markdown-content li > ul,
+    .markdown-content li > ol {
         @apply my-1;
     }
 
-    .tiptap-content ul ul {
+    .markdown-content ul ul {
         list-style-type: circle;
     }
 
-    .tiptap-content ul ul ul {
+    .markdown-content ul ul ul {
         list-style-type: square;
     }
 
-    .tiptap-content ul[data-type='taskList'] {
-        @apply my-2.5 list-none pl-0;
+    .markdown-content blockquote {
+        @apply my-4 rounded-r-md border-l-4 border-primary/70 bg-muted/30 py-1 pr-3 pl-4 text-muted-foreground italic;
     }
 
-    .tiptap-content ul[data-type='taskList'] li {
-        @apply my-1.5 flex items-start gap-2.5;
-    }
-
-    .tiptap-content ul[data-type='taskList'] li > label {
-        @apply mt-[0.3em] flex flex-none items-center justify-center select-none;
-    }
-
-    .tiptap-content ul[data-type='taskList'] li > label input[type='checkbox'] {
-        @apply size-4 cursor-pointer rounded-sm border-input accent-primary transition-transform active:scale-95;
-    }
-
-    .tiptap-content ul[data-type='taskList'] li > div {
-        @apply min-w-0 flex-1;
-    }
-
-    .tiptap-content ul[data-type='taskList'] li > div > p {
-        @apply my-0 leading-relaxed;
-    }
-
-    .tiptap-content ul[data-type='taskList'] li[data-checked='true'] > div > p {
-        @apply text-muted-foreground line-through decoration-muted-foreground/60;
-    }
-
-    .tiptap-content ul[data-type='taskList'] li > div > p + p {
-        @apply mt-2;
-    }
-
-    .tiptap-content ul[data-type='taskList'] ul[data-type='taskList'] {
-        @apply my-1 pl-6;
-    }
-
-    .tiptap-content blockquote {
-        @apply my-4 rounded-r-md border-l-4 border-primary/70 bg-muted/30 py-1 pl-4 pr-3 italic text-muted-foreground;
-    }
-
-    .tiptap-content blockquote > :first-child {
+    .markdown-content blockquote > :first-child {
         @apply mt-0;
     }
 
-    .tiptap-content blockquote > :last-child {
+    .markdown-content blockquote > :last-child {
         @apply mb-0;
     }
 
-    .tiptap-content code {
+    .markdown-content code {
         @apply rounded-md bg-muted/80 px-1.5 py-0.5 font-mono text-[0.875em] text-foreground;
     }
 
-    .tiptap-content pre {
+    .markdown-content pre {
         @apply my-4 overflow-x-auto rounded-lg border border-border/60 bg-muted/60 p-3.5 font-mono text-[0.875em] leading-normal;
     }
 
-    .tiptap-content pre code {
+    .markdown-content pre code {
         @apply border-0 bg-transparent p-0 text-inherit;
     }
 
-    .tiptap-content hr {
+    .markdown-content hr {
         @apply my-6 border-border/80;
     }
 
-    .tiptap-content img {
+    .markdown-content img {
         @apply my-4 max-w-full rounded-lg border border-border/40 shadow-xs;
     }
 
-    .tiptap-content table {
+    .markdown-content table {
         @apply my-4 w-full table-auto border-collapse text-[0.875em];
     }
 
-    .tiptap-content th,
-    .tiptap-content td {
+    .markdown-content th,
+    .markdown-content td {
         @apply border border-border/80 px-3 py-2 text-left align-top;
     }
 
-    .tiptap-content th {
+    .markdown-content th {
         @apply bg-muted/70 font-semibold text-foreground;
     }
 
-    .tiptap-content th > p,
-    .tiptap-content td > p {
+    .markdown-content th > p,
+    .markdown-content td > p {
         @apply my-0;
-    }
-
-    .tiptap-nowrap .tiptap-content {
-        white-space: pre;
-        overflow-x: auto;
     }
 }

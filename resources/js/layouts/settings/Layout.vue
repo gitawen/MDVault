@@ -121,21 +121,28 @@ watch(currentUrl, () => {
 </script>
 
 <template>
-    <div class="mx-auto w-full min-w-0 max-w-5xl px-3 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8">
+    <div
+        class="mx-auto w-full max-w-5xl min-w-0 px-3 py-4 sm:px-6 sm:py-6 md:px-8 md:py-8"
+    >
         <!-- Settings Page Header -->
-        <header class="mb-6 sm:mb-8 border-b border-border/50 pb-5 sm:pb-6">
+        <header class="mb-6 border-b border-border/50 pb-5 sm:mb-8 sm:pb-6">
             <div class="flex items-center gap-3">
                 <div
-                    class="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-2xs"
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-2xs sm:h-10 sm:w-10"
                 >
                     <SlidersHorizontal class="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                 </div>
                 <div class="min-w-0 flex-1">
-                    <h1 class="text-xl sm:text-2xl font-semibold tracking-tight truncate">
+                    <h1
+                        class="truncate text-xl font-semibold tracking-tight sm:text-2xl"
+                    >
                         Settings
                     </h1>
-                    <p class="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-none">
-                        Manage your vault preferences, editor typography, and storage configurations.
+                    <p
+                        class="line-clamp-2 text-xs text-muted-foreground sm:line-clamp-none sm:text-sm"
+                    >
+                        Manage your vault preferences, editor typography, and
+                        storage configurations.
                     </p>
                 </div>
             </div>
@@ -149,13 +156,17 @@ watch(currentUrl, () => {
                     :model-value="activeHref"
                     @update:model-value="onSelectMobileTab"
                 >
-                    <SelectTrigger class="w-full h-10 bg-card border-border/70 text-xs font-medium">
+                    <SelectTrigger
+                        class="h-10 w-full border-border/70 bg-card text-xs font-medium"
+                    >
                         <div class="flex items-center gap-2 truncate">
                             <component
                                 :is="activeItem.icon"
-                                class="h-3.5 w-3.5 text-primary shrink-0"
+                                class="h-3.5 w-3.5 shrink-0 text-primary"
                             />
-                            <span class="truncate">{{ activeItem.title }} Settings</span>
+                            <span class="truncate"
+                                >{{ activeItem.title }} Settings</span
+                            >
                         </div>
                     </SelectTrigger>
                     <SelectContent>
@@ -181,12 +192,12 @@ watch(currentUrl, () => {
                 <!-- Left Scroll Hint Fade -->
                 <div
                     v-if="canScrollLeft"
-                    class="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-r from-background via-background/80 to-transparent transition-opacity"
+                    class="pointer-events-none absolute top-0 bottom-0 left-0 z-10 w-6 bg-gradient-to-r from-background via-background/80 to-transparent transition-opacity"
                 />
 
                 <nav
                     ref="navScrollRef"
-                    class="flex w-full min-w-0 gap-1.5 overflow-x-auto rounded-xl border border-border/60 bg-muted/40 p-1.5 no-scrollbar touch-pan-x overscroll-x-contain"
+                    class="no-scrollbar flex w-full min-w-0 touch-pan-x gap-1.5 overflow-x-auto overscroll-x-contain rounded-xl border border-border/60 bg-muted/40 p-1.5"
                     aria-label="Settings mobile navigation"
                     @scroll.passive="updateScrollIndicators"
                 >
@@ -198,7 +209,7 @@ watch(currentUrl, () => {
                         :class="[
                             'flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150',
                             isCurrentOrParentUrl(item.href)
-                                ? 'bg-background text-foreground shadow-2xs border border-border/80'
+                                ? 'border border-border/80 bg-background text-foreground shadow-2xs'
                                 : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
                         ]"
                     >
@@ -210,17 +221,21 @@ watch(currentUrl, () => {
                 <!-- Right Scroll Hint Fade -->
                 <div
                     v-if="canScrollRight"
-                    class="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-6 bg-gradient-to-l from-background via-background/80 to-transparent transition-opacity"
+                    class="pointer-events-none absolute top-0 right-0 bottom-0 z-10 w-6 bg-gradient-to-l from-background via-background/80 to-transparent transition-opacity"
                 />
             </div>
         </div>
 
         <!-- Desktop Navigation & Content Grid -->
-        <div class="flex w-full min-w-0 flex-col lg:flex-row lg:items-start lg:gap-10">
+        <div
+            class="flex w-full min-w-0 flex-col lg:flex-row lg:items-start lg:gap-10"
+        >
             <!-- Desktop Sidebar Rail -->
             <aside class="hidden lg:block lg:w-60 lg:shrink-0">
                 <div class="sticky top-6 space-y-4">
-                    <p class="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    <p
+                        class="px-2 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase"
+                    >
                         Preferences
                     </p>
                     <nav
@@ -234,7 +249,7 @@ watch(currentUrl, () => {
                             :class="[
                                 'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
                                 isCurrentOrParentUrl(item.href)
-                                    ? 'bg-accent text-accent-foreground shadow-2xs font-semibold'
+                                    ? 'bg-accent font-semibold text-accent-foreground shadow-2xs'
                                     : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                             ]"
                         >
@@ -255,7 +270,7 @@ watch(currentUrl, () => {
             </aside>
 
             <!-- Main Settings Content Area -->
-            <main class="w-full flex-1 min-w-0 max-w-3xl">
+            <main class="w-full max-w-3xl min-w-0 flex-1">
                 <section class="w-full min-w-0 space-y-6 sm:space-y-8">
                     <slot />
                 </section>

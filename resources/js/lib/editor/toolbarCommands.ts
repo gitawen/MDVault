@@ -1,4 +1,25 @@
-import type { Editor } from '@tiptap/core';
+import { redoDepth, undoDepth } from '@codemirror/commands';
+import {
+    clearFormatting,
+    clearLinePrefix,
+    executeRedo,
+    executeUndo,
+    insertCodeBlock,
+    insertHorizontalRule,
+    insertTable,
+    isInlineMarkActive,
+    isLinePrefixActive,
+    setHeading,
+    toggleBlockquote,
+    toggleBold,
+    toggleBulletList,
+    toggleInlineCode,
+    toggleItalic,
+    toggleOrderedList,
+    toggleStrike,
+    toggleTaskList,
+    type CommandTarget,
+} from './codemirrorCommands';
 
 export type ToolbarCommandId =
     | 'undo'
@@ -17,151 +38,145 @@ export type ToolbarCommandId =
     | 'blockquote'
     | 'codeBlock'
     | 'horizontalRule'
-    | 'clearFormatting';
+    | 'clearFormatting'
+    | 'table';
 
 export type ToolbarCommand = {
     label: string;
     shortcut: string | null;
-    run(editor: Editor): boolean;
-    isActive(editor: Editor): boolean;
-    canRun(editor: Editor): boolean;
+    run(editor: CommandTarget): boolean;
+    isActive(editor: CommandTarget): boolean;
+    canRun(editor: CommandTarget): boolean;
 };
 
 /**
- * The §20/§53 toolbar, minus underline and alignment (F3). Links are
- * handled separately by `LinkDialog`, not through this table.
+ * The §20/§53 toolbar, driven entirely by the CodeMirror 6 `CommandTarget`.
  */
 export const toolbarCommands: Record<ToolbarCommandId, ToolbarCommand> = {
     undo: {
         label: 'Undo',
         shortcut: 'Ctrl+Z',
-        run: (editor) => editor.chain().focus().undo().run(),
+        run: (editor) => executeUndo(editor),
         isActive: () => false,
-        canRun: (editor) => editor.can().undo(),
+        canRun: (editor) => undoDepth(editor.state) > 0,
     },
     redo: {
         label: 'Redo',
         shortcut: 'Ctrl+Shift+Z',
-        run: (editor) => editor.chain().focus().redo().run(),
+        run: (editor) => executeRedo(editor),
         isActive: () => false,
-        canRun: (editor) => editor.can().redo(),
+        canRun: (editor) => redoDepth(editor.state) > 0,
     },
     bold: {
         label: 'Bold',
         shortcut: 'Ctrl+B',
-        run: (editor) => editor.chain().focus().toggleBold().run(),
-        isActive: (editor) => editor.isActive('bold'),
-        canRun: (editor) => editor.can().chain().focus().toggleBold().run(),
+        run: (editor) => toggleBold(editor),
+        isActive: (editor) => isInlineMarkActive(editor.state, '**'),
+        canRun: () => true,
     },
     italic: {
         label: 'Italic',
         shortcut: 'Ctrl+I',
-        run: (editor) => editor.chain().focus().toggleItalic().run(),
-        isActive: (editor) => editor.isActive('italic'),
-        canRun: (editor) => editor.can().chain().focus().toggleItalic().run(),
+        run: (editor) => toggleItalic(editor),
+        isActive: (editor) => isInlineMarkActive(editor.state, '*'),
+        canRun: () => true,
     },
     strike: {
         label: 'Strikethrough',
         shortcut: 'Ctrl+Shift+X',
-        run: (editor) => editor.chain().focus().toggleStrike().run(),
-        isActive: (editor) => editor.isActive('strike'),
-        canRun: (editor) => editor.can().chain().focus().toggleStrike().run(),
+        run: (editor) => toggleStrike(editor),
+        isActive: (editor) => isInlineMarkActive(editor.state, '~~'),
+        canRun: () => true,
     },
     code: {
         label: 'Inline code',
         shortcut: 'Ctrl+E',
-        run: (editor) => editor.chain().focus().toggleCode().run(),
-        isActive: (editor) => editor.isActive('code'),
-        canRun: (editor) => editor.can().chain().focus().toggleCode().run(),
+        run: (editor) => toggleInlineCode(editor),
+        isActive: (editor) => isInlineMarkActive(editor.state, '`'),
+        canRun: () => true,
     },
     paragraph: {
         label: 'Paragraph',
         shortcut: null,
-        run: (editor) => editor.chain().focus().setParagraph().run(),
-        isActive: (editor) => editor.isActive('paragraph'),
-        canRun: (editor) => editor.can().chain().focus().setParagraph().run(),
+        run: (editor) => clearLinePrefix(editor),
+        isActive: () => false,
+        canRun: () => true,
     },
     h1: {
         label: 'Heading 1',
         shortcut: 'Ctrl+Alt+1',
-        run: (editor) =>
-            editor.chain().focus().toggleHeading({ level: 1 }).run(),
-        isActive: (editor) => editor.isActive('heading', { level: 1 }),
-        canRun: (editor) =>
-            editor.can().chain().focus().toggleHeading({ level: 1 }).run(),
+        run: (editor) => setHeading(editor, 1),
+        isActive: (editor) => isLinePrefixActive(editor.state, '# '),
+        canRun: () => true,
     },
     h2: {
         label: 'Heading 2',
         shortcut: 'Ctrl+Alt+2',
-        run: (editor) =>
-            editor.chain().focus().toggleHeading({ level: 2 }).run(),
-        isActive: (editor) => editor.isActive('heading', { level: 2 }),
-        canRun: (editor) =>
-            editor.can().chain().focus().toggleHeading({ level: 2 }).run(),
+        run: (editor) => setHeading(editor, 2),
+        isActive: (editor) => isLinePrefixActive(editor.state, '## '),
+        canRun: () => true,
     },
     h3: {
         label: 'Heading 3',
         shortcut: 'Ctrl+Alt+3',
-        run: (editor) =>
-            editor.chain().focus().toggleHeading({ level: 3 }).run(),
-        isActive: (editor) => editor.isActive('heading', { level: 3 }),
-        canRun: (editor) =>
-            editor.can().chain().focus().toggleHeading({ level: 3 }).run(),
+        run: (editor) => setHeading(editor, 3),
+        isActive: (editor) => isLinePrefixActive(editor.state, '### '),
+        canRun: () => true,
     },
     bulletList: {
-        label: 'Bulleted list',
+        label: 'Bullet list',
         shortcut: 'Ctrl+Shift+8',
-        run: (editor) => editor.chain().focus().toggleBulletList().run(),
-        isActive: (editor) => editor.isActive('bulletList'),
-        canRun: (editor) =>
-            editor.can().chain().focus().toggleBulletList().run(),
+        run: (editor) => toggleBulletList(editor),
+        isActive: (editor) => isLinePrefixActive(editor.state, '- '),
+        canRun: () => true,
     },
     orderedList: {
         label: 'Numbered list',
         shortcut: 'Ctrl+Shift+7',
-        run: (editor) => editor.chain().focus().toggleOrderedList().run(),
-        isActive: (editor) => editor.isActive('orderedList'),
-        canRun: (editor) =>
-            editor.can().chain().focus().toggleOrderedList().run(),
+        run: (editor) => toggleOrderedList(editor),
+        isActive: (editor) => isLinePrefixActive(editor.state, '1. '),
+        canRun: () => true,
     },
     taskList: {
         label: 'Task list',
         shortcut: 'Ctrl+Shift+9',
-        run: (editor) => editor.chain().focus().toggleTaskList().run(),
-        isActive: (editor) => editor.isActive('taskList'),
-        canRun: (editor) => editor.can().chain().focus().toggleTaskList().run(),
+        run: (editor) => toggleTaskList(editor),
+        isActive: (editor) => isLinePrefixActive(editor.state, '- [ ] '),
+        canRun: () => true,
     },
     blockquote: {
         label: 'Blockquote',
         shortcut: 'Ctrl+Shift+B',
-        run: (editor) => editor.chain().focus().toggleBlockquote().run(),
-        isActive: (editor) => editor.isActive('blockquote'),
-        canRun: (editor) =>
-            editor.can().chain().focus().toggleBlockquote().run(),
+        run: (editor) => toggleBlockquote(editor),
+        isActive: (editor) => isLinePrefixActive(editor.state, '> '),
+        canRun: () => true,
     },
     codeBlock: {
         label: 'Code block',
         shortcut: 'Ctrl+Alt+C',
-        run: (editor) => editor.chain().focus().toggleCodeBlock().run(),
-        isActive: (editor) => editor.isActive('codeBlock'),
-        canRun: (editor) =>
-            editor.can().chain().focus().toggleCodeBlock().run(),
+        run: (editor) => insertCodeBlock(editor),
+        isActive: () => false,
+        canRun: () => true,
     },
     horizontalRule: {
-        label: 'Horizontal rule',
+        label: 'Divider',
         shortcut: null,
-        run: (editor) => editor.chain().focus().setHorizontalRule().run(),
+        run: (editor) => insertHorizontalRule(editor),
         isActive: () => false,
-        canRun: (editor) =>
-            editor.can().chain().focus().setHorizontalRule().run(),
+        canRun: () => true,
     },
     clearFormatting: {
         label: 'Clear formatting',
         shortcut: 'Ctrl+\\',
-        run: (editor) =>
-            editor.chain().focus().unsetAllMarks().clearNodes().run(),
+        run: (editor) => clearFormatting(editor),
         isActive: () => false,
-        canRun: (editor) =>
-            editor.can().chain().focus().unsetAllMarks().clearNodes().run(),
+        canRun: () => true,
+    },
+    table: {
+        label: 'Table',
+        shortcut: null,
+        run: (editor) => insertTable(editor),
+        isActive: () => false,
+        canRun: () => true,
     },
 };

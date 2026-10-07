@@ -19,22 +19,27 @@ const databaseLabel = computed(() =>
 
 <template>
     <footer
-        class="flex items-center justify-between gap-2 border-t border-border/70 bg-card/40 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs text-muted-foreground select-none"
+        class="flex items-center justify-between gap-2 border-t border-border/70 bg-card/40 px-3 py-1.5 text-[11px] text-muted-foreground select-none sm:px-4 sm:text-xs"
     >
         <div class="flex items-center gap-3 sm:gap-4">
             <span class="font-medium">{{ runtimeLabel }}</span>
             <span class="flex items-center gap-1.5">
                 <span
-                    class="size-1.5 rounded-full shrink-0"
+                    class="size-1.5 shrink-0 rounded-full"
                     :class="
                         status.database.connected
                             ? 'bg-emerald-500 shadow-xs'
                             : 'bg-destructive'
                     "
                 />
-                <span class="truncate max-w-[120px] sm:max-w-none">{{ databaseLabel }}</span>
+                <span class="max-w-[120px] truncate sm:max-w-none">{{
+                    databaseLabel
+                }}</span>
             </span>
         </div>
-        <div class="shrink-0 font-mono text-[11px]">{{ status.application }} <span class="hidden sm:inline">v{{ status.version }}</span></div>
+        <div class="shrink-0 font-mono text-[11px]">
+            {{ status.application }}
+            <span class="hidden sm:inline">v{{ status.version }}</span>
+        </div>
     </footer>
 </template>

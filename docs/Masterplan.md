@@ -8,7 +8,7 @@
 > **Desktop Runtime:** NativePHP
 > **Backend:** Laravel
 > **Frontend:** Vue + Inertia
-> **Editor:** Tiptap
+> **Editor:** CodeMirror 6 (unified Markdown editor; see `.ai/decisions/codemirror-unified-editor.md`)
 > **UI:** Tailwind CSS + shadcn-vue
 > **Future:** Synchronization, sharing, and collaboration
 
@@ -74,7 +74,7 @@ as the primary representation of a note.
 Instead:
 
 ```text
-Tiptap
+CodeMirror editor buffer
    ↓
 Markdown serializer
    ↓
@@ -88,7 +88,7 @@ When opening:
    ↓
 Markdown parser
    ↓
-Tiptap
+CodeMirror editor buffer
 ```
 
 ---
@@ -104,7 +104,7 @@ Tiptap
 │              Vue + Inertia               │
 │                                          │
 │          ┌───────────────────┐           │
-│          │      Tiptap       │           │
+│          │    CodeMirror 6   │           │
 │          │  Markdown Editor  │           │
 │          └─────────┬─────────┘           │
 │                    │                     │
@@ -134,7 +134,7 @@ Tiptap
 * Inertia.js
 * Tailwind CSS
 * shadcn-vue
-* Tiptap
+* CodeMirror 6
 * SQLite
 
 ## Recommended Supporting Libraries
@@ -697,9 +697,11 @@ Direct filesystem access
 
 ---
 
-# 20. Tiptap Editor
+# 20. Markdown Editor
 
-Tiptap will provide the primary Markdown editing interface.
+> Amended 2026-10-07 per ADR `codemirror-unified-editor` §Decision-1: CodeMirror 6 is the single, unified Markdown editor engine for all notes. The rich/source mode bifurcation and Tiptap have been retired; see `.ai/decisions/retire-tiptap-rich-mode.md`.
+
+CodeMirror 6 provides the primary Markdown editing interface, with styled-but-visible Markdown markers and a live preview.
 
 The editor should feel like a modern note-taking application rather than a raw code editor.
 
@@ -749,6 +751,8 @@ Only implement features that have a reliable Markdown representation.
 
 # 21. Markdown Round Trip
 
+> Amended 2026-10-07 per ADR `codemirror-unified-editor` §Decision-1: the editor buffer is CodeMirror 6's own document, with no intermediate representation to serialize to or from.
+
 The editor must support:
 
 ```text
@@ -756,7 +760,7 @@ Markdown
    ↓
 Parser
    ↓
-Tiptap
+Editor buffer
    ↓
 User edits
    ↓
@@ -765,7 +769,7 @@ Serializer
 Markdown
 ```
 
-Round-trip integrity is critical.
+Round-trip integrity is critical, and is now trivially satisfied: the editor buffer *is* the Markdown, with no AST round trip in between.
 
 Example:
 
@@ -774,7 +778,7 @@ HRMIS.md
    ↓
 Open
    ↓
-Tiptap
+Editor buffer
    ↓
 Edit
    ↓
@@ -1150,7 +1154,7 @@ Display Vault
 Saving:
 
 ```text
-Tiptap
+CodeMirror
    ↓
 Markdown
    ↓
@@ -1631,7 +1635,7 @@ Phase 0 → Foundation
 Phase 1 → Storage / Settings
 Phase 2 → Vault Management
 Phase 3 → Markdown Files
-Phase 4 → Tiptap Editor
+Phase 4 → Markdown Editor
 Phase 5 → Filesystem Intelligence
 Phase 6 → Backup / Restore
 Phase 7 → Encryption
@@ -1796,15 +1800,17 @@ Vault can be rebuilt from filesystem contents.
 
 ---
 
-# 53. Phase 4 — Tiptap Editor
+# 53. Phase 4 — Markdown Editor
+
+> Amended 2026-10-07 per ADR `codemirror-unified-editor` §Decision-1: delivered with CodeMirror 6 as the single editor engine, not Tiptap; see `.ai/decisions/retire-tiptap-rich-mode.md`.
 
 Complexity: Medium–High
 
 Implement:
 
 ```text
-Markdown → Tiptap
-Tiptap → Markdown
+Markdown → Editor buffer
+Editor buffer → Markdown
 ```
 
 Implement toolbar:
@@ -1998,7 +2004,7 @@ Later test other supported operating systems.
 | 1      | Settings / Storage  | Low–Medium  |
 | 2      | Vault Management    | Medium      |
 | 3      | Markdown Filesystem | Medium      |
-| 4      | Tiptap Editor       | Medium–High |
+| 4      | Markdown Editor      | Medium–High |
 | 5      | Filesystem Watcher  | Medium–High |
 | 6      | Backup / Restore    | Medium–High |
 | 7      | Encryption          | High        |
@@ -2038,7 +2044,7 @@ Later test other supported operating systems.
                            ▼
                   ┌─────────────────┐
                   │    Phase 4      │
-                  │ Tiptap Editor   │
+                  │ Markdown Editor │
                   └────────┬────────┘
                            │
                            ▼
@@ -2318,7 +2324,7 @@ MDVault v1 should be considered complete when a user can:
 
 11. Open Markdown notes.
 
-12. Edit notes using Tiptap.
+12. Edit notes using the Markdown editor.
 
 13. Save notes as Markdown.
 
@@ -2452,7 +2458,7 @@ The final conceptual architecture for v1 is:
                                 │
                          Vue + Inertia
                                 │
-                              Tiptap
+                           CodeMirror 6
                                 │
                          Markdown Editor
 ```
@@ -2536,7 +2542,7 @@ Note appears in Vault tree
       ↓
 User opens note
       ↓
-Tiptap editor displays it
+Markdown editor displays it
       ↓
 User edits note
       ↓

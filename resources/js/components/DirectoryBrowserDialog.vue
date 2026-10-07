@@ -68,8 +68,9 @@ function fetchDirectory(path: string | null = null) {
     loading.value = true;
     error.value = null;
 
-    useHttp<{ path?: string | null }, DirectoryBrowseResult>({ path })
-        .post(browse.url(), {
+    useHttp<{ path?: string | null }, DirectoryBrowseResult>({ path }).post(
+        browse.url(),
+        {
             onSuccess: (data) => {
                 currentPath.value = data.current_path;
                 parentPath.value = data.parent_path;
@@ -87,7 +88,8 @@ function fetchDirectory(path: string | null = null) {
             onFinish: () => {
                 loading.value = false;
             },
-        });
+        },
+    );
 }
 
 watch(open, (isOpen) => {
@@ -118,15 +120,21 @@ function confirmSelection() {
 
 <template>
     <Dialog v-model:open="open">
-        <DialogContent class="max-w-2xl max-h-[85vh] flex flex-col p-4 sm:p-6 overflow-hidden">
+        <DialogContent
+            class="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden p-4 sm:p-6"
+        >
             <DialogHeader class="pb-2">
                 <DialogTitle>{{ title }}</DialogTitle>
                 <DialogDescription>{{ description }}</DialogDescription>
             </DialogHeader>
 
             <!-- Quick Links & Drives Bar -->
-            <div class="flex flex-wrap items-center gap-1.5 pb-2 border-b border-border/50 text-xs">
-                <span class="text-muted-foreground mr-1 text-[11px] font-medium uppercase tracking-wider">
+            <div
+                class="flex flex-wrap items-center gap-1.5 border-b border-border/50 pb-2 text-xs"
+            >
+                <span
+                    class="mr-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase"
+                >
                     Quick:
                 </span>
 
@@ -134,25 +142,37 @@ function confirmSelection() {
                     v-for="link in quickLinks"
                     :key="link.path"
                     type="button"
-                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-secondary/60 hover:bg-secondary text-secondary-foreground transition-colors font-medium cursor-pointer"
-                    :class="{ 'ring-1 ring-primary/40 bg-secondary': currentPath === link.path }"
+                    class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-secondary/60 px-2.5 py-1 font-medium text-secondary-foreground transition-colors hover:bg-secondary"
+                    :class="{
+                        'bg-secondary ring-1 ring-primary/40':
+                            currentPath === link.path,
+                    }"
                     @click="navigateTo(link.path)"
                 >
                     <component
-                        :is="link.icon === 'vault' ? HardDrive : link.icon === 'home' ? Home : Folder"
+                        :is="
+                            link.icon === 'vault'
+                                ? HardDrive
+                                : link.icon === 'home'
+                                  ? Home
+                                  : Folder
+                        "
                         class="size-3.5 text-muted-foreground"
                     />
                     {{ link.name }}
                 </button>
 
-                <div v-if="drives.length > 0" class="h-3 w-px bg-border mx-1" />
+                <div v-if="drives.length > 0" class="mx-1 h-3 w-px bg-border" />
 
                 <button
                     v-for="drive in drives"
                     :key="drive.path"
                     type="button"
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground transition-colors font-mono font-medium cursor-pointer text-xs"
-                    :class="{ 'ring-1 ring-primary bg-primary/10 text-primary': currentPath.startsWith(drive.path) }"
+                    class="inline-flex cursor-pointer items-center gap-1 rounded bg-muted px-2 py-0.5 font-mono text-xs font-medium text-foreground transition-colors hover:bg-muted/80"
+                    :class="{
+                        'bg-primary/10 text-primary ring-1 ring-primary':
+                            currentPath.startsWith(drive.path),
+                    }"
                     @click="navigateTo(drive.path)"
                 >
                     <HardDrive class="size-3 text-muted-foreground" />
@@ -166,7 +186,7 @@ function confirmSelection() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    class="size-8 p-0 shrink-0"
+                    class="size-8 shrink-0 p-0"
                     :disabled="!parentPath || loading"
                     title="Go to parent directory"
                     @click="parentPath && navigateTo(parentPath)"
@@ -175,20 +195,26 @@ function confirmSelection() {
                 </Button>
 
                 <div
-                    class="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 px-2.5 rounded-md bg-muted/40 border border-border/60 text-xs flex-1 min-w-0"
+                    class="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs"
                 >
-                    <template v-for="(crumb, idx) in breadcrumbs" :key="crumb.path">
+                    <template
+                        v-for="(crumb, idx) in breadcrumbs"
+                        :key="crumb.path"
+                    >
                         <button
                             type="button"
-                            class="hover:underline font-mono text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
-                            :class="{ 'font-semibold text-foreground': idx === breadcrumbs.length - 1 }"
+                            class="shrink-0 cursor-pointer font-mono text-muted-foreground hover:text-foreground hover:underline"
+                            :class="{
+                                'font-semibold text-foreground':
+                                    idx === breadcrumbs.length - 1,
+                            }"
                             @click="navigateTo(crumb.path)"
                         >
                             {{ crumb.name }}
                         </button>
                         <ChevronRight
                             v-if="idx < breadcrumbs.length - 1"
-                            class="size-3 text-muted-foreground/60 shrink-0"
+                            class="size-3 shrink-0 text-muted-foreground/60"
                         />
                     </template>
                 </div>
@@ -196,62 +222,84 @@ function confirmSelection() {
 
             <!-- Search filter -->
             <div class="relative mb-1">
-                <Search class="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                <Search
+                    class="absolute top-2.5 left-2.5 size-3.5 text-muted-foreground"
+                />
                 <Input
                     v-model="searchQuery"
                     type="text"
                     placeholder="Filter folders..."
-                    class="pl-8 h-8 text-xs bg-card"
+                    class="h-8 bg-card pl-8 text-xs"
                 />
             </div>
 
             <!-- Folder list view -->
             <div
-                class="flex-1 min-h-[220px] max-h-[300px] overflow-y-auto rounded-md border border-border/60 bg-card p-1.5"
+                class="max-h-[300px] min-h-[220px] flex-1 overflow-y-auto rounded-md border border-border/60 bg-card p-1.5"
             >
-                <div v-if="loading" class="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground text-sm">
+                <div
+                    v-if="loading"
+                    class="flex h-48 flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
+                >
                     <Loader2 class="size-6 animate-spin text-primary" />
                     <span>Loading folders...</span>
                 </div>
 
-                <div v-else-if="error" class="flex items-center justify-center h-48 text-destructive text-sm">
+                <div
+                    v-else-if="error"
+                    class="flex h-48 items-center justify-center text-sm text-destructive"
+                >
                     {{ error }}
                 </div>
 
                 <div
                     v-else-if="filteredDirectories.length === 0"
-                    class="flex flex-col items-center justify-center h-48 text-muted-foreground text-xs gap-1"
+                    class="flex h-48 flex-col items-center justify-center gap-1 text-xs text-muted-foreground"
                 >
-                    <FolderOpen class="size-8 stroke-1 text-muted-foreground/40 mb-1" />
-                    <span>{{ searchQuery ? 'No matching folders found.' : 'No subfolders in this directory.' }}</span>
+                    <FolderOpen
+                        class="mb-1 size-8 stroke-1 text-muted-foreground/40"
+                    />
+                    <span>{{
+                        searchQuery
+                            ? 'No matching folders found.'
+                            : 'No subfolders in this directory.'
+                    }}</span>
                 </div>
 
-                <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                <div v-else class="grid grid-cols-1 gap-1 sm:grid-cols-2">
                     <div
                         v-for="dir in filteredDirectories"
                         :key="dir.path"
-                        class="flex items-center justify-between group px-2.5 py-1.5 rounded-md text-xs cursor-pointer select-none transition-colors border border-transparent"
+                        class="group flex cursor-pointer items-center justify-between rounded-md border border-transparent px-2.5 py-1.5 text-xs transition-colors select-none"
                         :class="[
                             selectedPath === dir.path
-                                ? 'bg-primary/10 border-primary/30 text-primary font-medium'
-                                : 'hover:bg-muted/70 text-foreground'
+                                ? 'border-primary/30 bg-primary/10 font-medium text-primary'
+                                : 'text-foreground hover:bg-muted/70',
                         ]"
                         @click="selectDirectoryItem(dir)"
                         @dblclick="enterDirectory(dir)"
                     >
-                        <div class="flex items-center gap-2 min-w-0 flex-1 mr-1">
+                        <div
+                            class="mr-1 flex min-w-0 flex-1 items-center gap-2"
+                        >
                             <Folder
                                 class="size-4 shrink-0"
-                                :class="selectedPath === dir.path ? 'text-primary fill-primary/20' : 'text-amber-500 fill-amber-500/20'"
+                                :class="
+                                    selectedPath === dir.path
+                                        ? 'fill-primary/20 text-primary'
+                                        : 'fill-amber-500/20 text-amber-500'
+                                "
                             />
-                            <span class="truncate font-sans">{{ dir.name }}</span>
+                            <span class="truncate font-sans">{{
+                                dir.name
+                            }}</span>
                         </div>
 
                         <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            class="size-6 p-0 opacity-40 group-hover:opacity-100 shrink-0 hover:bg-background/80"
+                            class="size-6 shrink-0 p-0 opacity-40 group-hover:opacity-100 hover:bg-background/80"
                             title="Open folder"
                             @click.stop="enterDirectory(dir)"
                         >
@@ -262,20 +310,38 @@ function confirmSelection() {
             </div>
 
             <!-- Selection preview & action footer -->
-            <div class="pt-2 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-border/50">
+            <div
+                class="flex flex-col justify-between gap-2 border-t border-border/50 pt-2 text-xs sm:flex-row sm:items-center"
+            >
                 <div class="min-w-0 flex-1">
-                    <div class="text-[11px] text-muted-foreground">Target path:</div>
-                    <div class="font-mono text-xs truncate text-foreground font-medium" :title="selectedPath">
+                    <div class="text-[11px] text-muted-foreground">
+                        Target path:
+                    </div>
+                    <div
+                        class="truncate font-mono text-xs font-medium text-foreground"
+                        :title="selectedPath"
+                    >
                         {{ selectedPath || currentPath }}
                     </div>
                 </div>
 
-                <div class="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
-                    <Badge v-if="!isWritable" variant="destructive" class="text-[10px]">
+                <div
+                    class="flex shrink-0 items-center gap-1.5 self-end sm:self-auto"
+                >
+                    <Badge
+                        v-if="!isWritable"
+                        variant="destructive"
+                        class="text-[10px]"
+                    >
                         Read-only
                     </Badge>
 
-                    <Button type="button" variant="outline" size="sm" @click="open = false">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        @click="open = false"
+                    >
                         Cancel
                     </Button>
 

@@ -50,6 +50,10 @@ function toggleSidebar() {
 }
 
 useEventListener("keydown", (event: KeyboardEvent) => {
+  if (event.defaultPrevented) {
+    return
+  }
+
   if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
     event.preventDefault()
     toggleSidebar()
