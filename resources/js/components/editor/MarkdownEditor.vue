@@ -265,7 +265,7 @@ defineExpose({ getText });
 
 <template>
     <div
-        class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/80 bg-card shadow-xs transition-all duration-200 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20"
+        class="flex min-h-0 flex-1 flex-col rounded-xl border border-border/80 bg-card shadow-xs transition-all duration-200 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20"
     >
         <!-- Formatting toolbar -->
         <EditorToolbar
@@ -277,7 +277,7 @@ defineExpose({ getText });
 
         <!-- Main Workspace (Editor / Split / Preview) -->
         <div
-            class="flex min-h-0 w-full flex-1 flex-col overflow-hidden sm:flex-row"
+            class="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-b-xl sm:flex-row"
         >
             <!-- Editor Pane -->
             <div

@@ -193,7 +193,7 @@ defineOptions({
             class="flex min-h-0 flex-1 flex-col"
         >
             <main
-                class="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto p-2.5 sm:p-4 md:p-6"
+                class="flex min-h-0 min-w-0 flex-1 flex-col p-2.5 sm:p-4 md:p-6"
             >
                 <UnlockVaultPanel v-if="locked" :vault="currentVault" />
                 <NoteEditor

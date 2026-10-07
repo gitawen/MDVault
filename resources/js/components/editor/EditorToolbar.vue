@@ -140,7 +140,7 @@ defineExpose({ openLinkDialog });
     <div
         role="toolbar"
         aria-label="Formatting"
-        class="no-scrollbar sticky top-0 z-10 flex shrink-0 touch-pan-x items-center gap-1.5 overflow-x-auto border-b border-border/70 bg-card/95 px-2 py-1.5 backdrop-blur-xs"
+        class="no-scrollbar sticky top-0 z-10 flex shrink-0 touch-pan-x items-center gap-1.5 overflow-x-auto rounded-t-xl border-b border-border/70 bg-card/95 px-2 py-1.5 backdrop-blur-xs"
     >
         <!-- History Group -->
         <div
