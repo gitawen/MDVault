@@ -415,6 +415,7 @@ defineExpose({
     noteUuid: () => props.note.uuid,
     externalCheckToken,
     applyExternalStatus,
+    resetDisplayMode: () => editorRef.value?.resetDisplayMode(),
 });
 
 // --- Unsaved-changes guard ----------------------------------------------------
@@ -579,6 +580,7 @@ const statusLabel = computed(() => {
                 :editable="true"
                 :readonly="frozen"
                 :preferences="preferences"
+                :note-uuid="props.note.uuid"
                 @change="notifyChange"
             />
         </template>

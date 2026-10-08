@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Enums\EditorDefaultView;
 use App\Enums\EditorFontFamily;
 use App\Exceptions\NoteOperationException;
 use App\Services\MarkdownService;
@@ -33,6 +34,7 @@ class UpdateEditorSettingsRequest extends FormRequest
             'word_wrap' => ['required', 'boolean'],
             'show_line_numbers' => ['required', 'boolean'],
             'indent_size' => ['required', 'integer', 'between:1,8'],
+            'default_view' => ['required', Rule::enum(EditorDefaultView::class)],
             'new_note_template_enabled' => ['required', 'boolean'],
             'new_note_template' => [
                 'nullable',

@@ -58,6 +58,12 @@ const fontFamilies = [
     { value: 'mono', label: 'Monospace (Code & Technical)' },
 ] as const;
 
+const defaultViews = [
+    { value: 'code', label: 'Editor Only' },
+    { value: 'split', label: 'Split View' },
+    { value: 'preview', label: 'Preview Only' },
+] as const;
+
 function save() {
     form.patch(update.url(), { preserveScroll: true });
 }
@@ -322,7 +328,40 @@ const previewStyle = computed(() => ({
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent class="space-y-3">
+                <CardContent class="space-y-4">
+                    <!-- Default View Mode -->
+                    <div class="grid max-w-sm gap-2">
+                        <Label
+                            for="default_view"
+                            class="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+                        >
+                            Default View Mode
+                        </Label>
+                        <Select v-model="form.default_view">
+                            <SelectTrigger
+                                id="default_view"
+                                class="w-full bg-background"
+                            >
+                                <SelectValue
+                                    placeholder="Select default view"
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem
+                                    v-for="option in defaultViews"
+                                    :key="option.value"
+                                    :value="option.value"
+                                >
+                                    {{ option.label }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p class="text-xs text-muted-foreground">
+                            Choose whether notes open in editor-only, side-by-side split, or preview-only mode by default.
+                        </p>
+                        <InputError :message="form.errors.default_view" />
+                    </div>
+
                     <!-- Word Wrap Toggle -->
                     <div
                         class="flex items-start gap-3.5 rounded-lg border border-border/50 bg-muted/20 p-4 transition-colors hover:bg-muted/30"

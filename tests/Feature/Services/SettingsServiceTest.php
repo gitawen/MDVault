@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\EditorDefaultView;
 use App\Enums\EditorFontFamily;
 use App\Enums\SettingGroup;
 use App\Enums\SettingKey;
@@ -145,6 +146,7 @@ test('group returns every field of the group with defaults merged with overrides
         'indent_size' => 4,
         'new_note_template_enabled' => true,
         'new_note_template' => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
+        'default_view' => EditorDefaultView::Code->value,
     ]);
 });
 

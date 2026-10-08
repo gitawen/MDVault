@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { provide, ref } from 'vue';
+import { notifyNoteSelected } from '@/composables/useNoteNavigation';
 import type { NoteTreeFolder, NoteTreeNode, NoteTreeNote } from '@/types';
 import CreateFolderDialog from './CreateFolderDialog.vue';
 import CreateNoteDialog from './CreateNoteDialog.vue';
@@ -49,6 +50,7 @@ provide(noteTreeActionsKey, {
     newNote,
     newFolder,
     noteSelected() {
+        notifyNoteSelected();
         emit('note-selected');
     },
     rename(note: NoteTreeNote) {

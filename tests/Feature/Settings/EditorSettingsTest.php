@@ -13,6 +13,7 @@ function baseEditorSettingsPayload(): array
         'word_wrap' => true,
         'show_line_numbers' => false,
         'indent_size' => 4,
+        'default_view' => 'code',
         'new_note_template_enabled' => true,
         'new_note_template' => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
     ];
@@ -31,6 +32,7 @@ test('the editor page shows defaults, including the new-note template defaults',
             'word_wrap' => true,
             'show_line_numbers' => false,
             'indent_size' => 4,
+            'default_view' => 'code',
             'new_note_template_enabled' => true,
             'new_note_template' => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
         ])
@@ -45,6 +47,7 @@ test('valid editor preferences are persisted', function () {
         'word_wrap' => false,
         'show_line_numbers' => true,
         'indent_size' => 2,
+        'default_view' => 'split',
     ]))->assertRedirect();
 
     $settings = app(SettingsService::class);
@@ -54,7 +57,8 @@ test('valid editor preferences are persisted', function () {
         ->and($settings->float(SettingKey::EditorLineHeight))->toBe(1.8)
         ->and($settings->boolean(SettingKey::EditorWordWrap))->toBeFalse()
         ->and($settings->boolean(SettingKey::EditorShowLineNumbers))->toBeTrue()
-        ->and($settings->integer(SettingKey::EditorIndentSize))->toBe(2);
+        ->and($settings->integer(SettingKey::EditorIndentSize))->toBe(2)
+        ->and($settings->string(SettingKey::EditorDefaultView))->toBe('split');
 });
 
 test('invalid editor preferences are rejected', function (array $overrides, string $field) {
@@ -74,6 +78,8 @@ test('invalid editor preferences are rejected', function (array $overrides, stri
     'indent size too large' => [['indent_size' => 9], 'indent_size'],
     'indent size not numeric' => [['indent_size' => 'two'], 'indent_size'],
     'missing font size' => [['font_size' => null], 'font_size'],
+    'unknown default view' => [['default_view' => 'invalid'], 'default_view'],
+    'missing default view' => [['default_view' => null], 'default_view'],
 ]);
 
 // --- Revision 4: new-note frontmatter template -----------------------------

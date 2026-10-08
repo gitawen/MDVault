@@ -18,6 +18,7 @@ describe('CodeMirror 6 helper and extensions', () => {
         word_wrap: true,
         show_line_numbers: true,
         indent_size: 4,
+        default_view: 'code',
         new_note_template_enabled: false,
         new_note_template: '',
     };

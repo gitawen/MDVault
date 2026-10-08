@@ -10,6 +10,8 @@ export type StorageSettings = {
 
 export type EditorFontFamily = 'sans' | 'serif' | 'mono';
 
+export type EditorDefaultView = 'code' | 'split' | 'preview';
+
 export type EditorPreferences = {
     font_size: number;
     font_family: EditorFontFamily;
@@ -17,6 +19,7 @@ export type EditorPreferences = {
     word_wrap: boolean;
     show_line_numbers: boolean;
     indent_size: number;
+    default_view: EditorDefaultView;
     new_note_template_enabled: boolean;
     new_note_template: string;
 };

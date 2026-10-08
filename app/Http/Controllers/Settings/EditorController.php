@@ -31,6 +31,7 @@ class EditorController extends Controller
             SettingKey::EditorWordWrap->value => $request->boolean('word_wrap'),
             SettingKey::EditorShowLineNumbers->value => $request->boolean('show_line_numbers'),
             SettingKey::EditorIndentSize->value => (int) $request->validated('indent_size'),
+            SettingKey::EditorDefaultView->value => $request->validated('default_view'),
             SettingKey::EditorNewNoteTemplateEnabled->value => $request->boolean('new_note_template_enabled'),
         ];
 

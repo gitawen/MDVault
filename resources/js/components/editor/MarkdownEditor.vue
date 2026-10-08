@@ -14,6 +14,7 @@ import {
     watch,
 } from 'vue';
 import EditorToolbar from '@/components/editor/EditorToolbar.vue';
+import { useNoteNavigation } from '@/composables/useNoteNavigation';
 import {
     buildCodeMirrorExtensions,
     buildTypographyTheme,
@@ -36,11 +37,15 @@ const {
     editable = true,
     readonly = false,
     preferences,
+    noteUuid,
 } = defineProps<{
     editable?: boolean;
     readonly?: boolean;
     preferences: EditorPreferences;
+    noteUuid?: string;
 }>();
+
+const { noteSelectionTick } = useNoteNavigation();
 
 const emit = defineEmits<{
     change: [];
@@ -50,7 +55,7 @@ const text = defineModel<string>({ default: '' });
 
 const editorContainer = ref<HTMLDivElement | null>(null);
 const view = shallowRef<EditorView | null>(null);
-const displayMode = ref<DisplayMode>('code');
+const displayMode = ref<DisplayMode>(preferences.default_view ?? 'code');
 const toolbarRef = ref<InstanceType<typeof EditorToolbar> | null>(null);
 
 // Bumped by the CodeMirror `onUpdate` callback on every doc/selection/focus
@@ -260,7 +265,29 @@ function handlePreviewClick(event: MouseEvent): void {
     }
 }
 
-defineExpose({ getText });
+function resetDisplayMode(): void {
+    displayMode.value = preferences.default_view ?? 'code';
+}
+
+watch(noteSelectionTick, () => {
+    resetDisplayMode();
+});
+
+watch(
+    () => noteUuid,
+    () => {
+        resetDisplayMode();
+    },
+);
+
+watch(
+    () => preferences.default_view,
+    () => {
+        resetDisplayMode();
+    },
+);
+
+defineExpose({ getText, resetDisplayMode });
 </script>
 
 <template>

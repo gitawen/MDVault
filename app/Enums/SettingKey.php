@@ -19,6 +19,7 @@ enum SettingKey: string
     case EditorIndentSize = 'editor.indent_size';
     case EditorNewNoteTemplateEnabled = 'editor.new_note_template_enabled';
     case EditorNewNoteTemplate = 'editor.new_note_template';
+    case EditorDefaultView = 'editor.default_view';
     case CheckExternalChanges = 'app.check_external_changes';
     case CurrentVault = 'app.current_vault';
     case SecurityAutoLockMinutes = 'security.auto_lock_minutes';
@@ -27,7 +28,7 @@ enum SettingKey: string
     public function type(): SettingType
     {
         return match ($this) {
-            self::StorageRootPath, self::StorageFolderName, self::AppearanceTheme, self::EditorFontFamily, self::EditorNewNoteTemplate, self::CurrentVault => SettingType::String,
+            self::StorageRootPath, self::StorageFolderName, self::AppearanceTheme, self::EditorFontFamily, self::EditorNewNoteTemplate, self::EditorDefaultView, self::CurrentVault => SettingType::String,
             self::EditorFontSize, self::EditorIndentSize, self::SecurityAutoLockMinutes => SettingType::Integer,
             self::EditorLineHeight => SettingType::Float,
             self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorNewNoteTemplateEnabled, self::CheckExternalChanges, self::SecurityLockOnScreenLock => SettingType::Boolean,
@@ -39,7 +40,7 @@ enum SettingKey: string
         return match ($this) {
             self::StorageRootPath, self::StorageFolderName => SettingGroup::Storage,
             self::AppearanceTheme => SettingGroup::Appearance,
-            self::EditorFontSize, self::EditorFontFamily, self::EditorLineHeight, self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorIndentSize, self::EditorNewNoteTemplateEnabled, self::EditorNewNoteTemplate => SettingGroup::Editor,
+            self::EditorFontSize, self::EditorFontFamily, self::EditorLineHeight, self::EditorWordWrap, self::EditorShowLineNumbers, self::EditorIndentSize, self::EditorNewNoteTemplateEnabled, self::EditorNewNoteTemplate, self::EditorDefaultView => SettingGroup::Editor,
             self::CheckExternalChanges, self::CurrentVault => SettingGroup::General,
             self::SecurityAutoLockMinutes, self::SecurityLockOnScreenLock => SettingGroup::Security,
         };
@@ -59,6 +60,7 @@ enum SettingKey: string
             self::EditorIndentSize => 4,
             self::EditorNewNoteTemplateEnabled => true,
             self::EditorNewNoteTemplate => MarkdownService::DEFAULT_NEW_NOTE_TEMPLATE,
+            self::EditorDefaultView => EditorDefaultView::Code->value,
             self::CheckExternalChanges => true,
             self::CurrentVault => null,
             self::SecurityAutoLockMinutes => 15,
