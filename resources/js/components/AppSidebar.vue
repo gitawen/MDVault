@@ -12,6 +12,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarRail,
 } from '@/components/ui/sidebar';
 import { index as settingsIndex } from '@/routes/settings';
 import { workspace } from '@/routes';
@@ -58,5 +59,7 @@ const mainNavItems: NavItem[] = [
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarFooter>
+
+        <SidebarRail />
     </Sidebar>
 </template>

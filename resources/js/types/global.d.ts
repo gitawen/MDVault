@@ -20,6 +20,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             sidebarOpen: boolean;
+            sidebarWidth?: string;
             vaults: VaultSummary[];
             security: SecuritySettings;
             [key: string]: unknown;

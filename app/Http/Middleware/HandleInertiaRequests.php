@@ -47,6 +47,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'sidebarWidth' => (string) ($request->cookie('sidebar_width') ?: '16rem'),
             'vaults' => fn () => $this->vaults->summaries(),
             'security' => fn () => [
                 'auto_lock_minutes' => $this->settings->integer(SettingKey::SecurityAutoLockMinutes),
