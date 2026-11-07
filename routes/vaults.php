@@ -13,6 +13,7 @@ Route::get('vaults', [VaultController::class, 'index'])->name('vaults.index');
 Route::post('vaults', [VaultController::class, 'store'])->name('vaults.store');
 Route::post('vaults/close', [VaultController::class, 'close'])->name('vaults.close');
 Route::post('vaults/existing', [ExistingVaultController::class, 'store'])->name('vaults.existing.store');
+Route::post('vaults/existing/batch', [ExistingVaultController::class, 'batchStore'])->name('vaults.existing.batch');
 Route::post('vaults/existing/browse', [ExistingVaultController::class, 'browse'])->name('vaults.existing.browse');
 
 Route::patch('vaults/{vault:uuid}', [VaultController::class, 'update'])->whereUuid('vault')->name('vaults.update');

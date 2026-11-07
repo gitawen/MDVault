@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\ExistingVaultController::store
- * @see app/Http/Controllers/ExistingVaultController.php:20
+ * @see app/Http/Controllers/ExistingVaultController.php:22
  * @route '/vaults/existing'
  */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\ExistingVaultController::store
- * @see app/Http/Controllers/ExistingVaultController.php:20
+ * @see app/Http/Controllers/ExistingVaultController.php:22
  * @route '/vaults/existing'
  */
 store.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\ExistingVaultController::store
- * @see app/Http/Controllers/ExistingVaultController.php:20
+ * @see app/Http/Controllers/ExistingVaultController.php:22
  * @route '/vaults/existing'
  */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\ExistingVaultController::store
- * @see app/Http/Controllers/ExistingVaultController.php:20
+ * @see app/Http/Controllers/ExistingVaultController.php:22
  * @route '/vaults/existing'
  */
     const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\ExistingVaultController::store
- * @see app/Http/Controllers/ExistingVaultController.php:20
+ * @see app/Http/Controllers/ExistingVaultController.php:22
  * @route '/vaults/existing'
  */
         storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -55,8 +55,63 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     
     store.form = storeForm
 /**
+* @see \App\Http\Controllers\ExistingVaultController::batch
+ * @see app/Http/Controllers/ExistingVaultController.php:46
+ * @route '/vaults/existing/batch'
+ */
+export const batch = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: batch.url(options),
+    method: 'post',
+})
+
+batch.definition = {
+    methods: ["post"],
+    url: '/vaults/existing/batch',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\ExistingVaultController::batch
+ * @see app/Http/Controllers/ExistingVaultController.php:46
+ * @route '/vaults/existing/batch'
+ */
+batch.url = (options?: RouteQueryOptions) => {
+    return batch.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\ExistingVaultController::batch
+ * @see app/Http/Controllers/ExistingVaultController.php:46
+ * @route '/vaults/existing/batch'
+ */
+batch.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: batch.url(options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\ExistingVaultController::batch
+ * @see app/Http/Controllers/ExistingVaultController.php:46
+ * @route '/vaults/existing/batch'
+ */
+    const batchForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: batch.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\ExistingVaultController::batch
+ * @see app/Http/Controllers/ExistingVaultController.php:46
+ * @route '/vaults/existing/batch'
+ */
+        batchForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: batch.url(options),
+            method: 'post',
+        })
+    
+    batch.form = batchForm
+/**
 * @see \App\Http\Controllers\ExistingVaultController::browse
- * @see app/Http/Controllers/ExistingVaultController.php:44
+ * @see app/Http/Controllers/ExistingVaultController.php:104
  * @route '/vaults/existing/browse'
  */
 export const browse = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -71,7 +126,7 @@ browse.definition = {
 
 /**
 * @see \App\Http\Controllers\ExistingVaultController::browse
- * @see app/Http/Controllers/ExistingVaultController.php:44
+ * @see app/Http/Controllers/ExistingVaultController.php:104
  * @route '/vaults/existing/browse'
  */
 browse.url = (options?: RouteQueryOptions) => {
@@ -80,7 +135,7 @@ browse.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\ExistingVaultController::browse
- * @see app/Http/Controllers/ExistingVaultController.php:44
+ * @see app/Http/Controllers/ExistingVaultController.php:104
  * @route '/vaults/existing/browse'
  */
 browse.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -90,7 +145,7 @@ browse.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\ExistingVaultController::browse
- * @see app/Http/Controllers/ExistingVaultController.php:44
+ * @see app/Http/Controllers/ExistingVaultController.php:104
  * @route '/vaults/existing/browse'
  */
     const browseForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -100,7 +155,7 @@ browse.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\ExistingVaultController::browse
- * @see app/Http/Controllers/ExistingVaultController.php:44
+ * @see app/Http/Controllers/ExistingVaultController.php:104
  * @route '/vaults/existing/browse'
  */
         browseForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -111,6 +166,7 @@ browse.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     browse.form = browseForm
 const existing = {
     store: Object.assign(store, store),
+batch: Object.assign(batch, batch),
 browse: Object.assign(browse, browse),
 }
 

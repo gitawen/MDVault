@@ -13,11 +13,11 @@ import {
 import { computed, ref, watch } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -30,16 +30,19 @@ const props = withDefaults(
         initialPath?: string | null;
         title?: string;
         description?: string;
+        multiple?: boolean;
     }>(),
     {
         initialPath: null,
         title: 'Choose folder',
         description: 'Browse and select a folder on the system.',
+        multiple: false,
     },
 );
 
 const emit = defineEmits<{
     select: [path: string];
+    'select-multiple': [paths: string[]];
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -55,6 +58,7 @@ const searchQuery = ref<string>('');
 const loading = ref<boolean>(false);
 const error = ref<string | null>(null);
 const selectedPath = ref<string>('');
+const selectedPaths = ref<string[]>([]);
 
 const filteredDirectories = computed(() => {
     const q = searchQuery.value.trim().toLowerCase();
@@ -62,6 +66,15 @@ const filteredDirectories = computed(() => {
         return directories.value;
     }
     return directories.value.filter((d) => d.name.toLowerCase().includes(q));
+});
+
+const isAllInFolderSelected = computed(() => {
+    if (filteredDirectories.value.length === 0) {
+        return false;
+    }
+    return filteredDirectories.value.every((d) =>
+        selectedPaths.value.includes(d.path),
+    );
 });
 
 function fetchDirectory(path: string | null = null) {
@@ -94,6 +107,8 @@ function fetchDirectory(path: string | null = null) {
 
 watch(open, (isOpen) => {
     if (isOpen) {
+        selectedPaths.value = [];
+        selectedPath.value = '';
         fetchDirectory(props.initialPath);
     }
 });
@@ -106,14 +121,61 @@ function selectDirectoryItem(item: DirectoryItem) {
     selectedPath.value = item.path;
 }
 
+function toggleSelection(path: string) {
+    const idx = selectedPaths.value.indexOf(path);
+    if (idx === -1) {
+        selectedPaths.value.push(path);
+    } else {
+        selectedPaths.value.splice(idx, 1);
+    }
+}
+
+function handleRowClick(dir: DirectoryItem) {
+    if (props.multiple) {
+        toggleSelection(dir.path);
+    } else {
+        selectDirectoryItem(dir);
+    }
+}
+
+function selectAllInFolder() {
+    const visiblePaths = filteredDirectories.value.map((d) => d.path);
+    if (isAllInFolderSelected.value) {
+        selectedPaths.value = selectedPaths.value.filter(
+            (p) => !visiblePaths.includes(p),
+        );
+    } else {
+        const combined = new Set([...selectedPaths.value, ...visiblePaths]);
+        selectedPaths.value = Array.from(combined);
+    }
+}
+
+function clearSelection() {
+    selectedPaths.value = [];
+}
+
 function enterDirectory(item: DirectoryItem) {
     fetchDirectory(item.path);
 }
 
 function confirmSelection() {
-    if (selectedPath.value) {
-        emit('select', selectedPath.value);
-        open.value = false;
+    if (props.multiple) {
+        const finalPaths =
+            selectedPaths.value.length > 0
+                ? [...selectedPaths.value]
+                : [currentPath.value];
+        if (finalPaths.length > 0 && finalPaths[0]) {
+            emit('select-multiple', finalPaths);
+            if (finalPaths.length === 1) {
+                emit('select', finalPaths[0]);
+            }
+            open.value = false;
+        }
+    } else {
+        if (selectedPath.value) {
+            emit('select', selectedPath.value);
+            open.value = false;
+        }
     }
 }
 </script>
@@ -220,17 +282,56 @@ function confirmSelection() {
                 </div>
             </div>
 
-            <!-- Search filter -->
-            <div class="relative mb-1">
-                <Search
-                    class="absolute top-2.5 left-2.5 size-3.5 text-muted-foreground"
-                />
-                <Input
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="Filter folders..."
-                    class="h-8 bg-card pl-8 text-xs"
-                />
+            <!-- Search filter & Multi-select Toolbar -->
+            <div class="space-y-1.5">
+                <div class="relative">
+                    <Search
+                        class="absolute top-2.5 left-2.5 size-3.5 text-muted-foreground"
+                    />
+                    <Input
+                        v-model="searchQuery"
+                        type="text"
+                        placeholder="Filter folders..."
+                        class="h-8 bg-card pl-8 text-xs"
+                    />
+                </div>
+
+                <div
+                    v-if="multiple"
+                    class="flex items-center justify-between px-0.5 text-xs text-muted-foreground"
+                >
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            class="cursor-pointer font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                            :disabled="filteredDirectories.length === 0"
+                            @click="selectAllInFolder"
+                        >
+                            {{
+                                isAllInFolderSelected
+                                    ? 'Deselect all in folder'
+                                    : 'Select all in folder'
+                            }}
+                        </button>
+                        <span
+                            v-if="filteredDirectories.length > 0"
+                            class="text-[11px] text-muted-foreground"
+                        >
+                            ({{ filteredDirectories.length }} folder{{
+                                filteredDirectories.length === 1 ? '' : 's'
+                            }})
+                        </span>
+                    </div>
+
+                    <button
+                        v-if="selectedPaths.length > 0"
+                        type="button"
+                        class="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+                        @click="clearSelection"
+                    >
+                        Clear ({{ selectedPaths.length }})
+                    </button>
+                </div>
             </div>
 
             <!-- Folder list view -->
@@ -272,20 +373,35 @@ function confirmSelection() {
                         :key="dir.path"
                         class="group flex cursor-pointer items-center justify-between rounded-md border border-transparent px-2.5 py-1.5 text-xs transition-colors select-none"
                         :class="[
-                            selectedPath === dir.path
-                                ? 'border-primary/30 bg-primary/10 font-medium text-primary'
-                                : 'text-foreground hover:bg-muted/70',
+                            multiple
+                                ? selectedPaths.includes(dir.path)
+                                    ? 'border-primary/30 bg-primary/10 font-medium text-primary'
+                                    : 'text-foreground hover:bg-muted/70'
+                                : selectedPath === dir.path
+                                  ? 'border-primary/30 bg-primary/10 font-medium text-primary'
+                                  : 'text-foreground hover:bg-muted/70',
                         ]"
-                        @click="selectDirectoryItem(dir)"
+                        @click="handleRowClick(dir)"
                         @dblclick="enterDirectory(dir)"
                     >
                         <div
                             class="mr-1 flex min-w-0 flex-1 items-center gap-2"
                         >
+                            <Checkbox
+                                v-if="multiple"
+                                :model-value="selectedPaths.includes(dir.path)"
+                                class="mr-0.5"
+                                @click.stop
+                                @update:model-value="toggleSelection(dir.path)"
+                            />
                             <Folder
                                 class="size-4 shrink-0"
                                 :class="
-                                    selectedPath === dir.path
+                                    (
+                                        multiple
+                                            ? selectedPaths.includes(dir.path)
+                                            : selectedPath === dir.path
+                                    )
                                         ? 'fill-primary/20 text-primary'
                                         : 'fill-amber-500/20 text-amber-500'
                                 "
@@ -314,15 +430,69 @@ function confirmSelection() {
                 class="flex flex-col justify-between gap-2 border-t border-border/50 pt-2 text-xs sm:flex-row sm:items-center"
             >
                 <div class="min-w-0 flex-1">
-                    <div class="text-[11px] text-muted-foreground">
-                        Target path:
-                    </div>
-                    <div
-                        class="truncate font-mono text-xs font-medium text-foreground"
-                        :title="selectedPath"
-                    >
-                        {{ selectedPath || currentPath }}
-                    </div>
+                    <template v-if="multiple">
+                        <template v-if="selectedPaths.length === 0">
+                            <div class="text-[11px] text-muted-foreground">
+                                Target path:
+                            </div>
+                            <div
+                                class="truncate font-mono text-xs font-medium text-foreground"
+                                :title="currentPath"
+                            >
+                                {{ currentPath }}
+                            </div>
+                        </template>
+                        <template v-else-if="selectedPaths.length === 1">
+                            <div class="text-[11px] text-muted-foreground">
+                                Selected 1 folder:
+                            </div>
+                            <div
+                                class="truncate font-mono text-xs font-medium text-foreground"
+                                :title="selectedPaths[0]"
+                            >
+                                {{ selectedPaths[0] }}
+                            </div>
+                        </template>
+                        <template v-else>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[11px] text-muted-foreground">
+                                    Selected:
+                                </span>
+                                <Badge
+                                    variant="secondary"
+                                    class="font-mono text-[11px]"
+                                >
+                                    {{ selectedPaths.length }} folders
+                                </Badge>
+                            </div>
+                            <div
+                                class="mt-0.5 truncate font-mono text-xs text-muted-foreground"
+                                :title="selectedPaths.join(', ')"
+                            >
+                                {{
+                                    selectedPaths
+                                        .map((p) =>
+                                            p
+                                                .split(/[\\/]/)
+                                                .filter(Boolean)
+                                                .pop(),
+                                        )
+                                        .join(', ')
+                                }}
+                            </div>
+                        </template>
+                    </template>
+                    <template v-else>
+                        <div class="text-[11px] text-muted-foreground">
+                            Target path:
+                        </div>
+                        <div
+                            class="truncate font-mono text-xs font-medium text-foreground"
+                            :title="selectedPath"
+                        >
+                            {{ selectedPath || currentPath }}
+                        </div>
+                    </template>
                 </div>
 
                 <div
@@ -348,10 +518,22 @@ function confirmSelection() {
                     <Button
                         type="button"
                         size="sm"
-                        :disabled="!selectedPath && !currentPath"
+                        :disabled="
+                            multiple
+                                ? !selectedPaths.length && !currentPath
+                                : !selectedPath && !currentPath
+                        "
                         @click="confirmSelection"
                     >
-                        Select folder
+                        {{
+                            multiple
+                                ? selectedPaths.length === 0
+                                    ? 'Select folder'
+                                    : selectedPaths.length === 1
+                                      ? 'Select 1 folder'
+                                      : `Select ${selectedPaths.length} folders`
+                                : 'Select folder'
+                        }}
                     </Button>
                 </div>
             </div>

@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Enums\IndexMode;
 use App\Exceptions\NoteOperationException;
 use App\Exceptions\VaultOperationException;
+use App\Http\Requests\Vaults\RegisterVaultBatchRequest;
 use App\Http\Requests\Vaults\RegisterVaultRequest;
 use App\Models\Vault;
 use App\Services\NativeDialogService;
 use App\Services\StoragePathService;
 use App\Services\VaultIndexService;
 use App\Services\VaultService;
+use App\Support\VaultBatchResult;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -39,6 +41,64 @@ class ExistingVaultController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => "Vault \u{201c}{$vault->name}\u{201d} added.{$suffix}"]);
 
         return to_route('workspace');
+    }
+
+    public function batchStore(RegisterVaultBatchRequest $request, VaultService $vaults, VaultIndexService $index): RedirectResponse
+    {
+        $added = [];
+        $skipped = [];
+        $totalNotesIndexed = 0;
+
+        /** @var list<string> $paths */
+        $paths = $request->validated('paths');
+
+        foreach ($paths as $path) {
+            $name = $vaults->suggestedNameFor($path);
+
+            try {
+                $vault = $vaults->register($path, $name);
+
+                try {
+                    $result = $index->reconcile($vault, IndexMode::Quick);
+                    $totalNotesIndexed += $result->added;
+                } catch (NoteOperationException) {
+                    // Nothing to index if the folder can't be read right now.
+                }
+
+                $added[] = $vault;
+            } catch (VaultOperationException $e) {
+                $skipped[] = [
+                    'path' => $path,
+                    'reason' => $e->getMessage(),
+                ];
+            }
+        }
+
+        if (empty($added)) {
+            $reasons = array_map(
+                fn (array $item): string => $vaults->suggestedNameFor($item['path']).' ('.$item['reason'].')',
+                $skipped
+            );
+
+            throw ValidationException::withMessages([
+                'paths' => 'None of the selected folders could be registered: '.implode('; ', $reasons),
+            ]);
+        }
+
+        $vaults->open($added[0]);
+
+        $result = new VaultBatchResult($added, $skipped, $totalNotesIndexed);
+
+        Inertia::flash('toast', [
+            'type' => $result->skippedCount() > 0 ? 'warning' : 'success',
+            'message' => $result->summary(),
+        ]);
+
+        if ($result->addedCount() === 1 && $result->skippedCount() === 0) {
+            return to_route('workspace');
+        }
+
+        return to_route('vaults.index');
     }
 
     public function browse(StoragePathService $paths, NativeDialogService $dialogs, VaultService $vaults): RedirectResponse
