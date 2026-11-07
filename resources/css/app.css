@@ -294,6 +294,48 @@
         @apply rounded-md bg-muted/80 px-1.5 py-0.5 font-mono text-[0.875em] text-foreground;
     }
 
+    .markdown-content .inline-code-wrapper {
+        @apply relative inline-flex items-center gap-1 align-baseline;
+    }
+
+    .markdown-content .inline-code-copy-btn {
+        @apply inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded border border-border/70 bg-muted/80 text-muted-foreground opacity-0 transition-all duration-150 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-1 focus-visible:outline-ring;
+    }
+
+    .markdown-content .inline-code-copy-btn svg {
+        @apply h-2.5 w-2.5;
+    }
+
+    .markdown-content .inline-code-wrapper:hover .inline-code-copy-btn,
+    .markdown-content .inline-code-copy-btn.copied {
+        @apply opacity-100;
+    }
+
+    .markdown-content .inline-code-copy-btn.copied {
+        @apply border-primary text-foreground;
+    }
+
+    .markdown-content .code-block-wrapper {
+        @apply relative my-4;
+    }
+
+    .markdown-content .code-block-wrapper pre {
+        @apply my-0;
+    }
+
+    .markdown-content .code-copy-btn {
+        @apply absolute top-2 right-2 z-10 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-border/70 bg-muted/80 text-muted-foreground opacity-0 transition-all duration-150 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring;
+    }
+
+    .markdown-content .code-block-wrapper:hover .code-copy-btn,
+    .markdown-content .code-copy-btn.copied {
+        @apply opacity-100;
+    }
+
+    .markdown-content .code-copy-btn.copied {
+        @apply border-primary text-foreground;
+    }
+
     .markdown-content pre {
         @apply my-4 overflow-x-auto rounded-lg border border-border/60 bg-muted/60 p-3.5 font-mono text-[0.875em] leading-normal;
     }

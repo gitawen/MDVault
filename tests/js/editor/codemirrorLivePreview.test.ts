@@ -1,7 +1,13 @@
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { syntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
+import type { SyntaxNode } from '@lezer/common';
 import { describe, expect, it } from 'vite-plus/test';
 import {
+    CodeBlockCopyWidget,
+    extractFencedCodeContent,
+    extractInlineCodeContent,
+    InlineCodeCopyWidget,
     livePreview,
     markdownLineDecorations,
 } from '../../../resources/js/lib/editor/codemirrorLivePreview';
@@ -14,6 +20,7 @@ type DecorationEntry = {
     to: number;
     class?: string;
     isWidget: boolean;
+    widget?: unknown;
 };
 
 function buildState(doc: string): EditorState {
@@ -21,6 +28,34 @@ function buildState(doc: string): EditorState {
         doc,
         extensions: [markdown({ base: markdownLanguage })],
     });
+}
+
+function findFencedCodeNode(state: EditorState): SyntaxNode | null {
+    const tree = syntaxTree(state);
+    let fenced: SyntaxNode | null = null;
+    tree.iterate({
+        enter(node) {
+            if (node.name === 'FencedCode') {
+                fenced = node.node;
+                return false;
+            }
+        },
+    });
+    return fenced;
+}
+
+function findInlineCodeNodes(state: EditorState): SyntaxNode[] {
+    const tree = syntaxTree(state);
+    const nodes: SyntaxNode[] = [];
+    tree.iterate({
+        enter(node) {
+            if (node.name === 'InlineCode') {
+                nodes.push(node.node);
+                return false;
+            }
+        },
+    });
+    return nodes;
 }
 
 function decorate(
@@ -38,6 +73,7 @@ function decorate(
             to,
             class: (value.spec as { class?: string }).class,
             isWidget: Boolean(value.spec.widget),
+            widget: (value.spec as { widget?: unknown }).widget,
         });
     });
     return entries;
@@ -185,6 +221,186 @@ describe('markdownLineDecorations', () => {
             if (entry.class) {
                 expect(entry.class).not.toMatch(TAILWIND_UTILITY_PATTERN);
             }
+        }
+    });
+
+    it('emits a copy widget decoration on the opening fence line at line.to (FR-03, FR-05)', () => {
+        const doc = '```js\nconsole.log("hello");\n```\n';
+        const state = buildState(doc);
+        const entries = decorate(state);
+
+        const openLine = state.doc.line(1);
+
+        // Line decoration at line.from
+        const lineDeco = entries.find(
+            (e) => e.from === openLine.from && e.class === 'cm-md-fence-open',
+        );
+        expect(lineDeco).toBeDefined();
+
+        // Widget decoration at line.to
+        const widgetDeco = entries.find(
+            (e) => e.from === openLine.to && e.to === openLine.to && e.isWidget,
+        );
+        expect(widgetDeco).toBeDefined();
+    });
+
+    it('emits an inline copy widget decoration at inlineCode.to (FR-08, FR-09)', () => {
+        const doc = 'Run `npm test` now.';
+        const state = buildState(doc);
+        const entries = decorate(state);
+
+        const nodes = findInlineCodeNodes(state);
+        expect(nodes).toHaveLength(1);
+        const inlineNode = nodes[0];
+
+        const widgetDeco = entries.find(
+            (e) =>
+                e.from === inlineNode.to &&
+                e.to === inlineNode.to &&
+                e.isWidget,
+        );
+        expect(widgetDeco).toBeDefined();
+        expect(widgetDeco?.widget).toBeInstanceOf(InlineCodeCopyWidget);
+        expect((widgetDeco?.widget as InlineCodeCopyWidget).code).toBe(
+            'npm test',
+        );
+    });
+
+    it('emits multiple inline copy widgets in ascending position order on the same line', () => {
+        const doc = 'Compare `foo` and `bar` here.';
+        const state = buildState(doc);
+        const entries = decorate(state);
+
+        const widgets = entries.filter(
+            (e) => e.isWidget && e.widget instanceof InlineCodeCopyWidget,
+        );
+        expect(widgets).toHaveLength(2);
+        expect(widgets[0].from).toBeLessThan(widgets[1].from);
+        expect((widgets[0].widget as InlineCodeCopyWidget).code).toBe('foo');
+        expect((widgets[1].widget as InlineCodeCopyWidget).code).toBe('bar');
+    });
+
+    it('emits both heading line decoration and inline code copy widget', () => {
+        const doc = '# Guide for `MDVault`';
+        const state = buildState(doc);
+        const entries = decorate(state);
+
+        const heading = entries.find((e) => e.class === 'cm-md-h1');
+        expect(heading).toBeDefined();
+        expect(heading?.from).toBe(0);
+
+        const widgets = entries.filter(
+            (e) => e.isWidget && e.widget instanceof InlineCodeCopyWidget,
+        );
+        expect(widgets).toHaveLength(1);
+        expect((widgets[0].widget as InlineCodeCopyWidget).code).toBe('MDVault');
+    });
+
+    it('decorates lines with task checkbox, task-done mark, and inline code copy widget monotonically', () => {
+        const doc = '- [x] Complete `vitest` suite';
+        const state = buildState(doc);
+
+        expect(() => decorate(state)).not.toThrow();
+
+        const entries = decorate(state);
+        const checkbox = entries.find(
+            (e) => e.isWidget && !(e.widget instanceof InlineCodeCopyWidget),
+        );
+        expect(checkbox).toBeDefined();
+        expect(checkbox?.from).toBe(2);
+
+        const strike = entries.find((e) => e.class === 'cm-md-task-done');
+        expect(strike).toBeDefined();
+
+        const inlineWidget = entries.find(
+            (e) => e.isWidget && e.widget instanceof InlineCodeCopyWidget,
+        );
+        expect(inlineWidget).toBeDefined();
+        expect((inlineWidget?.widget as InlineCodeCopyWidget).code).toBe(
+            'vitest',
+        );
+    });
+});
+
+describe('extractFencedCodeContent', () => {
+    it('extracts multi-line code content excluding fence delimiters (FR-04)', () => {
+        const doc = '```js\nconst a = 1;\nconst b = 2;\n```\n';
+        const state = buildState(doc);
+        const node = findFencedCodeNode(state);
+        expect(node).not.toBeNull();
+        expect(extractFencedCodeContent(state, node!)).toBe(
+            'const a = 1;\nconst b = 2;',
+        );
+    });
+
+    it('returns empty string for an empty fenced code block (FR-04)', () => {
+        const doc = '```\n```\n';
+        const state = buildState(doc);
+        const node = findFencedCodeNode(state);
+        expect(node).not.toBeNull();
+        expect(extractFencedCodeContent(state, node!)).toBe('');
+    });
+
+    it('preserves blank lines within the code block content', () => {
+        const doc = '```python\ndef foo():\n\n    return 42\n```\n';
+        const state = buildState(doc);
+        const node = findFencedCodeNode(state);
+        expect(node).not.toBeNull();
+        expect(extractFencedCodeContent(state, node!)).toBe(
+            'def foo():\n\n    return 42',
+        );
+    });
+
+    it('extracts content for an unclosed fenced code block at end of document', () => {
+        const doc = '```ts\nlet x = 10;\nconsole.log(x);';
+        const state = buildState(doc);
+        const node = findFencedCodeNode(state);
+        expect(node).not.toBeNull();
+        expect(extractFencedCodeContent(state, node!)).toBe(
+            'let x = 10;\nconsole.log(x);',
+        );
+    });
+
+    it('returns empty string for a single-line opening fence with no closing fence', () => {
+        const doc = '```ts';
+        const state = buildState(doc);
+        const node = findFencedCodeNode(state);
+        expect(node).not.toBeNull();
+        expect(extractFencedCodeContent(state, node!)).toBe('');
+    });
+});
+
+describe('extractInlineCodeContent', () => {
+    it('extracts content between single backticks omitting delimiters (FR-09)', () => {
+        const doc = '`const x = 1;`';
+        const state = buildState(doc);
+        const nodes = findInlineCodeNodes(state);
+        expect(nodes).toHaveLength(1);
+        expect(extractInlineCodeContent(state, nodes[0])).toBe('const x = 1;');
+    });
+
+    it('extracts content with multiple backticks (FR-09)', () => {
+        const doc = '``hello ` world``';
+        const state = buildState(doc);
+        const nodes = findInlineCodeNodes(state);
+        expect(nodes).toHaveLength(1);
+        expect(extractInlineCodeContent(state, nodes[0])).toBe('hello ` world');
+    });
+
+    it('preserves inner whitespace inside inline code (FR-09)', () => {
+        const doc = '` foo `';
+        const state = buildState(doc);
+        const nodes = findInlineCodeNodes(state);
+        expect(nodes).toHaveLength(1);
+        expect(extractInlineCodeContent(state, nodes[0])).toBe(' foo ');
+    });
+
+    it('returns empty string for empty inline code (FR-09)', () => {
+        const doc = '``';
+        const state = buildState(doc);
+        const nodes = findInlineCodeNodes(state);
+        if (nodes.length > 0) {
+            expect(extractInlineCodeContent(state, nodes[0])).toBe('');
         }
     });
 });

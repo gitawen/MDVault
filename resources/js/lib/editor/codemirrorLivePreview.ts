@@ -15,6 +15,79 @@ import {
     WidgetType,
 } from '@codemirror/view';
 import type { SyntaxNode, Tree } from '@lezer/common';
+import { COPY_ICON_SVG, triggerCopyFeedback } from './copyButton';
+
+export class CodeBlockCopyWidget extends WidgetType {
+    constructor(readonly code: string) {
+        super();
+    }
+
+    override eq(other: CodeBlockCopyWidget): boolean {
+        return other.code === this.code;
+    }
+
+    override ignoreEvent(): boolean {
+        return true;
+    }
+
+    override toDOM(_view: EditorView): HTMLElement {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cm-md-copy-btn';
+        button.setAttribute('aria-label', 'Copy code');
+        button.setAttribute('title', 'Copy code');
+        button.innerHTML = COPY_ICON_SVG;
+
+        button.addEventListener('mousedown', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+        });
+
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void triggerCopyFeedback(button, this.code);
+        });
+
+        return button;
+    }
+}
+
+export class InlineCodeCopyWidget extends WidgetType {
+    constructor(readonly code: string) {
+        super();
+    }
+
+    override eq(other: InlineCodeCopyWidget): boolean {
+        return other.code === this.code;
+    }
+
+    override ignoreEvent(): boolean {
+        return true;
+    }
+
+    override toDOM(_view: EditorView): HTMLElement {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'cm-md-inline-copy-btn';
+        button.setAttribute('aria-label', 'Copy code');
+        button.setAttribute('title', 'Copy code');
+        button.innerHTML = COPY_ICON_SVG;
+
+        button.addEventListener('mousedown', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+        });
+
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void triggerCopyFeedback(button, this.code);
+        });
+
+        return button;
+    }
+}
 
 class TaskCheckboxWidget extends WidgetType {
     constructor(
@@ -122,6 +195,61 @@ function findHeadingAncestor(nodes: SyntaxNode[]): SyntaxNode | undefined {
     return nodes.find((node) => /^ATXHeading[1-6]$/.test(node.type.name));
 }
 
+/**
+ * Extracts only the inner code content of a fenced code block, excluding
+ * the opening fence line and (if closed) closing fence delimiter line (FR-04).
+ * Returns empty string if there are no inner lines.
+ */
+export function extractFencedCodeContent(
+    state: EditorState,
+    fencedCode: SyntaxNode,
+): string {
+    const startLineNumber = state.doc.lineAt(fencedCode.from).number;
+    const closingMark =
+        fencedCode.lastChild?.name === 'CodeMark' &&
+        fencedCode.lastChild.from > fencedCode.from
+            ? fencedCode.lastChild
+            : null;
+
+    const endLineNumber = closingMark
+        ? state.doc.lineAt(closingMark.from).number - 1
+        : state.doc.lineAt(Math.min(fencedCode.to, state.doc.length)).number;
+
+    if (startLineNumber + 1 > endLineNumber) {
+        return '';
+    }
+
+    const from = state.doc.line(startLineNumber + 1).from;
+    const to = state.doc.line(endLineNumber).to;
+
+    return state.sliceDoc(from, to);
+}
+
+/**
+ * Extracts only the inner code content of an inline code span, excluding
+ * the opening and closing CodeMark backtick delimiters (FR-09).
+ */
+export function extractInlineCodeContent(
+    state: EditorState,
+    inlineCode: SyntaxNode,
+): string {
+    const firstChild = inlineCode.firstChild;
+    const lastChild = inlineCode.lastChild;
+
+    if (
+        firstChild &&
+        lastChild &&
+        firstChild !== lastChild &&
+        firstChild.name === 'CodeMark' &&
+        lastChild.name === 'CodeMark'
+    ) {
+        return state.sliceDoc(firstChild.to, lastChild.from);
+    }
+
+    const raw = state.sliceDoc(inlineCode.from, inlineCode.to);
+    return raw.replace(/^`+|`+$/g, '');
+}
+
 function decorateFenceLine(
     builder: RangeSetBuilder<Decoration>,
     state: EditorState,
@@ -141,7 +269,25 @@ function decorateFenceLine(
     }
 
     builder.add(line.from, line.from, Decoration.line({ class: cls }));
+
+    if (line.number === startLineNumber) {
+        const code = extractFencedCodeContent(state, fencedCode);
+        builder.add(
+            line.to,
+            line.to,
+            Decoration.widget({
+                widget: new CodeBlockCopyWidget(code),
+                side: 1,
+            }),
+        );
+    }
 }
+
+type LineDeco = {
+    from: number;
+    to: number;
+    value: Decoration;
+};
 
 function decorateLine(
     builder: RangeSetBuilder<Decoration>,
@@ -174,17 +320,6 @@ function decorateLine(
         return;
     }
 
-    const heading = findHeadingAncestor(ancestors);
-    if (heading) {
-        const level = Number(heading.type.name.slice('ATXHeading'.length));
-        builder.add(
-            line.from,
-            line.from,
-            Decoration.line({ class: `cm-md-h${level}` }),
-        );
-        return;
-    }
-
     if (findAncestor(ancestors, 'HorizontalRule')) {
         builder.add(
             line.from,
@@ -194,12 +329,22 @@ function decorateLine(
         return;
     }
 
-    if (findAncestor(ancestors, 'Blockquote')) {
-        builder.add(
-            line.from,
-            line.from,
-            Decoration.line({ class: 'cm-md-quote' }),
-        );
+    const lineDecos: LineDeco[] = [];
+
+    const heading = findHeadingAncestor(ancestors);
+    if (heading) {
+        const level = Number(heading.type.name.slice('ATXHeading'.length));
+        lineDecos.push({
+            from: line.from,
+            to: line.from,
+            value: Decoration.line({ class: `cm-md-h${level}` }),
+        });
+    } else if (findAncestor(ancestors, 'Blockquote')) {
+        lineDecos.push({
+            from: line.from,
+            to: line.from,
+            value: Decoration.line({ class: 'cm-md-quote' }),
+        });
     }
 
     const task = findAncestor(ancestors, 'Task');
@@ -207,25 +352,57 @@ function decorateLine(
         const marker = task.getChild('TaskMarker');
         if (marker) {
             const isChecked = /x/i.test(state.sliceDoc(marker.from, marker.to));
-            builder.add(
-                marker.from,
-                marker.to,
-                Decoration.replace({
+            lineDecos.push({
+                from: marker.from,
+                to: marker.to,
+                value: Decoration.replace({
                     widget: new TaskCheckboxWidget(
                         isChecked,
                         marker.from,
                         state.readOnly,
                     ),
                 }),
-            );
+            });
             if (isChecked && marker.to < line.to) {
-                builder.add(
-                    marker.to,
-                    line.to,
-                    Decoration.mark({ class: 'cm-md-task-done' }),
-                );
+                lineDecos.push({
+                    from: marker.to,
+                    to: line.to,
+                    value: Decoration.mark({ class: 'cm-md-task-done' }),
+                });
             }
         }
+    }
+
+    tree.iterate({
+        from: line.from,
+        to: line.to,
+        enter(node) {
+            if (node.name === 'InlineCode') {
+                if (node.to >= line.from && node.to <= line.to) {
+                    const code = extractInlineCodeContent(state, node.node);
+                    lineDecos.push({
+                        from: node.to,
+                        to: node.to,
+                        value: Decoration.widget({
+                            widget: new InlineCodeCopyWidget(code),
+                            side: 1,
+                        }),
+                    });
+                }
+                return false;
+            }
+        },
+    });
+
+    lineDecos.sort(
+        (a, b) =>
+            a.from - b.from ||
+            a.value.startSide - b.value.startSide ||
+            a.to - b.to,
+    );
+
+    for (const deco of lineDecos) {
+        builder.add(deco.from, deco.to, deco.value);
     }
 }
 
@@ -358,6 +535,8 @@ export function livePreview(): Extension {
                 color: 'transparent',
             },
             '.cm-md-fence-open': {
+                position: 'relative',
+                paddingRight: '2.5rem',
                 backgroundColor: 'var(--muted)',
                 fontFamily:
                     'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
@@ -369,6 +548,76 @@ export function livePreview(): Extension {
                 borderTopLeftRadius: '4px',
                 borderTopRightRadius: '4px',
                 paddingTop: '2px',
+            },
+            '.cm-md-copy-btn': {
+                position: 'absolute',
+                top: '3px',
+                right: '6px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '1.5rem',
+                height: '1.5rem',
+                padding: '0.2rem',
+                border: '1px solid var(--border)',
+                borderRadius: '3px',
+                backgroundColor: 'var(--muted)',
+                color: 'var(--muted-foreground)',
+                cursor: 'pointer',
+                opacity: '0',
+                transition:
+                    'opacity 150ms ease, color 150ms ease, background-color 150ms ease, border-color 150ms ease',
+                userSelect: 'none',
+                lineHeight: '1',
+            },
+            '.cm-line.cm-md-fence-open:hover .cm-md-copy-btn, .cm-md-fence-open:hover .cm-md-copy-btn, .cm-md-copy-btn:focus-visible, .cm-md-copy-btn.copied':
+                {
+                    opacity: '1',
+                },
+            '.cm-md-copy-btn:hover': {
+                color: 'var(--foreground)',
+                backgroundColor: 'var(--accent)',
+            },
+            '.cm-md-copy-btn.copied': {
+                color: 'var(--foreground)',
+                borderColor: 'var(--primary)',
+            },
+            '.cm-md-inline-copy-btn': {
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '1.1em',
+                height: '1.1em',
+                marginLeft: '0.25em',
+                verticalAlign: 'middle',
+                padding: '0.1em',
+                border: '1px solid var(--border)',
+                borderRadius: '3px',
+                backgroundColor: 'var(--muted)',
+                color: 'var(--muted-foreground)',
+                cursor: 'pointer',
+                opacity: '0',
+                transition:
+                    'opacity 150ms ease, color 150ms ease, background-color 150ms ease, border-color 150ms ease',
+                userSelect: 'none',
+                lineHeight: '1',
+            },
+            '.cm-line:hover .cm-md-inline-copy-btn, .cm-md-inline-copy-btn:focus-visible, .cm-md-inline-copy-btn.copied':
+                {
+                    opacity: '1',
+                },
+            '.cm-md-inline-copy-btn:hover': {
+                color: 'var(--foreground)',
+                backgroundColor: 'var(--accent)',
+            },
+            '.cm-md-inline-copy-btn.copied': {
+                color: 'var(--foreground)',
+                borderColor: 'var(--primary)',
+            },
+            '.cm-md-inline-copy-btn svg': {
+                width: '0.75em',
+                height: '0.75em',
             },
             '.cm-md-fence-body': {
                 backgroundColor: 'var(--muted)',

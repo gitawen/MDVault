@@ -29,6 +29,7 @@ import {
     renderMarkdownPreview,
     stripFrontmatter,
 } from '@/lib/editor/markdownPreview';
+import { triggerCopyFeedback } from '@/lib/editor/copyButton';
 import type { EditorPreferences } from '@/types';
 
 type DisplayMode = 'code' | 'split' | 'preview';
@@ -250,7 +251,34 @@ const renderedHtml = computed(() => {
 });
 
 function handlePreviewClick(event: MouseEvent): void {
-    const anchor = (event.target as HTMLElement | null)?.closest('a[href]');
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+        return;
+    }
+
+    const copyBtn = target.closest<HTMLButtonElement>('button[data-code-copy]');
+    if (copyBtn) {
+        event.preventDefault();
+        const wrapper = copyBtn.closest('.code-block-wrapper');
+        const codeEl = wrapper?.querySelector('pre code');
+        const codeText = codeEl?.textContent?.replace(/\r?\n$/, '') ?? '';
+        void triggerCopyFeedback(copyBtn, codeText);
+        return;
+    }
+
+    const inlineCopyBtn = target.closest<HTMLButtonElement>(
+        'button[data-inline-code-copy]',
+    );
+    if (inlineCopyBtn) {
+        event.preventDefault();
+        const wrapper = inlineCopyBtn.closest('.inline-code-wrapper');
+        const textEl = wrapper?.querySelector('.inline-code-text');
+        const codeText = textEl?.textContent ?? '';
+        void triggerCopyFeedback(inlineCopyBtn, codeText);
+        return;
+    }
+
+    const anchor = target.closest('a[href]');
     if (!anchor || !(anchor instanceof HTMLAnchorElement)) {
         return;
     }

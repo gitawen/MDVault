@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router, useHttp } from '@inertiajs/vue3';
-import { Save } from '@lucide/vue';
+import { Check, Copy, Save } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,6 +16,7 @@ import {
 } from '@/lib/external/openNoteStatus';
 import type { NoteSaverState, SaveOutcome } from '@/lib/editor/noteSaver';
 import { createNoteSaver } from '@/lib/editor/noteSaver';
+import { copyToClipboard } from '@/lib/editor/clipboard';
 import { mapCopyResult } from '@/lib/editor/copyTransport';
 import { mapSaveResult } from '@/lib/editor/saveTransport';
 import { workspace } from '@/routes';
@@ -71,6 +72,28 @@ const noteText = ref(props.note.content ?? '');
 
 function readContent(): string {
     return editorRef.value?.getText() ?? '';
+}
+
+const copiedNote = ref(false);
+let copyTimeout: ReturnType<typeof setTimeout> | null = null;
+
+async function copyNoteContent(): Promise<void> {
+    const editorText = editorRef.value?.getText();
+    const content =
+        editorText !== undefined ? editorText : (props.note.content ?? '');
+    const success = await copyToClipboard(content);
+    if (!success) {
+        return;
+    }
+
+    if (copyTimeout) {
+        clearTimeout(copyTimeout);
+    }
+    copiedNote.value = true;
+    copyTimeout = setTimeout(() => {
+        copiedNote.value = false;
+        copyTimeout = null;
+    }, 2000);
 }
 
 // --- Autosave ---------------------------------------------------------------
@@ -195,6 +218,9 @@ let unmounted = false;
 
 onUnmounted(() => {
     unmounted = true;
+    if (copyTimeout) {
+        clearTimeout(copyTimeout);
+    }
     window.removeEventListener('keydown', onKeydown);
     saver?.dispose();
 });
@@ -494,6 +520,20 @@ const statusLabel = computed(() => {
                             statusLabel
                         }}</span>
                     </div>
+
+                    <!-- Copy Note Button -->
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        class="h-8 gap-1.5 px-3 text-xs shadow-xs"
+                        :aria-label="copiedNote ? 'Copied note' : 'Copy note'"
+                        :title="copiedNote ? 'Copied note' : 'Copy note'"
+                        @click="copyNoteContent"
+                    >
+                        <Check v-if="copiedNote" class="size-3.5" />
+                        <Copy v-else class="size-3.5" />
+                        <span>{{ copiedNote ? 'Copied' : 'Copy' }}</span>
+                    </Button>
 
                     <!-- Save Button -->
                     <Button

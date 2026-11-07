@@ -1,4 +1,5 @@
-import { Marked } from 'marked';
+import { Marked, type Tokens } from 'marked';
+import { COPY_ICON_SVG } from './copyButton';
 import { ALLOWED_LINK_PROTOCOLS, isAllowedHref } from './linkProtocols';
 
 export { ALLOWED_LINK_PROTOCOLS, isAllowedHref };
@@ -36,6 +37,15 @@ function escapeAttribute(value: string): string {
         .replace(/>/g, '&gt;');
 }
 
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 /**
  * Isolated `Marked` instance for the rendered preview (FR-20). The link and
  * image renderers HTML-escape `href`/`title` (untrusted note content is
@@ -46,6 +56,18 @@ const markdownParser = new Marked({ gfm: true, breaks: false });
 
 markdownParser.use({
     renderer: {
+        code({ text, lang, escaped }) {
+            const langClass = (lang || '').match(/^\S*/)?.[0];
+            const classAttr = langClass
+                ? ` class="language-${escapeAttribute(langClass)}"`
+                : '';
+            const codeContent = (text || '').replace(/\r?\n$/, '') + '\n';
+            const escapedCode = escaped ? codeContent : escapeHtml(codeContent);
+            return `<div class="code-block-wrapper relative group my-4"><button type="button" class="code-copy-btn" aria-label="Copy code" title="Copy code" data-code-copy>${COPY_ICON_SVG}</button><pre><code${classAttr}>${escapedCode}</code></pre></div>\n`;
+        },
+        codespan({ text }: Tokens.Codespan) {
+            return `<code class="inline-code-wrapper group"><span class="inline-code-text">${escapeHtml(text)}</span><button type="button" class="inline-code-copy-btn" aria-label="Copy code" title="Copy code" data-inline-code-copy>${COPY_ICON_SVG}</button></code>`;
+        },
         link({ href, title, text }) {
             if (!isAllowedHref(href)) {
                 return text;

@@ -105,4 +105,65 @@ describe('renderMarkdownPreview', () => {
         expect(html).toContain('type="checkbox"');
         expect(html).toContain('checked');
     });
+
+    it('wraps code blocks in .code-block-wrapper with a copy button (FR-01)', () => {
+        const markdown = '```typescript\nconst message: string = "hello";\n```';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).toContain(
+            '<div class="code-block-wrapper relative group my-4">',
+        );
+        expect(html).toContain(
+            '<button type="button" class="code-copy-btn" aria-label="Copy code" title="Copy code" data-code-copy>',
+        );
+        expect(html).toContain('<pre><code class="language-typescript">');
+        expect(html).toContain(
+            'const message: string = &quot;hello&quot;;\n</code></pre>',
+        );
+    });
+
+    it('renders code blocks without language class when no info string is specified', () => {
+        const markdown = '```\nplain text code\n```';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).toContain(
+            '<div class="code-block-wrapper relative group my-4">',
+        );
+        expect(html).toContain('data-code-copy');
+        expect(html).toContain('<pre><code>plain text code\n</code></pre>');
+        expect(html).not.toContain('class="language-');
+    });
+
+    it('escapes special characters in code content and language tag', () => {
+        const markdown = '```js"<script>\n<div>Foo & "Bar" < 1</div>\n```';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).toContain('class="language-js&quot;&lt;script&gt;"');
+        expect(html).toContain(
+            '&lt;div&gt;Foo &amp; &quot;Bar&quot; &lt; 1&lt;/div&gt;',
+        );
+    });
+
+    it('wraps inline code spans in .inline-code-wrapper with a compact copy button (FR-07)', () => {
+        const markdown = 'Use `npm install` to install dependencies.';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).toContain('<code class="inline-code-wrapper group">');
+        expect(html).toContain(
+            '<span class="inline-code-text">npm install</span>',
+        );
+        expect(html).toContain(
+            '<button type="button" class="inline-code-copy-btn" aria-label="Copy code" title="Copy code" data-inline-code-copy>',
+        );
+    });
+
+    it('escapes special characters in inline code text (FR-07)', () => {
+        const markdown = 'Here is `<Component prop="value" & count=\'5\'>` code.';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).toContain(
+            '&lt;Component prop=&quot;value&quot; &amp; count=&#39;5&#39;&gt;',
+        );
+        expect(html).not.toContain('<Component');
+    });
 });
