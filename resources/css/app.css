@@ -344,6 +344,146 @@
         @apply border-0 bg-transparent p-0 text-inherit;
     }
 
+    /* Code-token colours for highlighted fences (palette mirrors codemirrorTheme.ts). */
+    .markdown-content pre code .tok-keyword {
+        color: #708;
+    }
+    .markdown-content pre code .tok-string {
+        color: #a11;
+    }
+    .markdown-content pre code .tok-string2 {
+        color: #a11;
+    }
+    .markdown-content pre code .tok-number {
+        color: #164;
+    }
+    .markdown-content pre code .tok-bool {
+        color: #164;
+    }
+    .markdown-content pre code .tok-atom {
+        color: #164;
+    }
+    .markdown-content pre code .tok-null {
+        color: #164;
+    }
+    .markdown-content pre code .tok-comment {
+        color: #940;
+    }
+    .markdown-content pre code .tok-variableName {
+        color: #000;
+    }
+    .markdown-content pre code .tok-propertyName {
+        color: #085;
+    }
+    .markdown-content pre code .tok-typeName {
+        color: #085;
+    }
+    .markdown-content pre code .tok-className {
+        color: #085;
+    }
+    .markdown-content pre code .tok-namespace {
+        color: #085;
+    }
+    .markdown-content pre code .tok-operator {
+        color: #555;
+    }
+    .markdown-content pre code .tok-punctuation {
+        color: #555;
+    }
+    .markdown-content pre code .tok-meta {
+        color: #555;
+    }
+    .markdown-content pre code .tok-regexp {
+        color: #555;
+    }
+    .markdown-content pre code .tok-tagName {
+        color: #000;
+    }
+    .markdown-content pre code .tok-attributeName {
+        color: #164;
+    }
+    .markdown-content pre code .tok-function {
+        color: #00c;
+    }
+    .markdown-content pre code .tok-definition {
+        color: #00c;
+    }
+    .markdown-content pre code .tok-name {
+        color: #000;
+    }
+    .markdown-content pre code .tok-comment {
+        font-style: italic;
+    }
+    .dark .markdown-content pre code .tok-keyword {
+        color: #c678dd;
+    }
+    .dark .markdown-content pre code .tok-string {
+        color: #98c379;
+    }
+    .dark .markdown-content pre code .tok-string2 {
+        color: #98c379;
+    }
+    .dark .markdown-content pre code .tok-number {
+        color: #d19a66;
+    }
+    .dark .markdown-content pre code .tok-bool {
+        color: #d19a66;
+    }
+    .dark .markdown-content pre code .tok-atom {
+        color: #d19a66;
+    }
+    .dark .markdown-content pre code .tok-null {
+        color: #d19a66;
+    }
+    .dark .markdown-content pre code .tok-comment {
+        color: #7f8aa3;
+    }
+    .dark .markdown-content pre code .tok-variableName {
+        color: #e06c75;
+    }
+    .dark .markdown-content pre code .tok-propertyName {
+        color: #e5c07b;
+    }
+    .dark .markdown-content pre code .tok-typeName {
+        color: #e5c07b;
+    }
+    .dark .markdown-content pre code .tok-className {
+        color: #e5c07b;
+    }
+    .dark .markdown-content pre code .tok-namespace {
+        color: #e5c07b;
+    }
+    .dark .markdown-content pre code .tok-operator {
+        color: #56b6c2;
+    }
+    .dark .markdown-content pre code .tok-punctuation {
+        color: #abb2bf;
+    }
+    .dark .markdown-content pre code .tok-meta {
+        color: #abb2bf;
+    }
+    .dark .markdown-content pre code .tok-regexp {
+        color: #56b6c2;
+    }
+    .dark .markdown-content pre code .tok-tagName {
+        color: #e06c75;
+    }
+    .dark .markdown-content pre code .tok-attributeName {
+        color: #d19a66;
+    }
+    .dark .markdown-content pre code .tok-function {
+        color: #61afef;
+    }
+    .dark .markdown-content pre code .tok-definition {
+        color: #61afef;
+    }
+    .dark .markdown-content pre code .tok-name {
+        color: #e06c75;
+    }
+    .dark .markdown-content pre code .tok-comment {
+        font-style: italic;
+    }
+
     .markdown-content hr {
         @apply my-6 border-border/80;
     }

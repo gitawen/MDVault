@@ -1,4 +1,4 @@
-import { HighlightStyle } from '@codemirror/language';
+import { defaultHighlightStyle, HighlightStyle } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
@@ -48,18 +48,108 @@ export function appEditorTheme(isDark: boolean): Extension {
 }
 
 /**
- * Syntax colours for Markdown tags. Light mode returns an empty style so
- * `defaultHighlightStyle` (registered with `{ fallback: true }` in
- * `codemirror.ts`) keeps governing light-mode token colours unchanged —
- * only dark mode needed a replacement for `oneDark`'s colours.
+ * Dark palette for code tokens (also used by the rendered preview's `tok-*`
+ * classes in `app.css`, keep the two in sync).
+ */
+const DARK_CODE_STYLES = [
+    {
+        tag: [tags.keyword, tags.modifier, tags.operatorKeyword],
+        color: '#c678dd',
+    },
+    { tag: [tags.controlKeyword, tags.moduleKeyword], color: '#c678dd' },
+    {
+        tag: [tags.string, tags.special(tags.string), tags.inserted],
+        color: '#98c379',
+    },
+    { tag: tags.regexp, color: '#56b6c2' },
+    {
+        tag: [tags.number, tags.bool, tags.atom, tags.null, tags.self],
+        color: '#d19a66',
+    },
+    {
+        tag: [
+            tags.comment,
+            tags.lineComment,
+            tags.blockComment,
+            tags.docComment,
+        ],
+        color: '#7f8aa3',
+        fontStyle: 'italic',
+    },
+    { tag: [tags.variableName, tags.name], color: '#e06c75' },
+    {
+        tag: [
+            tags.definition(tags.variableName),
+            tags.definition(tags.propertyName),
+        ],
+        color: '#61afef',
+    },
+    {
+        tag: [
+            tags.function(tags.variableName),
+            tags.function(tags.propertyName),
+        ],
+        color: '#61afef',
+    },
+    { tag: tags.propertyName, color: '#e5c07b' },
+    { tag: [tags.typeName, tags.className, tags.namespace], color: '#e5c07b' },
+    {
+        tag: [
+            tags.operator,
+            tags.derefOperator,
+            tags.compareOperator,
+            tags.logicOperator,
+            tags.arithmeticOperator,
+            tags.definitionOperator,
+            tags.updateOperator,
+        ],
+        color: '#56b6c2',
+    },
+    {
+        tag: [
+            tags.punctuation,
+            tags.separator,
+            tags.bracket,
+            tags.angleBracket,
+            tags.squareBracket,
+            tags.paren,
+            tags.brace,
+        ],
+        color: '#abb2bf',
+    },
+    { tag: tags.tagName, color: '#e06c75' },
+    { tag: tags.attributeName, color: '#d19a66' },
+    { tag: tags.attributeValue, color: '#98c379' },
+    {
+        tag: [
+            tags.labelName,
+            tags.escape,
+            tags.constant(tags.name),
+            tags.standard(tags.name),
+        ],
+        color: '#d19a66',
+    },
+    { tag: tags.deleted, color: '#e06c75' },
+    { tag: tags.invalid, color: '#ff6b6b' },
+];
+
+/**
+ * Syntax colours for Markdown tags and fenced-code tokens. Always registered
+ * as a non-fallback highlighter by the theme compartment, which disables any
+ * `{ fallback: true }` highlighter, so light mode returns
+ * `defaultHighlightStyle` itself (unchanged Markdown look plus code-token
+ * colours) and dark mode a dark replacement. Code tokens listed after the
+ * Markdown rules never touch `tags.monospace`, which only styles Markdown's own
+ * code nodes; nested-language tokens carry their own tags and keep their colours.
  */
 export function appHighlightStyle(isDark: boolean): HighlightStyle {
     if (!isDark) {
-        return HighlightStyle.define([]);
+        return defaultHighlightStyle;
     }
 
     return HighlightStyle.define(
         [
+            ...DARK_CODE_STYLES,
             { tag: tags.heading, color: 'var(--primary)', fontWeight: '700' },
             { tag: tags.strong, fontWeight: '700' },
             { tag: tags.emphasis, fontStyle: 'italic' },

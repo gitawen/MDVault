@@ -1,6 +1,10 @@
+import { defaultHighlightStyle } from '@codemirror/language';
+import { tags } from '@lezer/highlight';
 import { describe, expect, it } from 'vite-plus/test';
+import { appHighlightStyle } from '../../../resources/js/lib/editor/codemirrorTheme';
 import {
     isAllowedHref,
+    onPreviewLanguageLoaded,
     renderMarkdownPreview,
     stripFrontmatter,
 } from '../../../resources/js/lib/editor/markdownPreview';
@@ -158,12 +162,83 @@ describe('renderMarkdownPreview', () => {
     });
 
     it('escapes special characters in inline code text (FR-07)', () => {
-        const markdown = 'Here is `<Component prop="value" & count=\'5\'>` code.';
+        const markdown =
+            'Here is `<Component prop="value" & count=\'5\'>` code.';
         const html = renderMarkdownPreview(markdown);
 
         expect(html).toContain(
             '&lt;Component prop=&quot;value&quot; &amp; count=&#39;5&#39;&gt;',
         );
         expect(html).not.toContain('<Component');
+    });
+});
+
+describe('renderMarkdownPreview code highlighting', () => {
+    it('highlights a loaded known language with tok- spans', async () => {
+        const { LanguageDescription } = await import('@codemirror/language');
+        const { languages } = await import('@codemirror/language-data');
+        await LanguageDescription.matchLanguageName(
+            languages,
+            'javascript',
+            true,
+        )!.load();
+
+        const html = renderMarkdownPreview('```javascript\nconst x = 1;\n```');
+        expect(html).toContain('class="language-javascript"');
+        expect(html).toContain('tok-keyword');
+        expect(html).toContain('data-code-copy');
+    });
+
+    it('escapes malicious code in a highlighted language', async () => {
+        const html = renderMarkdownPreview(
+            '```javascript\n<img src=x onerror=alert(1)>\n```',
+        );
+        expect(html).not.toContain('<img');
+        expect(html).toContain('&lt;');
+    });
+
+    it('escapes malicious code in an unknown language and does not highlight', () => {
+        const html = renderMarkdownPreview(
+            '```notalanguage\n<img src=x onerror=alert(1)>\n```',
+        );
+        expect(html).not.toContain('<img');
+        expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+        expect(html).not.toContain('tok-');
+    });
+});
+
+describe('renderMarkdownPreview extras', () => {
+    it('keeps a hostile info string escaped', () => {
+        const html = renderMarkdownPreview(
+            '```javascript" onmouseover="x\nlet a;\n```',
+        );
+        expect(html).not.toContain('" onmouseover="');
+        expect(html).not.toMatch(/<code[^>]* onmouseover=/);
+    });
+
+    it('notifies language-load subscribers until unsubscribed', async () => {
+        let calls = 0;
+        const stop = onPreviewLanguageLoaded(() => {
+            calls++;
+        });
+        renderMarkdownPreview('```python\nx = 1\n```');
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        expect(calls).toBeGreaterThan(0);
+
+        stop();
+        const before = calls;
+        renderMarkdownPreview('```ruby\nx = 1\n```');
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        expect(calls).toBe(before);
+    });
+});
+
+describe('appHighlightStyle', () => {
+    it('uses defaultHighlightStyle in light mode', () => {
+        expect(appHighlightStyle(false)).toBe(defaultHighlightStyle);
+    });
+
+    it('styles code tokens in dark mode', () => {
+        expect(appHighlightStyle(true).style([tags.keyword])).toBeTruthy();
     });
 });

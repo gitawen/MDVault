@@ -26,6 +26,7 @@ import {
 } from '@/lib/editor/codemirrorTheme';
 import {
     isAllowedHref,
+    onPreviewLanguageLoaded,
     renderMarkdownPreview,
     stripFrontmatter,
 } from '@/lib/editor/markdownPreview';
@@ -235,7 +236,14 @@ const previewTypographyStyle = computed(() => ({
 // whole document with `marked` on every keystroke (FR-21).
 const debouncedText = refDebounced(text, 200);
 
+const languageLoadTick = ref(0);
+const stopLanguageLoadWatch = onPreviewLanguageLoaded(() => {
+    languageLoadTick.value++;
+});
+onUnmounted(stopLanguageLoadWatch);
+
 const renderedHtml = computed(() => {
+    void languageLoadTick.value;
     if (displayMode.value === 'code') {
         return '';
     }

@@ -5,11 +5,8 @@ import {
     indentWithTab,
 } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import {
-    defaultHighlightStyle,
-    indentUnit,
-    syntaxHighlighting,
-} from '@codemirror/language';
+import { languages } from '@codemirror/language-data';
+import { indentUnit, syntaxHighlighting } from '@codemirror/language';
 import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import {
     EditorView,
@@ -111,9 +108,8 @@ export function buildCodeMirrorExtensions(options: {
 
     return [
         history(),
-        markdown({ base: markdownLanguage }),
+        markdown({ base: markdownLanguage, codeLanguages: languages }),
         livePreview(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         highlightActiveLine(),
         highlightActiveLineGutter(),
         markdownFormattingKeymap({ onLink: onLink ?? (() => {}) }),
