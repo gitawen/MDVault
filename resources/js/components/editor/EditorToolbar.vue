@@ -24,6 +24,7 @@ import {
     Strikethrough,
     Table as TableIcon,
     Undo2,
+    Workflow,
 } from '@lucide/vue';
 import { ref } from 'vue';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import LinkDialog from '@/components/editor/LinkDialog.vue';
-import { linkAt } from '@/lib/editor/codemirrorCommands';
+import MermaidDialog from '@/components/editor/MermaidDialog.vue';
+import { findMermaidBlockAt, linkAt } from '@/lib/editor/codemirrorCommands';
 import {
     toolbarCommands,
     type ToolbarCommandId,
@@ -69,6 +71,10 @@ function canRun(id: ToolbarCommandId): boolean {
 }
 
 function run(id: ToolbarCommandId): void {
+    if (id === 'mermaid') {
+        openMermaidDialog();
+        return;
+    }
     if (props.view) {
         toolbarCommands[id].run(props.view);
     }
@@ -105,6 +111,7 @@ const overflowCommandIcons: Record<ToolbarCommandId, unknown> = {
     horizontalRule: Minus,
     clearFormatting: RemoveFormatting,
     table: TableIcon,
+    mermaid: Workflow,
 };
 
 const overflowCommands: ToolbarCommandId[] = [
@@ -116,13 +123,43 @@ const overflowCommands: ToolbarCommandId[] = [
     'codeBlock',
     'horizontalRule',
     'table',
+    'mermaid',
     'clearFormatting',
 ];
 
 const linkDialogOpen = ref(false);
+const mermaidDialogOpen = ref(false);
+const mermaidInitialCode = ref('');
+const mermaidRange = ref<{ from: number; to: number } | undefined>(undefined);
 
 function openLinkDialog(): void {
     linkDialogOpen.value = true;
+}
+
+function openMermaidDialog(
+    initialCode?: string,
+    range?: { from: number; to: number },
+): void {
+    if (initialCode !== undefined) {
+        mermaidInitialCode.value = initialCode;
+        mermaidRange.value = range;
+    } else if (props.view) {
+        const found = findMermaidBlockAt(
+            props.view.state,
+            props.view.state.selection.main.head,
+        );
+        if (found) {
+            mermaidInitialCode.value = found.code;
+            mermaidRange.value = { from: found.from, to: found.to };
+        } else {
+            mermaidInitialCode.value = '';
+            mermaidRange.value = undefined;
+        }
+    } else {
+        mermaidInitialCode.value = '';
+        mermaidRange.value = undefined;
+    }
+    mermaidDialogOpen.value = true;
 }
 
 function currentHref(): string {
@@ -133,7 +170,7 @@ function currentHref(): string {
     return linkAt(view.state, view.state.selection.main.head)?.href ?? '';
 }
 
-defineExpose({ openLinkDialog });
+defineExpose({ openLinkDialog, openMermaidDialog });
 </script>
 
 <template>
@@ -461,6 +498,22 @@ defineExpose({ openLinkDialog });
             >
                 <TableIcon class="size-3.5 sm:size-4" />
             </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
+                class="hidden size-7 rounded-sm transition-all sm:size-7.5 md:inline-flex"
+                :class="
+                    isActive('mermaid')
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
+                :aria-pressed="isActive('mermaid')"
+                :disabled="!props.view"
+                :title="title('mermaid')"
+                @click="openMermaidDialog()"
+            >
+                <Workflow class="size-3.5 sm:size-4" />
+            </Button>
         </div>
 
         <!-- Overflow Dropdown Menu for Mobile & Tablet -->
@@ -550,6 +603,13 @@ defineExpose({ openLinkDialog });
             v-model:open="linkDialogOpen"
             :view="props.view"
             :initial-href="currentHref()"
+        />
+
+        <MermaidDialog
+            v-model:open="mermaidDialogOpen"
+            :view="props.view"
+            :initial-code="mermaidInitialCode"
+            :range="mermaidRange"
         />
     </div>
 </template>

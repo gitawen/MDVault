@@ -4,12 +4,17 @@ import {
     clearFormatting,
     clearLinePrefix,
     type CommandTarget,
+    findMermaidBlockAt,
+    findMermaidBlockByIndex,
+    findMermaidBlocks,
     insertCodeBlock,
     insertHorizontalRule,
     insertLink,
+    insertMermaidBlock,
     insertTable,
     isInlineMarkActive,
     isLinePrefixActive,
+    isMermaidBlockActive,
     linkAt,
     removeLink,
     setHeading,
@@ -363,6 +368,149 @@ describe('CodeMirror 6 rich formatting commands', () => {
                 selection: { anchor: 0 },
             });
             expect(isLinePrefixActive(state, '1. ')).toBe(false);
+        });
+    });
+
+    describe('Mermaid block commands', () => {
+        it('findMermaidBlocks finds all mermaid blocks in order while ignoring other fences', () => {
+            const doc = [
+                '# Notes',
+                '```js',
+                'console.log("hello");',
+                '```',
+                '```mermaid',
+                'graph TD',
+                '    A-->B',
+                '```',
+                'Middle text',
+                '```mermaid',
+                'sequenceDiagram',
+                '    Alice->>Bob: Hello',
+                '```',
+                'Footer',
+            ].join('\n');
+            const state = EditorState.create({ doc });
+            const blocks = findMermaidBlocks(state);
+
+            expect(blocks).toHaveLength(2);
+            expect(blocks[0].code).toBe('graph TD\n    A-->B');
+            expect(blocks[0].from).toBe(doc.indexOf('```mermaid\ngraph TD'));
+            expect(blocks[1].code).toBe(
+                'sequenceDiagram\n    Alice->>Bob: Hello',
+            );
+            expect(blocks[1].from).toBe(
+                doc.indexOf('```mermaid\nsequenceDiagram'),
+            );
+        });
+
+        it('findMermaidBlocks returns empty array when no mermaid blocks exist', () => {
+            const doc = '# Just text\n\n```python\nprint(1)\n```';
+            const state = EditorState.create({ doc });
+            expect(findMermaidBlocks(state)).toEqual([]);
+        });
+
+        it('findMermaidBlockByIndex retrieves the correct block and handles bounds', () => {
+            const doc = [
+                '---',
+                'title: Diagrams',
+                '---',
+                '```mermaid',
+                'pie title Pets',
+                '    "Dogs" : 386',
+                '    "Cats" : 85',
+                '```',
+                'Some note paragraph',
+                '```mermaid',
+                'gitGraph',
+                '    commit',
+                '```',
+            ].join('\n');
+            const state = EditorState.create({ doc });
+
+            const first = findMermaidBlockByIndex(state, 0);
+            expect(first).not.toBeNull();
+            expect(first?.code).toBe(
+                'pie title Pets\n    "Dogs" : 386\n    "Cats" : 85',
+            );
+            expect(first?.from).toBe(doc.indexOf('```mermaid\npie title'));
+
+            const second = findMermaidBlockByIndex(state, 1);
+            expect(second).not.toBeNull();
+            expect(second?.code).toBe('gitGraph\n    commit');
+            expect(second?.from).toBe(doc.indexOf('```mermaid\ngitGraph'));
+
+            expect(findMermaidBlockByIndex(state, -1)).toBeNull();
+            expect(findMermaidBlockByIndex(state, 2)).toBeNull();
+        });
+
+        it('findMermaidBlockAt detects mermaid block and extracts range and code when caret is inside', () => {
+            const doc =
+                'Leading note\n\n```mermaid\ngraph TD\n    A-->B\n```\n\nTrailing note';
+            const state = EditorState.create({ doc });
+            const caretPos = doc.indexOf('A-->B');
+            const found = findMermaidBlockAt(state, caretPos);
+
+            expect(found).not.toBeNull();
+            expect(found?.code).toBe('graph TD\n    A-->B');
+            expect(found?.from).toBe(doc.indexOf('```mermaid'));
+            expect(found?.to).toBe(doc.indexOf('```\n\nTrailing') + 3);
+        });
+
+        it('findMermaidBlockAt returns null when caret is on plain line or non-mermaid code block', () => {
+            const doc = 'Plain text line\n\n```typescript\nconst x = 1;\n```\n';
+            const state = EditorState.create({ doc });
+
+            expect(findMermaidBlockAt(state, 5)).toBeNull();
+            expect(
+                findMermaidBlockAt(state, doc.indexOf('const x')),
+            ).toBeNull();
+        });
+
+        it('insertMermaidBlock inserts formatted mermaid block with fences at cursor', () => {
+            const target = createTestTarget('Hello world', 5, 5);
+            const inserted = insertMermaidBlock(target, 'graph TD\n    A-->B');
+
+            expect(inserted).toBe(true);
+            expect(target.state.doc.toString()).toBe(
+                'Hello```mermaid\ngraph TD\n    A-->B\n```\n world',
+            );
+        });
+
+        it('insertMermaidBlock replaces existing range when editing an existing diagram', () => {
+            const initialDoc =
+                'Intro\n```mermaid\ngraph TD\n    A-->B\n```\nOutro';
+            const target = createTestTarget(initialDoc);
+            const found = findMermaidBlockAt(
+                target.state,
+                initialDoc.indexOf('A-->B'),
+            );
+            expect(found).not.toBeNull();
+
+            const updated = insertMermaidBlock(
+                target,
+                'graph LR\n    Start --> End',
+                { from: found!.from, to: found!.to },
+            );
+
+            expect(updated).toBe(true);
+            expect(target.state.doc.toString()).toBe(
+                'Intro\n```mermaid\ngraph LR\n    Start --> End\n```\nOutro',
+            );
+        });
+
+        it('isMermaidBlockActive returns true when caret is inside a mermaid block', () => {
+            const doc = '```mermaid\ngraph TD\n    A-->B\n```';
+            const activeState = EditorState.create({
+                doc,
+                selection: { anchor: 15 },
+            });
+            const inactiveState = EditorState.create({
+                doc: 'Just plain text',
+                selection: { anchor: 5 },
+            });
+
+            expect(isMermaidBlockActive(activeState)).toBe(true);
+            expect(isMermaidBlockActive(inactiveState)).toBe(false);
         });
     });
 });

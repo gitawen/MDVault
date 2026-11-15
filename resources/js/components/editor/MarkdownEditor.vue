@@ -24,13 +24,22 @@ import {
     appEditorTheme,
     appHighlightStyle,
 } from '@/lib/editor/codemirrorTheme';
+import { findMermaidBlockByIndex } from '@/lib/editor/codemirrorCommands';
 import {
     isAllowedHref,
+    MERMAID_SVG_ICON,
     onPreviewLanguageLoaded,
     renderMarkdownPreview,
     stripFrontmatter,
     toggleTaskItem,
 } from '@/lib/editor/markdownPreview';
+import { renderMermaidInContainer } from '@/lib/editor/mermaidRenderer';
+import {
+    MERMAID_ZOOM_STEP,
+    resetMermaidViewport,
+    toggleMermaidPan,
+    zoomMermaidBlock,
+} from '@/lib/editor/mermaidPanZoom';
 import { triggerCopyFeedback } from '@/lib/editor/copyButton';
 import type { EditorPreferences } from '@/types';
 
@@ -116,6 +125,9 @@ onMounted(() => {
             },
             onLink: () => {
                 toolbarRef.value?.openLinkDialog();
+            },
+            onMermaid: () => {
+                toolbarRef.value?.openMermaidDialog();
             },
         }),
     });
@@ -245,6 +257,19 @@ onUnmounted(stopLanguageLoadWatch);
 
 const isInteractive = computed(() => editable && !readonly);
 
+const previewContainer = ref<HTMLDivElement | null>(null);
+
+async function renderMermaidBlocks(): Promise<void> {
+    if (displayMode.value === 'code') {
+        return;
+    }
+    await nextTick();
+    if (!previewContainer.value) {
+        return;
+    }
+    await renderMermaidInContainer(previewContainer.value, isDark.value);
+}
+
 const renderedHtml = computed(() => {
     void languageLoadTick.value;
     if (displayMode.value === 'code') {
@@ -261,6 +286,14 @@ const renderedHtml = computed(() => {
     } catch {
         return '<p class="text-destructive font-medium">Failed to render Markdown preview.</p>';
     }
+});
+
+watch([renderedHtml, isDark, displayMode], () => {
+    void renderMermaidBlocks();
+});
+
+onMounted(() => {
+    void renderMermaidBlocks();
 });
 
 function handlePreviewClick(event: MouseEvent): void {
@@ -317,6 +350,134 @@ function handlePreviewClick(event: MouseEvent): void {
         const textEl = wrapper?.querySelector('.inline-code-text');
         const codeText = textEl?.textContent ?? '';
         void triggerCopyFeedback(inlineCopyBtn, codeText);
+        return;
+    }
+
+    const panBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-pan]',
+    );
+    if (panBtn) {
+        event.preventDefault();
+        const block = panBtn.closest<HTMLElement>('.mermaid-block');
+        if (block) {
+            toggleMermaidPan(block);
+        }
+        return;
+    }
+
+    const zoomOutBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-zoom-out]',
+    );
+    if (zoomOutBtn) {
+        event.preventDefault();
+        const block = zoomOutBtn.closest<HTMLElement>('.mermaid-block');
+        if (block) {
+            zoomMermaidBlock(block, -MERMAID_ZOOM_STEP);
+        }
+        return;
+    }
+
+    const zoomInBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-zoom-in]',
+    );
+    if (zoomInBtn) {
+        event.preventDefault();
+        const block = zoomInBtn.closest<HTMLElement>('.mermaid-block');
+        if (block) {
+            zoomMermaidBlock(block, MERMAID_ZOOM_STEP);
+        }
+        return;
+    }
+
+    const resetBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-reset]',
+    );
+    if (resetBtn) {
+        event.preventDefault();
+        const block = resetBtn.closest<HTMLElement>('.mermaid-block');
+        if (block) {
+            resetMermaidViewport(block);
+        }
+        return;
+    }
+
+    const mermaidCopyBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-copy]',
+    );
+    if (mermaidCopyBtn) {
+        event.preventDefault();
+        const block = mermaidCopyBtn.closest('.mermaid-block');
+        const source =
+            block?.getAttribute('data-mermaid-source') ??
+            block?.querySelector('.mermaid-raw code')?.textContent ??
+            '';
+        void triggerCopyFeedback(mermaidCopyBtn, source, {
+            restoreAriaLabel: 'Copy diagram source',
+            restoreTitle: 'Copy diagram source',
+        });
+        return;
+    }
+
+    const mermaidCopySvgBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-copy-svg]',
+    );
+    if (mermaidCopySvgBtn) {
+        event.preventDefault();
+        const block = mermaidCopySvgBtn.closest('.mermaid-block');
+        const svgEl = block?.querySelector('.mermaid-container svg');
+        const svgText = svgEl ? svgEl.outerHTML : '';
+        if (svgText) {
+            void triggerCopyFeedback(mermaidCopySvgBtn, svgText, {
+                restoreHtml: MERMAID_SVG_ICON,
+                restoreAriaLabel: 'Copy SVG',
+                restoreTitle: 'Copy SVG',
+            });
+        }
+        return;
+    }
+
+    const mermaidEditBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-edit]',
+    );
+    if (mermaidEditBtn) {
+        event.preventDefault();
+        const block = mermaidEditBtn.closest('.mermaid-block');
+        let diagramSource =
+            block?.getAttribute('data-mermaid-source') ??
+            block?.querySelector('.mermaid-raw code')?.textContent ??
+            '';
+
+        let range: { from: number; to: number } | undefined;
+        if (previewContainer.value && block && view.value) {
+            const allBlocks = Array.from(
+                previewContainer.value.querySelectorAll('.mermaid-block'),
+            );
+            const index = allBlocks.indexOf(block);
+            if (index !== -1) {
+                const found = findMermaidBlockByIndex(view.value.state, index);
+                if (found) {
+                    range = { from: found.from, to: found.to };
+                    if (!diagramSource) {
+                        diagramSource = found.code;
+                    }
+                }
+            }
+        }
+
+        toolbarRef.value?.openMermaidDialog(diagramSource, range);
+        return;
+    }
+
+    const toggleSourceBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-toggle-source]',
+    );
+    if (toggleSourceBtn) {
+        event.preventDefault();
+        const block = toggleSourceBtn.closest('.mermaid-block');
+        const rawEl = block?.querySelector('.mermaid-raw');
+        if (rawEl) {
+            rawEl.classList.toggle('hidden');
+        }
         return;
     }
 
@@ -391,6 +552,7 @@ defineExpose({ getText, resetDisplayMode });
             <!-- Markdown Preview Pane -->
             <div
                 v-if="displayMode === 'preview' || displayMode === 'split'"
+                ref="previewContainer"
                 class="preview-scroll-container min-h-0 w-full min-w-0 flex-1 overflow-y-auto bg-card/60 p-4 sm:p-6 md:p-8"
                 :class="fontFamilyClass"
                 :style="previewTypographyStyle"
@@ -493,5 +655,66 @@ defineExpose({ getText, resetDisplayMode });
 /* Smooth scrollbar for preview */
 .preview-scroll-container {
     scrollbar-gutter: stable;
+}
+
+/* Mermaid Diagram Block Styling */
+.markdown-preview-content .mermaid-block {
+    position: relative;
+    margin: 1.25rem 0;
+}
+
+.markdown-preview-content .mermaid-action-btn,
+.mermaid-action-btn {
+    display: inline-flex;
+    height: 1.75rem;
+    width: 1.75rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border);
+    background-color: var(--muted);
+    color: var(--muted-foreground);
+    transition: all 0.15s;
+}
+
+.mermaid-action-btn:hover {
+    background-color: var(--accent);
+    color: var(--foreground);
+}
+
+.mermaid-action-btn.copied {
+    border-color: var(--primary);
+    color: var(--foreground);
+}
+
+.mermaid-action-btn[data-pan-active='true'] {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    border-color: var(--primary);
+}
+
+.mermaid-block[data-pan-active='true'] .mermaid-container,
+.mermaid-container[data-pan-active='true'] {
+    cursor: grab;
+    user-select: none;
+}
+
+.mermaid-block[data-pan-active='true'] .mermaid-container.is-dragging,
+.mermaid-container[data-pan-active='true'].is-dragging {
+    cursor: grabbing !important;
+}
+
+.mermaid-container svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    transform-origin: center center;
+    transition: transform 0.15s ease-out;
+}
+
+.mermaid-container.is-dragging svg {
+    transition: none !important;
 }
 </style>

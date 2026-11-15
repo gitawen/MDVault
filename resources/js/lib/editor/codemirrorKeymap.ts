@@ -23,8 +23,9 @@ import {
  */
 export function markdownFormattingKeymap(options: {
     onLink: () => void;
+    onMermaid?: () => void;
 }): Extension {
-    const { onLink } = options;
+    const { onLink, onMermaid } = options;
 
     return Prec.high(
         keymap.of([
@@ -45,6 +46,13 @@ export function markdownFormattingKeymap(options: {
                 key: 'Mod-k',
                 run: () => {
                     onLink();
+                    return true;
+                },
+            },
+            {
+                key: 'Mod-Alt-d',
+                run: () => {
+                    onMermaid?.();
                     return true;
                 },
             },

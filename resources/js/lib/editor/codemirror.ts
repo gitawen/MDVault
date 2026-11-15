@@ -92,6 +92,7 @@ export function buildCodeMirrorExtensions(options: {
     onChange: (text: string) => void;
     onUpdate?: (view: EditorView) => void;
     onLink?: () => void;
+    onMermaid?: () => void;
 }): Extension[] {
     const {
         compartments,
@@ -102,6 +103,7 @@ export function buildCodeMirrorExtensions(options: {
         onChange,
         onUpdate,
         onLink,
+        onMermaid,
     } = options;
 
     const isEditable = editable && !readonly;
@@ -112,7 +114,10 @@ export function buildCodeMirrorExtensions(options: {
         livePreview(),
         highlightActiveLine(),
         highlightActiveLineGutter(),
-        markdownFormattingKeymap({ onLink: onLink ?? (() => {}) }),
+        markdownFormattingKeymap({
+            onLink: onLink ?? (() => {}),
+            onMermaid,
+        }),
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
 
         compartments.lineNumbers.of(

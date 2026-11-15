@@ -9,6 +9,7 @@ import {
     insertTable,
     isInlineMarkActive,
     isLinePrefixActive,
+    isMermaidBlockActive,
     setHeading,
     toggleBlockquote,
     toggleBold,
@@ -39,7 +40,8 @@ export type ToolbarCommandId =
     | 'codeBlock'
     | 'horizontalRule'
     | 'clearFormatting'
-    | 'table';
+    | 'table'
+    | 'mermaid';
 
 export type ToolbarCommand = {
     label: string;
@@ -177,6 +179,13 @@ export const toolbarCommands: Record<ToolbarCommandId, ToolbarCommand> = {
         shortcut: null,
         run: (editor) => insertTable(editor),
         isActive: () => false,
+        canRun: () => true,
+    },
+    mermaid: {
+        label: 'Diagram (Mermaid)',
+        shortcut: 'Ctrl+Alt+D',
+        run: () => true,
+        isActive: (editor) => isMermaidBlockActive(editor.state),
         canRun: () => true,
     },
 };

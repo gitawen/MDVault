@@ -213,4 +213,106 @@ describe('triggerCopyFeedback', () => {
         expect(button.getAttribute('aria-label')).toBe('Copy code');
         expect(button.classList.contains('copied')).toBe(false);
     });
+
+    it('restores original innerHTML and labels for custom buttons (e.g. Copy SVG)', async () => {
+        vi.stubGlobal('navigator', {
+            clipboard: {
+                writeText: vi.fn().mockResolvedValue(undefined),
+            },
+        });
+
+        const customSvg = '<svg class="lucide-image"></svg>';
+        const button = createMockButton();
+        button.innerHTML = customSvg;
+        button.setAttribute('aria-label', 'Copy SVG');
+        button.setAttribute('title', 'Copy SVG');
+
+        await triggerCopyFeedback(button, '<svg>...</svg>', 1000);
+
+        expect(button.innerHTML).toBe(CHECK_ICON_SVG);
+        expect(button.getAttribute('aria-label')).toBe('Copied!');
+        expect(button.getAttribute('title')).toBe('Copied!');
+
+        vi.advanceTimersByTime(1000);
+
+        expect(button.innerHTML).toBe(customSvg);
+        expect(button.getAttribute('aria-label')).toBe('Copy SVG');
+        expect(button.getAttribute('title')).toBe('Copy SVG');
+        expect(button.classList.contains('copied')).toBe(false);
+    });
+
+    it('restores original labels for diagram source copy buttons', async () => {
+        vi.stubGlobal('navigator', {
+            clipboard: {
+                writeText: vi.fn().mockResolvedValue(undefined),
+            },
+        });
+
+        const button = createMockButton();
+        button.innerHTML = COPY_ICON_SVG;
+        button.setAttribute('aria-label', 'Copy diagram source');
+        button.setAttribute('title', 'Copy diagram source');
+
+        await triggerCopyFeedback(button, 'graph TD\n    A-->B', 1000);
+
+        expect(button.innerHTML).toBe(CHECK_ICON_SVG);
+        expect(button.getAttribute('aria-label')).toBe('Copied!');
+        expect(button.getAttribute('title')).toBe('Copied!');
+
+        vi.advanceTimersByTime(1000);
+
+        expect(button.innerHTML).toBe(COPY_ICON_SVG);
+        expect(button.getAttribute('aria-label')).toBe('Copy diagram source');
+        expect(button.getAttribute('title')).toBe('Copy diagram source');
+    });
+
+    it('preserves initial custom icon across re-armed rapid successive clicks', async () => {
+        vi.stubGlobal('navigator', {
+            clipboard: {
+                writeText: vi.fn().mockResolvedValue(undefined),
+            },
+        });
+
+        const customSvg = '<svg class="lucide-image"></svg>';
+        const button = createMockButton();
+        button.innerHTML = customSvg;
+        button.setAttribute('aria-label', 'Copy SVG');
+        button.setAttribute('title', 'Copy SVG');
+
+        await triggerCopyFeedback(button, 'svg1', 1000);
+        vi.advanceTimersByTime(400);
+
+        // Click again while still copied
+        await triggerCopyFeedback(button, 'svg2', 1000);
+        vi.advanceTimersByTime(1000);
+
+        expect(button.innerHTML).toBe(customSvg);
+        expect(button.getAttribute('aria-label')).toBe('Copy SVG');
+        expect(button.getAttribute('title')).toBe('Copy SVG');
+    });
+
+    it('respects explicit restoration options when provided', async () => {
+        vi.stubGlobal('navigator', {
+            clipboard: {
+                writeText: vi.fn().mockResolvedValue(undefined),
+            },
+        });
+
+        const button = createMockButton();
+        button.innerHTML = COPY_ICON_SVG;
+
+        await triggerCopyFeedback(button, 'custom code', {
+            durationMs: 1200,
+            restoreHtml: '<svg class="explicit"></svg>',
+            restoreAriaLabel: 'Explicit Label',
+            restoreTitle: 'Explicit Title',
+        });
+
+        expect(button.innerHTML).toBe(CHECK_ICON_SVG);
+        vi.advanceTimersByTime(1200);
+
+        expect(button.innerHTML).toBe('<svg class="explicit"></svg>');
+        expect(button.getAttribute('aria-label')).toBe('Explicit Label');
+        expect(button.getAttribute('title')).toBe('Explicit Title');
+    });
 });

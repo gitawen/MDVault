@@ -51,6 +51,7 @@ const expectedCodeMirrorMarkdown: Record<ToolbarCommandId, string> = {
     horizontalRule: 'para text\n\n---',
     clearFormatting: 'para text',
     table: 'para text\n\n| Header 1 | Header 2 |\n| --- | --- |\n| Cell 1 | Cell 2 |',
+    mermaid: 'para text',
 };
 
 describe('toolbarCommands', () => {

@@ -523,3 +523,150 @@ export function executeUndo(view: CommandTarget): boolean {
 export function executeRedo(view: CommandTarget): boolean {
     return redo(view);
 }
+
+export type MermaidBlock = {
+    from: number;
+    to: number;
+    code: string;
+};
+
+/**
+ * Finds all ```mermaid fenced code blocks in the document in order.
+ */
+export function findMermaidBlocks(state: EditorState): MermaidBlock[] {
+    const doc = state.doc;
+    const totalLines = doc.lines;
+    const blocks: MermaidBlock[] = [];
+
+    let currentFence: {
+        char: string;
+        len: number;
+        startLine: number;
+        startPos: number;
+        isMermaid: boolean;
+    } | null = null;
+
+    for (let i = 1; i <= totalLines; i++) {
+        const line = doc.line(i);
+        const text = line.text;
+
+        if (!currentFence) {
+            const match = text.match(/^ {0,3}(`{3,}|~{3,})\s*(\S*)/);
+            if (match) {
+                const fenceChar = match[1][0];
+                const fenceLen = match[1].length;
+                const info = match[2].trim().toLowerCase();
+                currentFence = {
+                    char: fenceChar,
+                    len: fenceLen,
+                    startLine: i,
+                    startPos: line.from,
+                    isMermaid: info === 'mermaid',
+                };
+            }
+        } else {
+            const closeMatch = text.match(/^ {0,3}(`{3,}|~{3,})\s*$/);
+            if (
+                closeMatch &&
+                closeMatch[1][0] === currentFence.char &&
+                closeMatch[1].length >= currentFence.len
+            ) {
+                const endPos = line.to;
+                if (currentFence.isMermaid) {
+                    const codeLines: string[] = [];
+                    for (let j = currentFence.startLine + 1; j < i; j++) {
+                        codeLines.push(doc.line(j).text);
+                    }
+                    blocks.push({
+                        from: currentFence.startPos,
+                        to: endPos,
+                        code: codeLines.join('\n'),
+                    });
+                }
+                currentFence = null;
+            }
+        }
+    }
+
+    if (currentFence && currentFence.isMermaid) {
+        const codeLines: string[] = [];
+        for (let j = currentFence.startLine + 1; j <= totalLines; j++) {
+            codeLines.push(doc.line(j).text);
+        }
+        blocks.push({
+            from: currentFence.startPos,
+            to: doc.length,
+            code: codeLines.join('\n'),
+        });
+    }
+
+    return blocks;
+}
+
+/**
+ * Finds the Nth ```mermaid code block (0-indexed) in the document.
+ */
+export function findMermaidBlockByIndex(
+    state: EditorState,
+    index: number,
+): MermaidBlock | null {
+    if (index < 0) {
+        return null;
+    }
+    const blocks = findMermaidBlocks(state);
+    return blocks[index] ?? null;
+}
+
+/**
+ * Finds an enclosing ```mermaid fenced code block containing `pos`.
+ * Returns the full range (including fences) and the inner diagram code, or `null`.
+ */
+export function findMermaidBlockAt(
+    state: EditorState,
+    pos: number,
+): MermaidBlock | null {
+    const blocks = findMermaidBlocks(state);
+    return blocks.find((block) => pos >= block.from && pos <= block.to) ?? null;
+}
+
+/**
+ * Inserts a ```mermaid code block at the cursor or replaces an existing range.
+ */
+export function insertMermaidBlock(
+    view: CommandTarget,
+    code: string,
+    range?: { from: number; to: number },
+): boolean {
+    const { state, dispatch } = view;
+    const trimmed = code.trim();
+
+    if (range) {
+        const insertion = `\`\`\`mermaid\n${trimmed}\n\`\`\``;
+        dispatch({
+            changes: { from: range.from, to: range.to, insert: insertion },
+            selection: { anchor: range.from + insertion.length },
+            userEvent: 'format.mermaid',
+        });
+        view.focus?.();
+        return true;
+    }
+
+    const { from, to } = state.selection.main;
+    const insertion = `\`\`\`mermaid\n${trimmed}\n\`\`\`\n`;
+
+    dispatch({
+        changes: { from, to, insert: insertion },
+        selection: { anchor: from + insertion.length },
+        userEvent: 'format.mermaid',
+    });
+
+    view.focus?.();
+    return true;
+}
+
+/**
+ * Checks whether the caret is currently inside a ```mermaid code block.
+ */
+export function isMermaidBlockActive(state: EditorState): boolean {
+    return findMermaidBlockAt(state, state.selection.main.head) !== null;
+}

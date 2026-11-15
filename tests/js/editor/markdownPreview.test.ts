@@ -181,6 +181,65 @@ describe('renderMarkdownPreview', () => {
         );
     });
 
+    it('renders fenced mermaid code blocks in .mermaid-block wrapper with data-mermaid-source (FR-01)', () => {
+        const markdown = '```mermaid\ngraph TD\nA-->B\n```';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).toContain('class="mermaid-block');
+        expect(html).toContain('data-mermaid-source="graph TD\nA--&gt;B"');
+        expect(html).toContain('class="mermaid-container');
+        expect(html).toContain('class="mermaid-loading');
+        expect(html).toContain(
+            '<pre class="mermaid-raw hidden"><code>graph TD\nA--&gt;B\n</code></pre>',
+        );
+    });
+
+    it('escapes special characters and hostile scripts inside mermaid block source (FR-09)', () => {
+        const markdown =
+            '```mermaid\ngraph TD\nA["<script>alert(1)</script>"] --> B["Foo & "Bar""]\n```';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).not.toContain('<script>alert(1)</script>');
+        expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+        expect(html).toContain('&quot;');
+        expect(html).toContain('&amp;');
+    });
+
+    it('includes pan, zoom-out, zoom-in, reset, copy, copy-svg, and edit action buttons on the mermaid wrapper (FR-03)', () => {
+        const markdown = '```mermaid\ngraph TD\nStart --> Stop\n```';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).toContain('data-mermaid-pan');
+        expect(html).toContain('aria-label="Toggle pan"');
+        expect(html).toContain('title="Toggle pan"');
+        expect(html).toContain('data-mermaid-zoom-out');
+        expect(html).toContain('aria-label="Zoom out"');
+        expect(html).toContain('title="Zoom out"');
+        expect(html).toContain('data-mermaid-zoom-in');
+        expect(html).toContain('aria-label="Zoom in"');
+        expect(html).toContain('title="Zoom in"');
+        expect(html).toContain('data-mermaid-reset');
+        expect(html).toContain('aria-label="Reset view"');
+        expect(html).toContain('title="Reset view"');
+        expect(html).toContain('data-mermaid-copy');
+        expect(html).toContain('aria-label="Copy diagram source"');
+        expect(html).toContain('data-mermaid-copy-svg');
+        expect(html).toContain('aria-label="Copy SVG"');
+        expect(html).toContain('data-mermaid-edit');
+        expect(html).toContain('aria-label="Edit diagram"');
+    });
+
+    it('handles empty mermaid block gracefully', () => {
+        const markdown = '```mermaid\n```';
+        const html = renderMarkdownPreview(markdown);
+
+        expect(html).toContain('class="mermaid-block');
+        expect(html).toContain('data-mermaid-source=""');
+        expect(html).toContain(
+            '<pre class="mermaid-raw hidden"><code>\n</code></pre>',
+        );
+    });
+
     it('wraps inline code spans in .inline-code-wrapper with a compact copy button (FR-07)', () => {
         const markdown = 'Use `npm install` to install dependencies.';
         const html = renderMarkdownPreview(markdown);
