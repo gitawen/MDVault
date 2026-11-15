@@ -7,6 +7,7 @@ import {
     onPreviewLanguageLoaded,
     renderMarkdownPreview,
     stripFrontmatter,
+    toggleTaskItem,
 } from '../../../resources/js/lib/editor/markdownPreview';
 
 describe('stripFrontmatter', () => {
@@ -108,6 +109,38 @@ describe('renderMarkdownPreview', () => {
         const html = renderMarkdownPreview('- [ ] todo\n- [x] done\n');
         expect(html).toContain('type="checkbox"');
         expect(html).toContain('checked');
+    });
+
+    it('renders GFM task list checkboxes with data-task-index and aria-label', () => {
+        const html = renderMarkdownPreview(
+            '- [ ] first\n- [x] second\n  - [ ] nested\n',
+        );
+        expect(html).toContain('data-task-index="0"');
+        expect(html).toContain('aria-label="Mark task as done"');
+        expect(html).toContain('data-task-index="1"');
+        expect(html).toContain('aria-label="Mark task as not done"');
+        expect(html).toContain('data-task-index="2"');
+    });
+
+    it('renders interactive checkboxes without disabled attribute by default', () => {
+        const html = renderMarkdownPreview('- [ ] editable task\n');
+        expect(html).toContain('type="checkbox"');
+        expect(html).not.toContain('disabled');
+    });
+
+    it('renders disabled checkboxes when disabled option is true', () => {
+        const html = renderMarkdownPreview('- [ ] readonly task\n', {
+            disabled: true,
+        });
+        expect(html).toContain('type="checkbox"');
+        expect(html).toContain('disabled=""');
+    });
+
+    it('does not render task checkboxes for code blocks or inline code', () => {
+        const markdown = '```\n- [ ] code\n```\n\nHere is `- [ ] inline` code.';
+        const html = renderMarkdownPreview(markdown);
+        expect(html).not.toContain('data-task-index');
+        expect(html).not.toContain('type="checkbox"');
     });
 
     it('wraps code blocks in .code-block-wrapper with a copy button (FR-01)', () => {
@@ -240,5 +273,111 @@ describe('appHighlightStyle', () => {
 
     it('styles code tokens in dark mode', () => {
         expect(appHighlightStyle(true).style([tags.keyword])).toBeTruthy();
+    });
+});
+
+describe('toggleTaskItem', () => {
+    it('toggles an unchecked task to checked', () => {
+        const md = '- [ ] todo item';
+        expect(toggleTaskItem(md, 0)).toBe('- [x] todo item');
+    });
+
+    it('toggles a checked task to unchecked', () => {
+        const md = '- [x] done item';
+        expect(toggleTaskItem(md, 0)).toBe('- [ ] done item');
+    });
+
+    it('toggles an uppercase checked task [X] to unchecked [ ]', () => {
+        const md = '- [X] done item';
+        expect(toggleTaskItem(md, 0)).toBe('- [ ] done item');
+    });
+
+    it('toggles task items with different bullet markers (*, +, 1., 1))', () => {
+        let md = '* [ ] star\n+ [x] plus\n1. [ ] ordered\n1) [x] paren';
+        md = toggleTaskItem(md, 0);
+        expect(md).toContain('* [x] star');
+        md = toggleTaskItem(md, 1);
+        expect(md).toContain('+ [ ] plus');
+        md = toggleTaskItem(md, 2);
+        expect(md).toContain('1. [x] ordered');
+        md = toggleTaskItem(md, 3);
+        expect(md).toContain('1) [ ] paren');
+    });
+
+    it('toggles nested task items at specific index', () => {
+        const md =
+            '- [ ] parent\n  - [ ] child\n    - [x] grandchild\n- [ ] sibling';
+        const toggledGrandchild = toggleTaskItem(md, 2);
+        expect(toggledGrandchild).toBe(
+            '- [ ] parent\n  - [ ] child\n    - [ ] grandchild\n- [ ] sibling',
+        );
+
+        const toggledParent = toggleTaskItem(md, 0);
+        expect(toggledParent).toBe(
+            '- [x] parent\n  - [ ] child\n    - [x] grandchild\n- [ ] sibling',
+        );
+
+        const toggledSibling = toggleTaskItem(md, 3);
+        expect(toggledSibling).toBe(
+            '- [ ] parent\n  - [ ] child\n    - [x] grandchild\n- [x] sibling',
+        );
+    });
+
+    it('preserves leading YAML frontmatter and offsets task indices correctly', () => {
+        const md =
+            '---\ntitle: Foo\ntags: [todo, urgent]\nnotes: [ ] not a task\n---\n\n# Heading\n\n- [ ] first real task\n- [x] second real task\n';
+        const toggled = toggleTaskItem(md, 0);
+        expect(toggled).toBe(
+            '---\ntitle: Foo\ntags: [todo, urgent]\nnotes: [ ] not a task\n---\n\n# Heading\n\n- [x] first real task\n- [x] second real task\n',
+        );
+        // Verify frontmatter was untouched
+        expect(toggled).toContain('notes: [ ] not a task');
+        expect(toggled).toContain('tags: [todo, urgent]');
+    });
+
+    it('handles CRLF line endings with frontmatter', () => {
+        const md =
+            '---\r\ntitle: CRLF\r\ntags: [ ]\r\n---\r\n\r\n- [ ] crlf task\r\n';
+        const toggled = toggleTaskItem(md, 0);
+        expect(toggled).toBe(
+            '---\r\ntitle: CRLF\r\ntags: [ ]\r\n---\r\n\r\n- [x] crlf task\r\n',
+        );
+    });
+
+    it('does not toggle [ ] inside fenced code blocks or inline code', () => {
+        const md =
+            '# Note\n\n```markdown\n- [ ] fake task in code\n```\n\nHere is `- [ ] inline` and [ ] normal text.\n\n- [ ] genuine task\n';
+        // The genuine task is the only task (index 0)
+        const toggled = toggleTaskItem(md, 0);
+        expect(toggled).toContain('- [x] genuine task');
+        expect(toggled).toContain('```markdown\n- [ ] fake task in code\n```');
+        expect(toggled).toContain('`- [ ] inline`');
+        expect(toggled).toContain('[ ] normal text');
+    });
+
+    it('preserves task description with formatting, links, and code', () => {
+        const md =
+            '- [ ] Do **bold** with `[ ] code` and [link](https://test.com)';
+        const toggled = toggleTaskItem(md, 0);
+        expect(toggled).toBe(
+            '- [x] Do **bold** with `[ ] code` and [link](https://test.com)',
+        );
+    });
+
+    it('returns unchanged markdown if taskIndex is out of bounds or negative', () => {
+        const md = '- [ ] only task\n';
+        expect(toggleTaskItem(md, -1)).toBe(md);
+        expect(toggleTaskItem(md, 1)).toBe(md);
+        expect(toggleTaskItem(md, 99)).toBe(md);
+    });
+
+    it('supports multiple sequential toggles', () => {
+        let md = '- [ ] A\n- [ ] B\n- [ ] C';
+        md = toggleTaskItem(md, 0);
+        md = toggleTaskItem(md, 1);
+        md = toggleTaskItem(md, 2);
+        expect(md).toBe('- [x] A\n- [x] B\n- [x] C');
+        md = toggleTaskItem(md, 1);
+        expect(md).toBe('- [x] A\n- [ ] B\n- [x] C');
     });
 });

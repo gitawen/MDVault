@@ -29,6 +29,7 @@ import {
     onPreviewLanguageLoaded,
     renderMarkdownPreview,
     stripFrontmatter,
+    toggleTaskItem,
 } from '@/lib/editor/markdownPreview';
 import { triggerCopyFeedback } from '@/lib/editor/copyButton';
 import type { EditorPreferences } from '@/types';
@@ -242,6 +243,8 @@ const stopLanguageLoadWatch = onPreviewLanguageLoaded(() => {
 });
 onUnmounted(stopLanguageLoadWatch);
 
+const isInteractive = computed(() => editable && !readonly);
+
 const renderedHtml = computed(() => {
     void languageLoadTick.value;
     if (displayMode.value === 'code') {
@@ -252,7 +255,9 @@ const renderedHtml = computed(() => {
         return '';
     }
     try {
-        return renderMarkdownPreview(stripFrontmatter(source));
+        return renderMarkdownPreview(stripFrontmatter(source), {
+            disabled: !isInteractive.value,
+        });
     } catch {
         return '<p class="text-destructive font-medium">Failed to render Markdown preview.</p>';
     }
@@ -261,6 +266,35 @@ const renderedHtml = computed(() => {
 function handlePreviewClick(event: MouseEvent): void {
     const target = event.target as HTMLElement | null;
     if (!target) {
+        return;
+    }
+
+    const checkbox = target.closest<HTMLInputElement>(
+        'input[type="checkbox"][data-task-index]',
+    );
+    if (checkbox) {
+        if (!editable || readonly) {
+            event.preventDefault();
+            return;
+        }
+
+        const indexAttr = checkbox.getAttribute('data-task-index');
+        if (indexAttr === null) {
+            return;
+        }
+
+        const taskIndex = parseInt(indexAttr, 10);
+        if (Number.isNaN(taskIndex)) {
+            return;
+        }
+
+        const newText = toggleTaskItem(text.value, taskIndex);
+        if (newText !== text.value) {
+            text.value = newText;
+            emit('change');
+        } else {
+            event.preventDefault();
+        }
         return;
     }
 
@@ -438,6 +472,10 @@ defineExpose({ getText, resetDisplayMode });
     height: 1em;
     accent-color: var(--primary);
     border-radius: 0.25rem;
+    cursor: pointer;
+}
+
+.markdown-preview-content input[type='checkbox']:disabled {
     cursor: default;
 }
 

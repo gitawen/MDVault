@@ -1,5 +1,6 @@
 import { LanguageDescription } from '@codemirror/language';
 import { languages } from '@codemirror/language-data';
+import { markdownLanguage } from '@codemirror/lang-markdown';
 import { classHighlighter, highlightCode } from '@lezer/highlight';
 import { Marked, type Tokens } from 'marked';
 import { COPY_ICON_SVG } from './copyButton';
@@ -121,6 +122,13 @@ function highlightFenceBody(code: string, lang: string): string | null {
     }
 }
 
+let checkboxIndex = 0;
+let currentDisabled = false;
+
+export type RenderMarkdownPreviewOptions = {
+    disabled?: boolean;
+};
+
 /**
  * Isolated `Marked` instance for the rendered preview (FR-20). The link and
  * image renderers HTML-escape `href`/`title` (untrusted note content is
@@ -131,6 +139,15 @@ const markdownParser = new Marked({ gfm: true, breaks: false });
 
 markdownParser.use({
     renderer: {
+        checkbox({ checked }: Tokens.Checkbox) {
+            const index = checkboxIndex++;
+            const disabledAttr = currentDisabled ? ' disabled=""' : '';
+            const checkedAttr = checked ? ' checked=""' : '';
+            const ariaLabel = checked
+                ? 'Mark task as not done'
+                : 'Mark task as done';
+            return `<input type="checkbox" data-task-index="${index}" aria-label="${ariaLabel}"${checkedAttr}${disabledAttr}> `;
+        },
         code({ text, lang, escaped }) {
             const langClass = (lang || '').match(/^\S*/)?.[0];
             const classAttr = langClass
@@ -168,6 +185,62 @@ markdownParser.use({
 /**
  * Renders Markdown to HTML for the Preview/Split panes.
  */
-export function renderMarkdownPreview(markdown: string): string {
-    return markdownParser.parse(markdown, { async: false }) as string;
+export function renderMarkdownPreview(
+    markdown: string,
+    options?: RenderMarkdownPreviewOptions,
+): string {
+    checkboxIndex = 0;
+    currentDisabled = options?.disabled ?? false;
+    try {
+        return markdownParser.parse(markdown, { async: false }) as string;
+    } finally {
+        checkboxIndex = 0;
+        currentDisabled = false;
+    }
+}
+
+/**
+ * Toggles a GFM task list item at the given 0-based task index between '[ ]' and '[x]'.
+ * Safely ignores YAML frontmatter, code blocks, and inline code.
+ */
+export function toggleTaskItem(markdown: string, taskIndex: number): string {
+    if (taskIndex < 0) {
+        return markdown;
+    }
+
+    const body = stripFrontmatter(markdown);
+    const frontmatterOffset = markdown.length - body.length;
+
+    const tree = markdownLanguage.parser.parse(body);
+    let currentIndex = 0;
+    const targetRanges: { from: number; to: number }[] = [];
+
+    tree.iterate({
+        enter(node) {
+            if (node.name === 'TaskMarker') {
+                if (currentIndex === taskIndex && targetRanges.length === 0) {
+                    targetRanges.push({ from: node.from, to: node.to });
+                }
+                currentIndex++;
+            }
+        },
+    });
+
+    const targetRange = targetRanges[0];
+    if (!targetRange) {
+        return markdown;
+    }
+
+    const start = frontmatterOffset + targetRange.from;
+    const end = frontmatterOffset + targetRange.to;
+    const currentMarker = markdown.slice(start, end);
+
+    if (!/^\[([ xX])\]$/.test(currentMarker)) {
+        return markdown;
+    }
+
+    const isChecked = /x/i.test(currentMarker);
+    const nextMarker = isChecked ? '[ ]' : '[x]';
+
+    return markdown.slice(0, start) + nextMarker + markdown.slice(end);
 }
