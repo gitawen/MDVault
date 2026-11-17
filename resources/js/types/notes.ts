@@ -85,3 +85,10 @@ export type NoteDiskResponse = {
     content: string | null;
     base_hash: string | null;
 };
+
+export type MediaUploadResponse = {
+    filename: string;
+    url: string;
+    mime_type: string;
+    size: number;
+};

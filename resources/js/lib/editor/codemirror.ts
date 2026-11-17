@@ -93,6 +93,9 @@ export function buildCodeMirrorExtensions(options: {
     onUpdate?: (view: EditorView) => void;
     onLink?: () => void;
     onMermaid?: () => void;
+    onImage?: () => void;
+    onPasteImage?: (file: File) => void;
+    onDropImages?: (files: File[], pos: number | null) => void;
 }): Extension[] {
     const {
         compartments,
@@ -104,6 +107,9 @@ export function buildCodeMirrorExtensions(options: {
         onUpdate,
         onLink,
         onMermaid,
+        onImage,
+        onPasteImage,
+        onDropImages,
     } = options;
 
     const isEditable = editable && !readonly;
@@ -117,6 +123,7 @@ export function buildCodeMirrorExtensions(options: {
         markdownFormattingKeymap({
             onLink: onLink ?? (() => {}),
             onMermaid,
+            onImage,
         }),
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
 
@@ -160,5 +167,103 @@ export function buildCodeMirrorExtensions(options: {
                 onUpdate(update.view);
             }
         }),
+        EditorView.domEventHandlers({
+            paste(event, view) {
+                if (view.state.readOnly || !onPasteImage) {
+                    return false;
+                }
+
+                const plainText =
+                    event.clipboardData?.getData('text/plain') ?? '';
+                if (plainText !== '') {
+                    return false;
+                }
+
+                const files = extractImageFilesFromClipboard(
+                    event.clipboardData,
+                );
+                if (files.length === 0) {
+                    return false;
+                }
+
+                event.preventDefault();
+                onPasteImage(files[0]);
+                return true;
+            },
+            drop(event, view) {
+                if (view.state.readOnly || !onDropImages) {
+                    return false;
+                }
+
+                const files = extractImageFilesFromDataTransfer(
+                    event.dataTransfer,
+                );
+                if (files.length === 0) {
+                    return false;
+                }
+
+                event.preventDefault();
+                const pos = view.posAtCoords({
+                    x: event.clientX,
+                    y: event.clientY,
+                });
+                onDropImages(files, pos);
+                return true;
+            },
+        }),
     ];
+}
+
+function isImageLikeFile(file: File): boolean {
+    const mime = file.type.trim().toLowerCase();
+    if (mime.startsWith('image/')) {
+        return true;
+    }
+
+    return /\.(png|jpe?g|gif|webp)$/i.test(file.name);
+}
+
+function extractImageFilesFromClipboard(
+    clipboardData: DataTransfer | null,
+): File[] {
+    if (!clipboardData) {
+        return [];
+    }
+
+    const files: File[] = [];
+
+    if (clipboardData.items && clipboardData.items.length > 0) {
+        for (const item of Array.from(clipboardData.items)) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) {
+                    files.push(file);
+                }
+            }
+        }
+    }
+
+    if (
+        files.length === 0 &&
+        clipboardData.files &&
+        clipboardData.files.length > 0
+    ) {
+        for (const file of Array.from(clipboardData.files)) {
+            if (isImageLikeFile(file)) {
+                files.push(file);
+            }
+        }
+    }
+
+    return files;
+}
+
+function extractImageFilesFromDataTransfer(
+    dataTransfer: DataTransfer | null,
+): File[] {
+    if (!dataTransfer?.files || dataTransfer.files.length === 0) {
+        return [];
+    }
+
+    return Array.from(dataTransfer.files).filter(isImageLikeFile);
 }

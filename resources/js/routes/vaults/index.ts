@@ -5,6 +5,7 @@ import encryption from './encryption'
 import notes from './notes'
 import folders from './folders'
 import changes from './changes'
+import media from './media'
 /**
 * @see \App\Http\Controllers\VaultController::index
  * @see app/Http/Controllers/VaultController.php:23
@@ -703,6 +704,7 @@ notes: Object.assign(notes, notes),
 folders: Object.assign(folders, folders),
 reindex: Object.assign(reindex, reindex),
 changes: Object.assign(changes, changes),
+media: Object.assign(media, media),
 }
 
 export default vaults

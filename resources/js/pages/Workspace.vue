@@ -202,6 +202,7 @@ defineOptions({
                     :key="`${note.uuid}:${note.base_hash ?? note.state}`"
                     :note="note"
                     :vault-uuid="currentVault.uuid"
+                    :vault-encrypted="currentVault.is_encrypted"
                     :preferences="editor"
                     :runtime="status.runtime"
                     :external-checks="checkExternalChanges"

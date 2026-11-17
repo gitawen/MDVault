@@ -35,6 +35,7 @@ import type {
 const props = defineProps<{
     note: NoteDetail;
     vaultUuid: string;
+    vaultEncrypted?: boolean;
     preferences: EditorPreferences;
     runtime: 'desktop' | 'browser';
     externalChecks: boolean;
@@ -621,6 +622,8 @@ const statusLabel = computed(() => {
                 :readonly="frozen"
                 :preferences="preferences"
                 :note-uuid="props.note.uuid"
+                :vault-uuid="props.vaultUuid"
+                :vault-encrypted="props.vaultEncrypted"
                 @change="notifyChange"
             />
         </template>

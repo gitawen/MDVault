@@ -9,6 +9,7 @@ import {
     Heading1,
     Heading2,
     Heading3,
+    Image as ImageIcon,
     Italic,
     Link as LinkIcon,
     List,
@@ -35,9 +36,15 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import ImageDialog from '@/components/editor/ImageDialog.vue';
 import LinkDialog from '@/components/editor/LinkDialog.vue';
 import MermaidDialog from '@/components/editor/MermaidDialog.vue';
-import { findMermaidBlockAt, linkAt } from '@/lib/editor/codemirrorCommands';
+import {
+    findMermaidBlockAt,
+    imageAt,
+    isImageActive as isImageActiveAtCursor,
+    linkAt,
+} from '@/lib/editor/codemirrorCommands';
 import {
     toolbarCommands,
     type ToolbarCommandId,
@@ -46,6 +53,9 @@ import {
 const props = defineProps<{
     view?: EditorView | undefined;
     displayMode?: 'code' | 'split' | 'preview';
+    vaultUuid?: string;
+    vaultEncrypted?: boolean;
+    readonly?: boolean;
     /**
      * Bumped by `SourceEditor.vue`'s CodeMirror `onUpdate` callback on every
      * doc/selection/focus change — the sole reactivity source for the
@@ -131,9 +141,43 @@ const linkDialogOpen = ref(false);
 const mermaidDialogOpen = ref(false);
 const mermaidInitialCode = ref('');
 const mermaidRange = ref<{ from: number; to: number } | undefined>(undefined);
+const imageDialogOpen = ref(false);
+const imageInitialSrc = ref('');
+const imageInitialAlt = ref('');
+const imageRange = ref<{ from: number; to: number } | undefined>(undefined);
+
+function isImageActive(): boolean {
+    void props.revision;
+
+    return props.view ? isImageActiveAtCursor(props.view.state) : false;
+}
 
 function openLinkDialog(): void {
     linkDialogOpen.value = true;
+}
+
+function openImageDialog(): void {
+    if (props.readonly || !props.view) {
+        return;
+    }
+
+    const found = imageAt(
+        props.view.state,
+        props.view.state.selection.main.head,
+    );
+
+    if (found) {
+        imageInitialSrc.value = found.src;
+        imageInitialAlt.value = found.alt;
+        imageRange.value = { from: found.from, to: found.to };
+    } else {
+        const { from, to } = props.view.state.selection.main;
+        imageInitialSrc.value = '';
+        imageInitialAlt.value = props.view.state.sliceDoc(from, to);
+        imageRange.value = undefined;
+    }
+
+    imageDialogOpen.value = true;
 }
 
 function openMermaidDialog(
@@ -170,7 +214,7 @@ function currentHref(): string {
     return linkAt(view.state, view.state.selection.main.head)?.href ?? '';
 }
 
-defineExpose({ openLinkDialog, openMermaidDialog });
+defineExpose({ openLinkDialog, openMermaidDialog, openImageDialog });
 </script>
 
 <template>
@@ -421,6 +465,23 @@ defineExpose({ openLinkDialog, openMermaidDialog });
             <Button
                 variant="ghost"
                 size="icon-sm"
+                class="size-7 rounded-sm transition-all sm:size-7.5"
+                :class="
+                    isImageActive()
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                "
+                :aria-pressed="isImageActive()"
+                aria-label="Insert image"
+                :disabled="!props.view || props.readonly"
+                title="Insert image (Ctrl+Alt+I)"
+                @click="openImageDialog"
+            >
+                <ImageIcon class="size-3.5 sm:size-4" />
+            </Button>
+            <Button
+                variant="ghost"
+                size="icon-sm"
                 class="hidden size-7 rounded-sm transition-all sm:size-7.5 md:inline-flex"
                 :class="
                     isActive('blockquote')
@@ -610,6 +671,16 @@ defineExpose({ openLinkDialog, openMermaidDialog });
             :view="props.view"
             :initial-code="mermaidInitialCode"
             :range="mermaidRange"
+        />
+
+        <ImageDialog
+            v-model:open="imageDialogOpen"
+            :view="props.view"
+            :vault-uuid="props.vaultUuid"
+            :vault-encrypted="props.vaultEncrypted"
+            :initial-src="imageInitialSrc"
+            :initial-alt="imageInitialAlt"
+            :range="imageRange"
         />
     </div>
 </template>

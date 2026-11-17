@@ -15,6 +15,7 @@ import NoteCopyController from './NoteCopyController'
 import FolderController from './FolderController'
 import VaultIndexController from './VaultIndexController'
 import VaultChangeController from './VaultChangeController'
+import MediaController from './MediaController'
 const Controllers = {
     WorkspaceController: Object.assign(WorkspaceController, WorkspaceController),
 DirectoryBrowserController: Object.assign(DirectoryBrowserController, DirectoryBrowserController),
@@ -33,6 +34,7 @@ NoteCopyController: Object.assign(NoteCopyController, NoteCopyController),
 FolderController: Object.assign(FolderController, FolderController),
 VaultIndexController: Object.assign(VaultIndexController, VaultIndexController),
 VaultChangeController: Object.assign(VaultChangeController, VaultChangeController),
+MediaController: Object.assign(MediaController, MediaController),
 }
 
 export default Controllers

@@ -7,11 +7,14 @@ import {
     findMermaidBlockAt,
     findMermaidBlockByIndex,
     findMermaidBlocks,
+    imageAt,
     insertCodeBlock,
     insertHorizontalRule,
+    insertImage,
     insertLink,
     insertMermaidBlock,
     insertTable,
+    isImageActive,
     isInlineMarkActive,
     isLinePrefixActive,
     isMermaidBlockActive,
@@ -511,6 +514,76 @@ describe('CodeMirror 6 rich formatting commands', () => {
 
             expect(isMermaidBlockActive(activeState)).toBe(true);
             expect(isMermaidBlockActive(inactiveState)).toBe(false);
+        });
+    });
+
+    describe('image commands', () => {
+        it('inserts markdown image syntax and places cursor after it', () => {
+            const target = createTestTarget('Hello world', 6, 6);
+            const ok = insertImage(target, '/media/Work-pic.png', 'My Diagram');
+
+            expect(ok).toBe(true);
+            expect(target.state.doc.toString()).toBe(
+                'Hello ![My Diagram](/media/Work-pic.png)world',
+            );
+            expect(target.state.selection.main.head).toBe(
+                'Hello ![My Diagram](/media/Work-pic.png)'.length,
+            );
+        });
+
+        it('strips brackets and newlines from alt text and falls back to "image"', () => {
+            const target = createTestTarget('', 0, 0);
+            insertImage(target, '/media/a.png', '[Line 1]\nLine 2');
+            expect(target.state.doc.toString()).toBe(
+                '![Line 1 Line 2](/media/a.png)',
+            );
+
+            const emptyTarget = createTestTarget('', 0, 0);
+            insertImage(emptyTarget, '/media/b.png', '\n[]  ');
+            expect(emptyTarget.state.doc.toString()).toBe(
+                '![image](/media/b.png)',
+            );
+        });
+
+        it('replaces an explicit range when updating an existing image', () => {
+            const doc = 'Before ![old](/media/old.png) after';
+            const target = createTestTarget(doc, 10, 10);
+            const found = imageAt(target.state, 10);
+            expect(found).not.toBeNull();
+
+            insertImage(target, '/media/new.png', 'updated alt', {
+                from: found!.from,
+                to: found!.to,
+            });
+
+            expect(target.state.doc.toString()).toBe(
+                'Before ![updated alt](/media/new.png) after',
+            );
+        });
+
+        it('imageAt and isImageActive detect images without matching regular links', () => {
+            const doc =
+                'See [docs](https://example.com) and ![shot](/media/Work-shot.png)';
+            const onLink = EditorState.create({
+                doc,
+                selection: { anchor: doc.indexOf('docs') },
+            });
+            const onImage = EditorState.create({
+                doc,
+                selection: { anchor: doc.indexOf('Work-shot') },
+            });
+
+            expect(imageAt(onLink, onLink.selection.main.head)).toBeNull();
+            expect(isImageActive(onLink)).toBe(false);
+
+            const found = imageAt(onImage, onImage.selection.main.head);
+            expect(found).toEqual({
+                from: doc.indexOf('![shot]'),
+                to: doc.length,
+                alt: 'shot',
+                src: '/media/Work-shot.png',
+            });
+            expect(isImageActive(onImage)).toBe(true);
         });
     });
 });

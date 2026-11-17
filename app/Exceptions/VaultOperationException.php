@@ -89,6 +89,11 @@ final class VaultOperationException extends \RuntimeException
         return new self("For safety, this folder can't be used for a vault (it is a drive root, your Documents folder, or contains your storage location).", $field);
     }
 
+    public static function reservedForMedia(string $field): self
+    {
+        return new self("That folder name or location is reserved for MDVault's shared Media folder.", $field);
+    }
+
     public static function trashUnavailable(): self
     {
         return new self('Moving folders to the Recycle Bin / Trash is only available in the desktop app.', 'move_to_trash');

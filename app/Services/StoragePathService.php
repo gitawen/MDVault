@@ -23,6 +23,12 @@ final class StoragePathService
     public const FOLDER_NAME = 'MDVault';
 
     /**
+     * The shared media subfolder directly inside the effective storage root
+     * where attached images are stored. Created lazily on first upload.
+     */
+    public const MEDIA_FOLDER_NAME = 'Media';
+
+    /**
      * The subfolder of Documents (or the fallback base) backups are saved
      * to (browser dev and tests) or default into (the desktop Save
      * dialog). Never a setting (ADR `backup-archive-format`, H7).
@@ -77,6 +83,22 @@ final class StoragePathService
     public function isUsingDefault(): bool
     {
         return ! $this->settings->has(SettingKey::StorageRootPath);
+    }
+
+    /**
+     * The shared media folder directly inside the effective storage root:
+     * `<rootPath>/Media`. Canonicalizes an existing root without creating
+     * either directory on disk.
+     */
+    public function mediaDirectory(): string
+    {
+        $root = $this->rootPath();
+
+        if (is_dir($root)) {
+            $root = realpath($root) ?: $root;
+        }
+
+        return rtrim($root, '\\/').DIRECTORY_SEPARATOR.self::MEDIA_FOLDER_NAME;
     }
 
     /**

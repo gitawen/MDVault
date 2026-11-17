@@ -74,6 +74,8 @@ final class VaultService
 
         $target = $root.DIRECTORY_SEPARATOR.$name;
 
+        $this->assertNotMediaDirectory($target, 'name');
+
         if ($this->files->isFile($target)) {
             throw VaultOperationException::targetIsFile($target);
         }
@@ -225,6 +227,7 @@ final class VaultService
         }
 
         $this->assertSafeFolder($from, 'name');
+        $this->assertNotMediaDirectory($to, 'name');
 
         if ($this->files->exists($to) && ! $this->files->isSameDirectory($from, $to)) {
             throw VaultOperationException::renameTargetExists($to);
@@ -582,6 +585,27 @@ final class VaultService
 
         if ($documents !== null && $this->files->isSameOrInside($documents, $path)) {
             throw VaultOperationException::unsafeFolder($field);
+        }
+
+        $this->assertNotMediaDirectory($path, $field);
+    }
+
+    /**
+     * @throws VaultOperationException
+     */
+    private function assertNotMediaDirectory(string $path, string $field): void
+    {
+        $mediaDir = $this->paths->mediaDirectory();
+
+        if ($this->files->isSameOrInside($path, $mediaDir) || $this->files->isSameOrInside($mediaDir, $path)) {
+            throw VaultOperationException::reservedForMedia($field);
+        }
+
+        if (
+            strcasecmp(basename($path), StoragePathService::MEDIA_FOLDER_NAME) === 0
+            && $this->files->samePath(dirname($path), $this->paths->rootPath())
+        ) {
+            throw VaultOperationException::reservedForMedia($field);
         }
     }
 }

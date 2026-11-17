@@ -97,6 +97,31 @@ describe('renderMarkdownPreview', () => {
         expect(html).toContain('rel="noopener noreferrer"');
     });
 
+    it('renders /media/ and https:// images with escaped attributes and blocks disallowed protocols', () => {
+        const mediaHtml = renderMarkdownPreview(
+            '![Diagram "1"](/media/Work-pic.png "Title <1>")',
+        );
+        expect(mediaHtml).toContain(
+            '<img src="/media/Work-pic.png" alt="Diagram &quot;1&quot;" title="Title &lt;1&gt;" />',
+        );
+
+        const httpsHtml = renderMarkdownPreview(
+            '![Remote](https://example.com/pic.png)',
+        );
+        expect(httpsHtml).toContain(
+            '<img src="https://example.com/pic.png" alt="Remote" />',
+        );
+
+        for (const bad of [
+            '![xss](javascript:alert(1))',
+            '![xss](data:text/html,<script>alert(1)</script>)',
+            '![xss](vbscript:msgbox(1))',
+        ]) {
+            const badHtml = renderMarkdownPreview(bad);
+            expect(badHtml).not.toContain('<img');
+        }
+    });
+
     it('renders GFM tables unchanged', () => {
         const html = renderMarkdownPreview(
             '| A | B |\n| --- | --- |\n| 1 | 2 |\n',

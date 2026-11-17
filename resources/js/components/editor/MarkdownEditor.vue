@@ -13,6 +13,7 @@ import {
     shallowRef,
     watch,
 } from 'vue';
+import { toast } from 'vue-sonner';
 import EditorToolbar from '@/components/editor/EditorToolbar.vue';
 import { useNoteNavigation } from '@/composables/useNoteNavigation';
 import {
@@ -24,7 +25,15 @@ import {
     appEditorTheme,
     appHighlightStyle,
 } from '@/lib/editor/codemirrorTheme';
-import { findMermaidBlockByIndex } from '@/lib/editor/codemirrorCommands';
+import {
+    findMermaidBlockByIndex,
+    insertImage,
+} from '@/lib/editor/codemirrorCommands';
+import {
+    deriveAltText,
+    uploadVaultMedia,
+    validateImageFile,
+} from '@/lib/editor/mediaUpload';
 import {
     isAllowedHref,
     MERMAID_SVG_ICON,
@@ -50,11 +59,15 @@ const {
     readonly = false,
     preferences,
     noteUuid,
+    vaultUuid,
+    vaultEncrypted = false,
 } = defineProps<{
     editable?: boolean;
     readonly?: boolean;
     preferences: EditorPreferences;
     noteUuid?: string;
+    vaultUuid?: string;
+    vaultEncrypted?: boolean;
 }>();
 
 const { noteSelectionTick } = useNoteNavigation();
@@ -87,6 +100,73 @@ function checkIsDark(): boolean {
 
 const isDark = ref(checkIsDark());
 let themeObserver: MutationObserver | null = null;
+let isMounted = true;
+
+async function handleEditorImageFiles(
+    files: File[],
+    dropPos: number | null,
+): Promise<void> {
+    if (!isInteractive.value) {
+        return;
+    }
+
+    if (vaultEncrypted) {
+        toast.error(
+            "Image attachments aren't supported in encrypted vaults yet.",
+        );
+        return;
+    }
+
+    if (!vaultUuid) {
+        return;
+    }
+
+    const uploadNoteUuid = noteUuid;
+    let currentDropPos = dropPos;
+
+    for (const file of files) {
+        const validationError = validateImageFile(file);
+        if (validationError !== null) {
+            toast.error(validationError);
+            continue;
+        }
+
+        const toastId = toast.loading(`Uploading ${file.name || 'image'}…`);
+        const outcome = await uploadVaultMedia(vaultUuid, file);
+
+        if (
+            !isMounted ||
+            noteUuid !== uploadNoteUuid ||
+            !view.value ||
+            !isInteractive.value
+        ) {
+            toast.dismiss(toastId);
+            return;
+        }
+
+        if (outcome.kind === 'error') {
+            toast.error(outcome.message, { id: toastId });
+            continue;
+        }
+
+        let range: { from: number; to: number } | undefined;
+        if (currentDropPos !== null) {
+            const clamped = Math.max(
+                0,
+                Math.min(currentDropPos, view.value.state.doc.length),
+            );
+            range = { from: clamped, to: clamped };
+        }
+
+        insertImage(view.value, outcome.media.url, deriveAltText(file), range);
+
+        if (currentDropPos !== null) {
+            currentDropPos = view.value.state.selection.main.head;
+        }
+
+        toast.success('Image attached.', { id: toastId });
+    }
+}
 
 onMounted(() => {
     if (typeof MutationObserver !== 'undefined') {
@@ -129,6 +209,15 @@ onMounted(() => {
             onMermaid: () => {
                 toolbarRef.value?.openMermaidDialog();
             },
+            onImage: () => {
+                toolbarRef.value?.openImageDialog();
+            },
+            onPasteImage: (file) => {
+                void handleEditorImageFiles([file], null);
+            },
+            onDropImages: (files, pos) => {
+                void handleEditorImageFiles(files, pos);
+            },
         }),
     });
 
@@ -139,6 +228,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    isMounted = false;
     themeObserver?.disconnect();
     view.value?.destroy();
     view.value = null;
@@ -530,6 +620,9 @@ defineExpose({ getText, resetDisplayMode });
             ref="toolbarRef"
             :view="view ?? undefined"
             :revision="revision"
+            :vault-uuid="vaultUuid"
+            :vault-encrypted="vaultEncrypted"
+            :readonly="!isInteractive"
             v-model:display-mode="displayMode"
         />
 

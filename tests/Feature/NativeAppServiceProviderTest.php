@@ -30,3 +30,12 @@ test('the main window opens with the MDVault configuration', function () {
         'preventLeaveDomain' => true,
     ]);
 });
+
+test('phpIni raises upload limits for desktop image attachments', function () {
+    $ini = (new NativeAppServiceProvider)->phpIni();
+
+    expect($ini)->toMatchArray([
+        'upload_max_filesize' => '12M',
+        'post_max_size' => '16M',
+    ]);
+});

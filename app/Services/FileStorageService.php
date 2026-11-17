@@ -655,6 +655,26 @@ final class FileStorageService
         return $written;
     }
 
+    /**
+     * Exclusive-create $path ('x') by streaming from an existing readable
+     * file at $sourcePath in 1 MiB chunks. Returns the number of bytes
+     * written, or null if $sourcePath cannot be opened or the write fails.
+     */
+    public function createFileFromPath(string $path, string $sourcePath, int $maxBytes): ?int
+    {
+        $stream = @fopen($sourcePath, 'rb');
+
+        if ($stream === false) {
+            return null;
+        }
+
+        try {
+            return $this->createFileFromStream($path, $stream, $maxBytes);
+        } finally {
+            fclose($stream);
+        }
+    }
+
     public function read(string $path): ?string
     {
         try {

@@ -4,6 +4,7 @@ use App\Enums\SettingKey;
 use App\Models\Note;
 use App\Models\Vault;
 use App\Services\SettingsService;
+use App\Services\StoragePathService;
 use App\Services\VaultService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -244,4 +245,33 @@ test('the shared vaults prop appears on other pages with the correct shape', fun
 
     $this->get(route('settings.general.edit'))
         ->assertInertia(fn ($page) => $page->has('vaults', 2));
+});
+
+test('creating, renaming to, or registering the reserved Media folder fails validation', function () {
+    $mediaDir = app(StoragePathService::class)->mediaDirectory();
+
+    // Creating a vault named Media (case-insensitive)
+    $this->post(route('vaults.store'), ['name' => 'Media'])
+        ->assertSessionHasErrors('name');
+
+    $this->post(route('vaults.store'), ['name' => 'media'])
+        ->assertSessionHasErrors('name');
+
+    // Renaming a vault inside root to Media
+    $this->post(route('vaults.store'), ['name' => 'Work'])->assertRedirect();
+    $vault = Vault::query()->sole();
+
+    $this->patch(route('vaults.update', $vault->uuid), ['name' => 'Media'])
+        ->assertSessionHasErrors('name');
+
+    expect($vault->fresh()->name)->toBe('Work');
+
+    // Registering <rootPath>/Media or a subfolder inside it
+    File::ensureDirectoryExists($mediaDir.DIRECTORY_SEPARATOR.'Sub');
+
+    $this->post(route('vaults.existing.store'), ['path' => $mediaDir, 'name' => 'MyMedia'])
+        ->assertSessionHasErrors('path');
+
+    $this->post(route('vaults.existing.store'), ['path' => $mediaDir.DIRECTORY_SEPARATOR.'Sub', 'name' => 'MyMediaSub'])
+        ->assertSessionHasErrors('path');
 });

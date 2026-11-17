@@ -468,6 +468,67 @@ export function removeLink(view: CommandTarget): boolean {
     return true;
 }
 
+const IMAGE_PATTERN = /!\[([^\]]*)\]\(([^)]*)\)/g;
+
+/**
+ * Inserts a `![alt](url)` Markdown image at `range` (or the current selection),
+ * stripping newlines and square brackets from `alt` (falling back to `'image'`).
+ */
+export function insertImage(
+    view: CommandTarget,
+    url: string,
+    alt?: string,
+    range?: { from: number; to: number },
+): boolean {
+    const { state, dispatch } = view;
+    const { from, to } = range ?? state.selection.main;
+    const rawAlt = (alt ?? '')
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/[[\]]/g, '')
+        .trim();
+    const cleanAlt = rawAlt || 'image';
+
+    const insertion = `![${cleanAlt}](${url})`;
+
+    dispatch({
+        changes: { from, to, insert: insertion },
+        selection: { anchor: from + insertion.length },
+        userEvent: 'format.image',
+    });
+
+    view.focus?.();
+    return true;
+}
+
+/**
+ * Finds a `![alt](src)` image on the caret's line that contains `pos`.
+ */
+export function imageAt(
+    state: EditorState,
+    pos: number,
+): { from: number; to: number; alt: string; src: string } | null {
+    const line = state.doc.lineAt(pos);
+    const regex = new RegExp(IMAGE_PATTERN);
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(line.text)) !== null) {
+        const start = line.from + match.index;
+        const end = start + match[0].length;
+        if (pos >= start && pos <= end) {
+            return { from: start, to: end, alt: match[1], src: match[2] };
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Whether the caret is currently inside a Markdown image `![alt](src)`.
+ */
+export function isImageActive(state: EditorState): boolean {
+    return imageAt(state, state.selection.main.head) !== null;
+}
+
 /**
  * Whether the selection is immediately wrapped by `marker` on both sides,
  * guarding against matching part of a longer run of the same character.

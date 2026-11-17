@@ -10,3 +10,4 @@ Route::post('directories/browse', DirectoryBrowserController::class)->name('dire
 require __DIR__.'/settings.php';
 require __DIR__.'/vaults.php';
 require __DIR__.'/notes.php';
+require __DIR__.'/media.php';
