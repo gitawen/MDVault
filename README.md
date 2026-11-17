@@ -2,7 +2,7 @@
 
 > **Local-first, privacy-focused Markdown knowledge vault for the desktop.**
 
-MDVault is a modern desktop note-taking and knowledge management application built with **Laravel 13**, **Vue 3**, **Inertia.js v3**, **Tailwind CSS v4**, and **NativePHP**. It bridges the convenience of a rich visual editor with the longevity, ownership, and simplicity of plain `.md` files on your local drive.
+MDVault is a modern desktop note-taking and knowledge management application built with **Laravel 13**, **Vue 3**, **Inertia.js v3**, **Tailwind CSS v4**, and **NativePHP**. It pairs a fast Markdown editor and live preview with the longevity, ownership, and simplicity of plain `.md` files on your local drive.
 
 ---
 
@@ -10,7 +10,7 @@ MDVault is a modern desktop note-taking and knowledge management application bui
 
 - **Local-First & Authoritative Filesystem**: The filesystem owns your `.md` files. SQLite manages application indexes, search metadata, and UI state. Your notes remain plain Markdown files you can open in any text editor.
 - **100% Offline**: Operates fully offline without cloud accounts, remote servers, or background telemetry.
-- **Rich Visual Editor**: Powered by Tiptap with bi-directional Markdown serialization—bold, italic, task lists, tables, code blocks, and blockquotes with formatting preservation.
+- **Markdown Editor & Live Preview**: Powered by CodeMirror 6 with code, split, and preview modes—supporting syntax highlighting, interactive task lists, tables, code blocks, and Mermaid diagrams.
 - **Strong Vault Encryption**: Optional end-to-end vault encryption powered by `libsodium` and `Argon2id`. Encrypted vaults conceal note filenames, folder structures, and contents on disk.
 - **Filesystem Intelligence**: Detects external file changes, renames, additions, and deletions without silently overwriting external modifications.
 - **Portable Backups**: Export and restore entire vaults or individual notes as standard ZIP archives with SHA-256 integrity verification.
