@@ -168,6 +168,11 @@ final class BackupException extends \RuntimeException
         return new self('Choose at least one vault to restore.', 'vaults');
     }
 
+    public static function noSettingsInBackup(): self
+    {
+        return new self("This backup doesn't include settings.", 'setting_groups');
+    }
+
     public static function vaultAlreadyRegistered(string $name): self
     {
         return new self("\u{201c}{$name}\u{201d} is already in MDVault. Choose \u{201c}Restore as a copy\u{201d} or skip it.", 'path');

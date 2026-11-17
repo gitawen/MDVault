@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Settings;
 
 use App\Enums\RestoreAction;
+use App\Enums\SettingGroup;
+use App\Enums\SettingKey;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,12 +31,18 @@ class RestoreBackupRequest extends FormRequest
             'vaults' => ['required', 'array', 'min:1', 'max:1000'],
             'vaults.*.uuid' => ['required', 'uuid', 'distinct'],
             'vaults.*.action' => ['required', Rule::enum(RestoreAction::class)],
+            'setting_groups' => ['sometimes', 'array'],
+            'setting_groups.*' => ['required', 'string', 'distinct', Rule::in(SettingKey::portableGroupValues())],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
             $vaults = $this->input('vaults');
 
             if (! is_array($vaults)) {
@@ -45,8 +53,10 @@ class RestoreBackupRequest extends FormRequest
                 fn (mixed $v): bool => is_array($v) && ($v['action'] ?? null) === RestoreAction::Skip->value,
             );
 
-            if ($everySkipped) {
-                $validator->errors()->add('vaults', 'Choose at least one vault to restore.');
+            $settingGroups = $this->input('setting_groups', []);
+
+            if ($everySkipped && (! is_array($settingGroups) || $settingGroups === [])) {
+                $validator->errors()->add('vaults', 'Choose at least one vault or setting group to restore.');
             }
         });
     }
@@ -63,5 +73,19 @@ class RestoreBackupRequest extends FormRequest
         }
 
         return $actions;
+    }
+
+    /**
+     * @return list<SettingGroup>
+     */
+    public function settingGroups(): array
+    {
+        /** @var list<string> $groups */
+        $groups = $this->validated('setting_groups', []);
+
+        return array_map(
+            static fn (string $group): SettingGroup => SettingGroup::from($group),
+            $groups,
+        );
     }
 }

@@ -144,7 +144,7 @@ function encryptedManifestVault(array &$manifest): int
     throw new RuntimeException('No encrypted vault in the manifest.');
 }
 
-test('a backup of a locked encrypted vault copies only ciphertext and writes format 2', function () {
+test('a backup of a locked encrypted vault copies only ciphertext and writes format 3', function () {
     $this->keys->forgetAll();
     expect($this->keys->isUnlocked($this->secrets))->toBeFalse();
 
@@ -152,7 +152,7 @@ test('a backup of a locked encrypted vault copies only ciphertext and writes for
     $entries = backupZipEntries($destination);
     $manifest = json_decode($entries['manifest.json'], true);
 
-    expect($manifest['format_version'])->toBe(2)
+    expect($manifest['format_version'])->toBe(3)
         ->and($manifest['vaults'])->toBe(2);
 
     $byName = collect($manifest['contents'])->keyBy('name');
@@ -234,7 +234,7 @@ test('inspecting a backup reports which vaults are encrypted', function () {
     $inspection = $this->service->inspect($destination);
 
     expect($inspection->valid)->toBeTrue()
-        ->and($inspection->backup['format_version'])->toBe(2);
+        ->and($inspection->backup['format_version'])->toBe(3);
 
     $byName = collect($inspection->vaults)->keyBy('name');
 

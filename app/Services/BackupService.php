@@ -3,8 +3,14 @@
 namespace App\Services;
 
 use App\Enums\BackupScope;
+use App\Enums\EditorDefaultView;
+use App\Enums\EditorFontFamily;
 use App\Enums\IndexMode;
 use App\Enums\RestoreAction;
+use App\Enums\SettingGroup;
+use App\Enums\SettingKey;
+use App\Enums\SettingType;
+use App\Enums\Theme;
 use App\Enums\VaultStatus;
 use App\Exceptions\BackupException;
 use App\Exceptions\EncryptionException;
@@ -36,10 +42,10 @@ final class BackupService
     public const FORMAT = 'mdvault-backup';
 
     /**
-     * Format 2 (Phase 7, ADR `encrypted-vault-backups`) adds encrypted
-     * vaults, copied as ciphertext. The reader still accepts format 1.
+     * Format 3 (ADR `backup-settings-format`) adds portable application
+     * settings in `manifest.json`. The reader still accepts formats 1 and 2.
      */
-    public const FORMAT_VERSION = 2;
+    public const FORMAT_VERSION = 3;
 
     public const DATABASE_VERSION = 1;
 
@@ -147,6 +153,8 @@ final class BackupService
         private readonly EncryptionService $encryption,
         private readonly EncryptionHeaderService $headers,
         private readonly VaultEncryptionService $vaultEncryption,
+        private readonly SettingsService $settings,
+        private readonly MarkdownService $markdown,
         /**
          * Defaults to `AGGREGATE_RATIO_ALLOWANCE_BYTES` so the container
          * resolves normal production behaviour with no wiring. Exists as a
@@ -369,9 +377,10 @@ final class BackupService
             'files' => $fileCount,
             'total_bytes' => $totalBytes,
             'contents' => $manifestVaults,
+            'settings' => $this->exportPortableSettings(),
         ];
 
-        $json = json_encode($manifest, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $json = json_encode($manifest, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
 
         $this->files->discardStaleTempFiles($dir, FileStorageService::BACKUP_TEMP_PREFIX, self::STALE_TEMP_SECONDS);
 
@@ -1025,6 +1034,8 @@ final class BackupService
             $problems[] = 'This backup declares more data than MDVault allows.';
         }
 
+        $normalizedSettings = $this->normalizeAndValidateSettings($manifest, $formatVersion, $problems);
+
         if ($problems !== []) {
             return [null, array_slice($problems, 0, self::MAX_PROBLEMS)];
         }
@@ -1154,7 +1165,204 @@ final class BackupService
             'files' => $totalFiles,
             'total_bytes' => $totalBytes,
             'contents' => $normalizedVaults,
+            'settings' => $normalizedSettings,
         ], []];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function exportPortableSettings(): array
+    {
+        $keys = SettingKey::portableCases();
+        usort($keys, static fn (SettingKey $a, SettingKey $b): int => strcmp($a->value, $b->value));
+
+        $exported = [];
+
+        foreach ($keys as $key) {
+            $exported[$key->value] = $this->settings->get($key);
+        }
+
+        return $exported;
+    }
+
+    /**
+     * @param  array<string, mixed>  $manifest
+     * @param  list<string>  $problems
+     * @return array<string, mixed>|null
+     */
+    private function normalizeAndValidateSettings(array $manifest, int $formatVersion, array &$problems): ?array
+    {
+        if ($formatVersion < 3) {
+            return null;
+        }
+
+        if (! array_key_exists('settings', $manifest)) {
+            $problems[] = "\u{201c}manifest.json\u{201d} is missing application settings.";
+
+            return null;
+        }
+
+        $raw = $manifest['settings'];
+
+        if (! is_array($raw) || ($raw !== [] && array_is_list($raw))) {
+            $problems[] = "\u{201c}manifest.json\u{201d} has invalid application settings.";
+
+            return null;
+        }
+
+        /** @var array<string, mixed> $normalized */
+        $normalized = [];
+
+        foreach ($raw as $rawKey => $value) {
+            $key = is_string($rawKey) ? SettingKey::tryFrom($rawKey) : null;
+
+            if ($key === null) {
+                continue;
+            }
+
+            if (! $key->isPortable()) {
+                $problems[] = "The backup contains machine-specific setting \u{201c}{$rawKey}\u{201d}, which isn't allowed in a backup.";
+
+                continue;
+            }
+
+            $validated = $this->validatePortableSettingValue($key, $value, $problems);
+
+            if ($validated['valid']) {
+                $normalized[$key->value] = $validated['value'];
+            }
+        }
+
+        $templateEnabled = $normalized[SettingKey::EditorNewNoteTemplateEnabled->value] ?? true;
+
+        if (
+            $templateEnabled === true
+            && array_key_exists(SettingKey::EditorNewNoteTemplate->value, $normalized)
+            && trim((string) $normalized[SettingKey::EditorNewNoteTemplate->value]) === ''
+        ) {
+            $problems[] = "The backed-up new note template can't be empty while templates are enabled.";
+        }
+
+        return $normalized === [] ? null : $normalized;
+    }
+
+    /**
+     * @param  list<string>  $problems
+     * @return array{valid: bool, value: mixed}
+     */
+    private function validatePortableSettingValue(SettingKey $key, mixed $value, array &$problems): array
+    {
+        switch ($key) {
+            case SettingKey::AppearanceTheme:
+                if (! is_string($value) || Theme::tryFrom($value) === null) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} has an invalid value.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => $value];
+
+            case SettingKey::EditorFontFamily:
+                if (! is_string($value) || EditorFontFamily::tryFrom($value) === null) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} has an invalid value.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => $value];
+
+            case SettingKey::EditorDefaultView:
+                if (! is_string($value) || EditorDefaultView::tryFrom($value) === null) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} has an invalid value.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => $value];
+
+            case SettingKey::EditorFontSize:
+                if (! is_int($value) || $value < 12 || $value > 24) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} must be an integer between 12 and 24.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => $value];
+
+            case SettingKey::EditorIndentSize:
+                if (! is_int($value) || $value < 1 || $value > 8) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} must be an integer between 1 and 8.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => $value];
+
+            case SettingKey::EditorLineHeight:
+                if ((! is_int($value) && ! is_float($value)) || ! is_finite((float) $value) || (float) $value < 1.2 || (float) $value > 2.2) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} must be a number between 1.2 and 2.2.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => (float) $value];
+
+            case SettingKey::SecurityAutoLockMinutes:
+                if (! is_int($value) || ! in_array($value, SettingKey::SECURITY_AUTO_LOCK_CHOICES, true)) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} has an invalid auto-lock value.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => $value];
+
+            case SettingKey::EditorWordWrap:
+            case SettingKey::EditorShowLineNumbers:
+            case SettingKey::EditorNewNoteTemplateEnabled:
+            case SettingKey::CheckExternalChanges:
+            case SettingKey::SecurityLockOnScreenLock:
+                if (! is_bool($value)) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} must be a boolean.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => $value];
+
+            case SettingKey::EditorNewNoteTemplate:
+                if (! is_string($value) || ! mb_check_encoding($value, 'UTF-8') || mb_strlen($value) > 4000 || str_contains($value, "\0")) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} isn't a valid template string.";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                $normalizedTemplate = str_replace("\r\n", "\n", $value);
+
+                try {
+                    $this->markdown->assertValidFrontmatterYaml($normalizedTemplate);
+                } catch (NoteOperationException) {
+                    $problems[] = "The backed-up setting \u{201c}{$key->value}\u{201d} can't contain a line of three dashes (---).";
+
+                    return ['valid' => false, 'value' => null];
+                }
+
+                return ['valid' => true, 'value' => rtrim($normalizedTemplate, "\n")];
+
+            case SettingKey::StorageRootPath:
+            case SettingKey::StorageFolderName:
+            case SettingKey::CurrentVault:
+                return ['valid' => false, 'value' => null];
+        }
+    }
+
+    private function settingValuesEqual(SettingKey $key, mixed $a, mixed $b): bool
+    {
+        if ($key->type() === SettingType::Float) {
+            return is_numeric($a) && is_numeric($b) && abs((float) $a - (float) $b) <= 1e-9;
+        }
+
+        return $a === $b;
     }
 
     /**
@@ -1466,6 +1674,7 @@ final class BackupService
             'file_count' => $manifest['files'],
             'total_bytes' => $manifest['total_bytes'],
             'archive_size' => $this->files->size($archive) ?? 0,
+            'settings' => $this->summarizeBackupSettings($manifest['settings']),
         ];
 
         /** @var list<string> $claimed */
@@ -1503,6 +1712,68 @@ final class BackupService
         }
 
         return new BackupInspection(valid: true, problems: [], backup: $backup, vaults: $vaults);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $manifestSettings
+     * @return array{groups: list<array{group: string, label: string, count: int, differing: int}>, total_count: int, differing_count: int, default_restore: bool}|null
+     */
+    private function summarizeBackupSettings(?array $manifestSettings): ?array
+    {
+        if ($manifestSettings === null) {
+            return null;
+        }
+
+        /** @var array<string, int> $counts */
+        $counts = [];
+        /** @var array<string, int> $differing */
+        $differing = [];
+
+        foreach ($manifestSettings as $keyValue => $value) {
+            $key = SettingKey::from($keyValue);
+            $groupValue = $key->group()->value;
+            $counts[$groupValue] = ($counts[$groupValue] ?? 0) + 1;
+
+            if (! $this->settingValuesEqual($key, $value, $this->settings->get($key))) {
+                $differing[$groupValue] = ($differing[$groupValue] ?? 0) + 1;
+            }
+        }
+
+        /** @var list<array{group: string, label: string, count: int, differing: int}> $groups */
+        $groups = [];
+
+        foreach (SettingKey::portableGroups() as $group) {
+            $count = $counts[$group->value] ?? 0;
+
+            if ($count === 0) {
+                continue;
+            }
+
+            $groups[] = [
+                'group' => $group->value,
+                'label' => $group->label(),
+                'count' => $count,
+                'differing' => $differing[$group->value] ?? 0,
+            ];
+        }
+
+        return [
+            'groups' => $groups,
+            'total_count' => array_sum($counts),
+            'differing_count' => array_sum($differing),
+            'default_restore' => Vault::query()->doesntExist() && $this->allPortableSettingsAreDefault(),
+        ];
+    }
+
+    private function allPortableSettingsAreDefault(): bool
+    {
+        foreach (SettingKey::portableCases() as $key) {
+            if (! $this->settingValuesEqual($key, $this->settings->get($key), $key->default())) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -1592,10 +1863,11 @@ final class BackupService
 
     /**
      * @param  array<string, RestoreAction>  $actions  keyed by the vault uuid in the backup; missing = Skip
+     * @param  list<SettingGroup>  $settingGroups
      *
      * @throws BackupException
      */
-    public function restore(string $path, array $actions): RestoreResult
+    public function restore(string $path, array $actions, array $settingGroups = []): RestoreResult
     {
         @set_time_limit(0);
 
@@ -1605,16 +1877,6 @@ final class BackupService
 
         if ($manifest === null) {
             throw BackupException::invalidBackup($problems);
-        }
-
-        try {
-            $root = $this->paths->ensureRootReady();
-        } catch (InvalidStorageRootException $e) {
-            throw BackupException::storageUnavailable($e->getMessage());
-        }
-
-        foreach ($this->files->staleStagingDirectories($root, self::STALE_TEMP_SECONDS) as $staleDirectory) {
-            $this->files->deleteStagingDirectory($staleDirectory);
         }
 
         $manifestVaultsByUuid = [];
@@ -1629,13 +1891,54 @@ final class BackupService
             }
         }
 
-        /** @var list<array<string, mixed>> $plan */
-        $plan = [];
-        /** @var list<string> $claimed */
-        $claimed = [];
+        /** @var array<string, SettingGroup> $requestedGroups */
+        $requestedGroups = [];
+
+        foreach ($settingGroups as $group) {
+            if ($group->isPortable()) {
+                $requestedGroups[$group->value] = $group;
+            }
+        }
+
+        $manifestSettings = $manifest['settings'];
+
+        if ($requestedGroups !== [] && $manifestSettings === null) {
+            throw BackupException::noSettingsInBackup();
+        }
+
+        /** @var array<string, mixed> $settingsToRestore */
+        $settingsToRestore = [];
+        /** @var array<string, bool> $restoredGroupMap */
+        $restoredGroupMap = [];
+
+        if ($requestedGroups !== [] && is_array($manifestSettings)) {
+            foreach ($manifestSettings as $keyValue => $value) {
+                $key = SettingKey::from($keyValue);
+
+                if (isset($requestedGroups[$key->group()->value])) {
+                    $settingsToRestore[$key->value] = $value;
+                    $restoredGroupMap[$key->group()->value] = true;
+                }
+            }
+        }
+
+        if ($requestedGroups !== [] && $settingsToRestore === []) {
+            throw BackupException::noSettingsInBackup();
+        }
+
+        /** @var list<string> $restoredGroupValues */
+        $restoredGroupValues = [];
+
+        foreach (SettingKey::portableGroups() as $group) {
+            if (isset($restoredGroupMap[$group->value])) {
+                $restoredGroupValues[] = $group->value;
+            }
+        }
+
+        /** @var list<array{0: array<string, mixed>, 1: RestoreAction}> $selectedVaults */
+        $selectedVaults = [];
         /** @var list<string> $skippedNames */
         $skippedNames = [];
-        $needBytes = 0;
 
         foreach ($manifest['contents'] as $vaultData) {
             $manifestUuid = $vaultData['uuid'];
@@ -1647,6 +1950,47 @@ final class BackupService
                 continue;
             }
 
+            $selectedVaults[] = [$vaultData, $action];
+        }
+
+        if ($selectedVaults === [] && $settingsToRestore === []) {
+            throw BackupException::nothingSelected();
+        }
+
+        /** @var array<string, mixed> $sparseSettings */
+        $sparseSettings = [];
+
+        foreach ($settingsToRestore as $keyValue => $value) {
+            $key = SettingKey::from($keyValue);
+            $sparseSettings[$keyValue] = $this->settingValuesEqual($key, $value, $key->default()) ? null : $value;
+        }
+
+        if ($selectedVaults === []) {
+            $this->database->connection()->transaction(function () use ($sparseSettings): void {
+                $this->settings->setMany($sparseSettings);
+            });
+
+            return new RestoreResult([], $skippedNames, [], true, $restoredGroupValues);
+        }
+
+        try {
+            $root = $this->paths->ensureRootReady();
+        } catch (InvalidStorageRootException $e) {
+            throw BackupException::storageUnavailable($e->getMessage());
+        }
+
+        foreach ($this->files->staleStagingDirectories($root, self::STALE_TEMP_SECONDS) as $staleDirectory) {
+            $this->files->deleteStagingDirectory($staleDirectory);
+        }
+
+        /** @var list<array<string, mixed>> $plan */
+        $plan = [];
+        /** @var list<string> $claimed */
+        $claimed = [];
+        $needBytes = 0;
+
+        foreach ($selectedVaults as [$vaultData, $action]) {
+            $manifestUuid = $vaultData['uuid'];
             $alreadyRegistered = Vault::query()->where('uuid', $manifestUuid)->exists();
 
             if ($action === RestoreAction::Restore && $alreadyRegistered) {
@@ -1720,10 +2064,6 @@ final class BackupService
             ];
         }
 
-        if ($plan === []) {
-            throw BackupException::nothingSelected();
-        }
-
         $free = $this->files->freeSpace($root);
 
         if ($free !== null && $free < $needBytes + self::SPACE_MARGIN_BYTES) {
@@ -1753,7 +2093,7 @@ final class BackupService
         $moved = [];
 
         try {
-            $created = $this->database->connection()->transaction(function () use ($plan, $staging, $root, &$moved): array {
+            $created = $this->database->connection()->transaction(function () use ($plan, $staging, $root, $sparseSettings, &$moved): array {
                 $result = [];
 
                 foreach ($plan as $i => $item) {
@@ -1812,6 +2152,10 @@ final class BackupService
                         'copy' => $item['copy'],
                         'reidentified' => $item['reidentified'],
                     ];
+                }
+
+                if ($sparseSettings !== []) {
+                    $this->settings->setMany($sparseSettings);
                 }
 
                 return $result;
@@ -1885,7 +2229,7 @@ final class BackupService
             'copy' => $c['copy'],
         ], $created);
 
-        return new RestoreResult($restored, $skippedNames, $warnings);
+        return new RestoreResult($restored, $skippedNames, $warnings, $sparseSettings !== [], $restoredGroupValues);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Enums\SettingKey;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -13,7 +14,7 @@ class UpdateSecuritySettingsRequest extends FormRequest
      *
      * @var list<int>
      */
-    public const AUTO_LOCK_CHOICES = [0, 5, 15, 30, 60];
+    public const AUTO_LOCK_CHOICES = SettingKey::SECURITY_AUTO_LOCK_CHOICES;
 
     /**
      * Determine if the user is authorized to make this request.

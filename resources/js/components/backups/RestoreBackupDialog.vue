@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { useForm, useHttp } from '@inertiajs/vue3';
-import { Lock } from '@lucide/vue';
+import { AlertTriangle, Lock, SlidersHorizontal } from '@lucide/vue';
 import { computed, reactive, ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -43,6 +44,7 @@ type LoadState =
 
 const state = ref<LoadState>({ status: 'idle' });
 const actions = reactive<Record<string, RestoreAction>>({});
+const selectedGroups = reactive<Record<string, boolean>>({});
 
 function load(path: string): void {
     state.value = { status: 'loading' };
@@ -51,12 +53,24 @@ function load(path: string): void {
         delete actions[key];
     }
 
+    for (const key of Object.keys(selectedGroups)) {
+        delete selectedGroups[key];
+    }
+
     useHttp<{ path: string }, BackupInspection>({ path }).post(inspect.url(), {
         onSuccess: (response) => {
             state.value = { status: 'ready', inspection: response };
 
             for (const vault of response.vaults) {
                 actions[vault.uuid] = vault.default_action;
+            }
+
+            const settings = response.backup?.settings;
+
+            if (settings) {
+                for (const group of settings.groups) {
+                    selectedGroups[group.group] = settings.default_restore;
+                }
             }
         },
         onError: (errors) => {
@@ -78,16 +92,38 @@ watch(
     { immediate: true },
 );
 
-const canRestore = computed(() =>
-    Object.values(actions).some((action) => action !== 'skip'),
+const selectedSettingGroups = computed(() =>
+    Object.entries(selectedGroups)
+        .filter(([, checked]) => checked)
+        .map(([group]) => group),
+);
+
+const hasSelectedSettingsConflict = computed(() => {
+    if (state.value.status !== 'ready') {
+        return false;
+    }
+
+    const groups = state.value.inspection.backup?.settings?.groups ?? [];
+
+    return groups.some(
+        (group) => selectedGroups[group.group] && group.differing > 0,
+    );
+});
+
+const canRestore = computed(
+    () =>
+        Object.values(actions).some((action) => action !== 'skip') ||
+        selectedSettingGroups.value.length > 0,
 );
 
 const form = useForm<{
     path: string;
     vaults: { uuid: string; action: RestoreAction }[];
+    setting_groups: string[];
 }>({
     path: '',
     vaults: [],
+    setting_groups: [],
 });
 
 function submit(): void {
@@ -102,6 +138,7 @@ function submit(): void {
         uuid: vault.uuid,
         action: actions[vault.uuid] ?? 'skip',
     }));
+    form.setting_groups = selectedSettingGroups.value;
 
     form.post(restoreStore.url(), {
         preserveScroll: true,
@@ -124,7 +161,8 @@ function close(): void {
             <DialogHeader class="shrink-0">
                 <DialogTitle>Restore from backup</DialogTitle>
                 <DialogDescription>
-                    Choose what to do with each vault in this backup.
+                    Choose what to do with each vault and any included settings
+                    in this backup.
                 </DialogDescription>
             </DialogHeader>
 
@@ -269,6 +307,107 @@ function close(): void {
                                 </p>
                             </div>
                         </div>
+
+                        <div
+                            v-if="state.inspection.backup?.settings"
+                            class="space-y-3 rounded-md border p-3"
+                        >
+                            <div
+                                class="flex items-center justify-between gap-2"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <SlidersHorizontal
+                                        class="size-4 text-muted-foreground"
+                                    />
+                                    <p class="text-sm font-medium">
+                                        Application Settings
+                                    </p>
+                                </div>
+                                <span class="text-xs text-muted-foreground">
+                                    {{
+                                        state.inspection.backup.settings
+                                            .total_count
+                                    }}
+                                    setting(s)
+                                </span>
+                            </div>
+
+                            <div class="space-y-2">
+                                <div
+                                    v-for="group in state.inspection.backup
+                                        .settings.groups"
+                                    :key="group.group"
+                                    class="flex items-center justify-between gap-3 rounded-md border border-border/50 bg-muted/20 px-3 py-2"
+                                >
+                                    <div class="flex items-center gap-2.5">
+                                        <Checkbox
+                                            :id="`restore-setting-group-${group.group}`"
+                                            :model-value="
+                                                selectedGroups[group.group] ===
+                                                true
+                                            "
+                                            @update:model-value="
+                                                (val) =>
+                                                    (selectedGroups[
+                                                        group.group
+                                                    ] = val === true)
+                                            "
+                                        />
+                                        <Label
+                                            :for="`restore-setting-group-${group.group}`"
+                                            class="cursor-pointer text-sm font-medium"
+                                        >
+                                            {{ group.label }}
+                                        </Label>
+                                        <span
+                                            class="text-xs text-muted-foreground"
+                                        >
+                                            ({{ group.count }})
+                                        </span>
+                                    </div>
+                                    <Badge
+                                        v-if="group.differing > 0"
+                                        variant="outline"
+                                        class="border-amber-500/40 bg-amber-500/10 text-xs text-amber-700 dark:text-amber-400"
+                                    >
+                                        {{ group.differing }} differ
+                                    </Badge>
+                                    <span
+                                        v-else
+                                        class="text-xs text-muted-foreground"
+                                    >
+                                        Matches current
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="hasSelectedSettingsConflict"
+                                class="flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-400"
+                            >
+                                <AlertTriangle
+                                    class="mt-0.5 size-3.5 shrink-0"
+                                />
+                                <span>
+                                    Checked groups with differences will
+                                    overwrite your current preferences for those
+                                    groups.
+                                </span>
+                            </div>
+
+                            <p class="text-xs text-muted-foreground">
+                                Storage paths and backup history are never
+                                overwritten.
+                            </p>
+                        </div>
+
+                        <p
+                            v-else
+                            class="rounded-md border border-dashed p-3 text-xs text-muted-foreground"
+                        >
+                            This older backup format does not include
+                            application settings.
+                        </p>
                     </div>
 
                     <div class="shrink-0 space-y-2">
@@ -281,6 +420,7 @@ function close(): void {
 
                         <InputError :message="form.errors.path" />
                         <InputError :message="form.errors.vaults" />
+                        <InputError :message="form.errors.setting_groups" />
                     </div>
                 </template>
             </template>

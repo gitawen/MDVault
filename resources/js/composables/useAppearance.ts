@@ -77,6 +77,16 @@ export function initializeTheme(): void {
 
 const appearance = ref<Appearance>(readServerAppearance());
 
+export function syncAppearance(value: Appearance): void {
+    appearance.value = value;
+
+    if (typeof document !== 'undefined') {
+        document.documentElement.dataset.appearance = value;
+    }
+
+    updateTheme(value);
+}
+
 export function useAppearance(): UseAppearanceReturn {
     onMounted(() => {
         appearance.value = readServerAppearance();

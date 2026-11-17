@@ -147,8 +147,10 @@ function restoreBackup(record: BackupRecord): void {
                             >Create Full Backup</CardTitle
                         >
                         <CardDescription>
-                            Bundle every note, directory structure, and
-                            attachment across all vaults into a single archive.
+                            Bundle every note, directory structure, attachment,
+                            and portable application preferences (Editor,
+                            Security, Appearance, General) across all vaults
+                            into a single archive.
                         </CardDescription>
                     </div>
                 </div>
@@ -171,10 +173,12 @@ function restoreBackup(record: BackupRecord): void {
                         }}
                     </p>
                     <p class="text-[11px] text-muted-foreground/80">
-                        Backups preserve all notes and media, excluding hidden
-                        version control directories (such as
-                        <code class="font-mono">.git</code>) and application
-                        runtime logs.
+                        Backups preserve all notes, media, and portable
+                        preferences (Editor, Security, Appearance, and General).
+                        Storage paths, backup history, hidden version control
+                        directories (such as
+                        <code class="font-mono">.git</code>), and application
+                        runtime logs are excluded.
                     </p>
                 </div>
 
@@ -216,8 +220,8 @@ function restoreBackup(record: BackupRecord): void {
                             >Restore from Archive</CardTitle
                         >
                         <CardDescription>
-                            Inspect and import notes from a previous backup
-                            file.
+                            Inspect and import vaults and application settings
+                            from a previous backup file.
                         </CardDescription>
                     </div>
                 </div>

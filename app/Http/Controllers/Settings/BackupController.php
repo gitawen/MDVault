@@ -58,7 +58,7 @@ class BackupController extends Controller
             return back();
         }
 
-        $message = "Backup saved to {$result->path}. {$result->vaultCount} vault(s), {$result->noteCount} note(s).";
+        $message = "Backup saved to {$result->path}. {$result->vaultCount} vault(s), {$result->noteCount} note(s), and settings.";
         $type = 'success';
 
         if ($result->skippedVaults !== []) {

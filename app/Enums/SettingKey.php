@@ -8,6 +8,13 @@ use Illuminate\Support\Str;
 
 enum SettingKey: string
 {
+    /**
+     * Valid auto-lock intervals, in minutes (0 = never).
+     *
+     * @var list<int>
+     */
+    public const SECURITY_AUTO_LOCK_CHOICES = [0, 5, 15, 30, 60];
+
     case StorageRootPath = 'storage.root_path';
     case StorageFolderName = 'storage.folder_name';
     case AppearanceTheme = 'appearance.theme';
@@ -66,6 +73,61 @@ enum SettingKey: string
             self::SecurityAutoLockMinutes => 15,
             self::SecurityLockOnScreenLock => true,
         };
+    }
+
+    public function isPortable(): bool
+    {
+        return match ($this) {
+            self::StorageRootPath, self::StorageFolderName, self::CurrentVault => false,
+            self::AppearanceTheme,
+            self::EditorFontSize,
+            self::EditorFontFamily,
+            self::EditorLineHeight,
+            self::EditorWordWrap,
+            self::EditorShowLineNumbers,
+            self::EditorIndentSize,
+            self::EditorNewNoteTemplateEnabled,
+            self::EditorNewNoteTemplate,
+            self::EditorDefaultView,
+            self::CheckExternalChanges,
+            self::SecurityAutoLockMinutes,
+            self::SecurityLockOnScreenLock => true,
+        };
+    }
+
+    /**
+     * @return list<self>
+     */
+    public static function portableCases(): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            static fn (self $key): bool => $key->isPortable(),
+        ));
+    }
+
+    /**
+     * @return list<SettingGroup>
+     */
+    public static function portableGroups(): array
+    {
+        return [
+            SettingGroup::Appearance,
+            SettingGroup::Editor,
+            SettingGroup::General,
+            SettingGroup::Security,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function portableGroupValues(): array
+    {
+        return array_map(
+            static fn (SettingGroup $group): string => $group->value,
+            self::portableGroups(),
+        );
     }
 
     /**

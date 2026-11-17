@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\SettingKey;
+use App\Enums\Theme;
 use App\Services\SettingsService;
 use App\Services\VaultService;
 use Illuminate\Http\Request;
@@ -49,6 +50,7 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'sidebarWidth' => (string) ($request->cookie('sidebar_width') ?: '16rem'),
             'vaults' => fn () => $this->vaults->summaries(),
+            'appearance' => fn () => (Theme::tryFrom((string) $this->settings->string(SettingKey::AppearanceTheme)) ?? Theme::System)->value,
             'security' => fn () => [
                 'auto_lock_minutes' => $this->settings->integer(SettingKey::SecurityAutoLockMinutes),
                 'lock_on_screen_lock' => $this->settings->boolean(SettingKey::SecurityLockOnScreenLock),

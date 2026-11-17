@@ -28,6 +28,20 @@ export type BackupInspectionVault = {
     default_action: RestoreAction;
 };
 
+export type BackupSettingsGroupSummary = {
+    group: string;
+    label: string;
+    count: number;
+    differing: number;
+};
+
+export type BackupInspectionSettings = {
+    groups: BackupSettingsGroupSummary[];
+    total_count: number;
+    differing_count: number;
+    default_restore: boolean;
+};
+
 export type BackupInspection = {
     valid: boolean;
     problems: string[];
@@ -41,6 +55,7 @@ export type BackupInspection = {
         file_count: number;
         total_bytes: number;
         archive_size: number;
+        settings: BackupInspectionSettings | null;
     } | null;
     vaults: BackupInspectionVault[];
 };

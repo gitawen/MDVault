@@ -53,7 +53,11 @@ class BackupRestoreController extends Controller
     public function store(RestoreBackupRequest $request, BackupService $backups): RedirectResponse
     {
         try {
-            $result = $backups->restore($request->validated('path'), $request->actions());
+            $result = $backups->restore(
+                $request->validated('path'),
+                $request->actions(),
+                $request->settingGroups(),
+            );
         } catch (BackupException $e) {
             throw ValidationException::withMessages([$e->field() => $e->getMessage()]);
         }
@@ -62,6 +66,10 @@ class BackupRestoreController extends Controller
             'type' => $result->warnings !== [] ? 'warning' : 'success',
             'message' => $result->summary(),
         ]);
+
+        if ($result->restored === [] && $result->settingsRestored) {
+            return to_route('settings.backup.edit');
+        }
 
         return to_route('vaults.index');
     }
