@@ -177,6 +177,9 @@ markdownParser.use({
             const classAttr = langClass
                 ? ` class="language-${escapeAttribute(langClass)}"`
                 : '';
+            const langLabel = langClass
+                ? `<span class="code-block-lang">${escapeHtml(langClass)}</span>`
+                : '';
             const codeContent = (text || '').replace(/\r?\n$/, '') + '\n';
             const highlighted = escaped
                 ? null
@@ -184,7 +187,7 @@ markdownParser.use({
             const escapedCode =
                 highlighted ??
                 (escaped ? codeContent : escapeHtml(codeContent));
-            return `<div class="code-block-wrapper relative group my-4"><button type="button" class="code-copy-btn" aria-label="Copy code" title="Copy code" data-code-copy>${COPY_ICON_SVG}</button><pre><code${classAttr}>${escapedCode}</code></pre></div>\n`;
+            return `<div class="code-block-wrapper group my-4"><div class="code-block-header"><div class="code-block-meta"><span class="code-block-dots" aria-hidden="true"><span class="code-block-dot bg-[#ff5f56]"></span><span class="code-block-dot bg-[#ffbd2e]"></span><span class="code-block-dot bg-[#27c93f]"></span></span>${langLabel}</div><button type="button" class="code-copy-btn" aria-label="Copy code" title="Copy code" data-code-copy>${COPY_ICON_SVG}</button></div><pre><code${classAttr}>${escapedCode}</code></pre></div>\n`;
         },
         codespan({ text }: Tokens.Codespan) {
             return `<code class="inline-code-wrapper group"><span class="inline-code-text">${escapeHtml(text)}</span><button type="button" class="inline-code-copy-btn" aria-label="Copy code" title="Copy code" data-inline-code-copy>${COPY_ICON_SVG}</button></code>`;

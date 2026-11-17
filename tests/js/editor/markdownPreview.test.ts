@@ -168,12 +168,20 @@ describe('renderMarkdownPreview', () => {
         expect(html).not.toContain('type="checkbox"');
     });
 
-    it('wraps code blocks in .code-block-wrapper with a copy button (FR-01)', () => {
+    it('wraps code blocks in .code-block-wrapper with a macOS-style header, language label, and copy button (FR-01)', () => {
         const markdown = '```typescript\nconst message: string = "hello";\n```';
         const html = renderMarkdownPreview(markdown);
 
+        expect(html).toContain('<div class="code-block-wrapper group my-4">');
+        expect(html).toContain('<div class="code-block-header">');
         expect(html).toContain(
-            '<div class="code-block-wrapper relative group my-4">',
+            '<span class="code-block-dots" aria-hidden="true">',
+        );
+        expect(html).toContain('bg-[#ff5f56]');
+        expect(html).toContain('bg-[#ffbd2e]');
+        expect(html).toContain('bg-[#27c93f]');
+        expect(html).toContain(
+            '<span class="code-block-lang">typescript</span>',
         );
         expect(html).toContain(
             '<button type="button" class="code-copy-btn" aria-label="Copy code" title="Copy code" data-code-copy>',
@@ -184,16 +192,19 @@ describe('renderMarkdownPreview', () => {
         );
     });
 
-    it('renders code blocks without language class when no info string is specified', () => {
+    it('renders code blocks without language class or label when no info string is specified', () => {
         const markdown = '```\nplain text code\n```';
         const html = renderMarkdownPreview(markdown);
 
+        expect(html).toContain('<div class="code-block-wrapper group my-4">');
+        expect(html).toContain('<div class="code-block-header">');
         expect(html).toContain(
-            '<div class="code-block-wrapper relative group my-4">',
+            '<span class="code-block-dots" aria-hidden="true">',
         );
         expect(html).toContain('data-code-copy');
         expect(html).toContain('<pre><code>plain text code\n</code></pre>');
         expect(html).not.toContain('class="language-');
+        expect(html).not.toContain('code-block-lang');
     });
 
     it('escapes special characters in code content and language tag', () => {
@@ -201,6 +212,10 @@ describe('renderMarkdownPreview', () => {
         const html = renderMarkdownPreview(markdown);
 
         expect(html).toContain('class="language-js&quot;&lt;script&gt;"');
+        expect(html).toContain(
+            '<span class="code-block-lang">js&quot;&lt;script&gt;</span>',
+        );
+        expect(html).not.toContain('<script>');
         expect(html).toContain(
             '&lt;div&gt;Foo &amp; &quot;Bar&quot; &lt; 1&lt;/div&gt;',
         );
