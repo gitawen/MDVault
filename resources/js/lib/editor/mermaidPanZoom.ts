@@ -10,6 +10,7 @@ export interface MermaidViewport {
 export const MERMAID_ZOOM_MIN = 0.25;
 export const MERMAID_ZOOM_MAX = 4.0;
 export const MERMAID_ZOOM_STEP = 0.2;
+export const MERMAID_PAN_STEP = 40;
 
 export const DEFAULT_MERMAID_VIEWPORT: Readonly<MermaidViewport> =
     Object.freeze({
@@ -46,6 +47,36 @@ export function stepMermaidZoom(
 ): number {
     const base = Number.isFinite(currentZoom) ? currentZoom : 1;
     return clampMermaidZoom(base + delta, min, max);
+}
+
+/**
+ * Calculates a new viewport by shifting pan offsets (x, y) by (dx, dy)
+ * while preserving the current zoom scale. Safe to execute in Node.js or browser.
+ */
+export function stepMermaidPan(
+    viewport: MermaidViewport,
+    dx: number,
+    dy: number,
+): MermaidViewport {
+    const baseX = Number.isFinite(viewport.x) ? viewport.x : 0;
+    const baseY = Number.isFinite(viewport.y) ? viewport.y : 0;
+    const stepX = Number.isFinite(dx) ? dx : 0;
+    const stepY = Number.isFinite(dy) ? dy : 0;
+
+    return {
+        zoom: Number.isFinite(viewport.zoom) ? viewport.zoom : 1,
+        x: baseX + stepX,
+        y: baseY + stepY,
+    };
+}
+
+/**
+ * Formats a zoom scale factor as an integer percentage string (e.g. `1` -> `'100%'`),
+ * clamped to [MERMAID_ZOOM_MIN, MERMAID_ZOOM_MAX]. Safe to execute in Node.js or browser.
+ */
+export function formatMermaidZoomPercent(zoom: number): string {
+    const clamped = clampMermaidZoom(zoom);
+    return `${Math.round(clamped * 100)}%`;
 }
 
 /**
@@ -127,24 +158,29 @@ export function applyMermaidTransform(
     target: HTMLElement | SVGElement,
     viewport: MermaidViewport,
 ): void {
-    if (typeof window === 'undefined' || !target) {
+    if (!target) {
         return;
     }
 
     const svg = resolveMermaidSvg(target);
-    if (svg) {
+    if (svg?.style) {
         svg.style.transformOrigin = 'center center';
         svg.style.transform = formatMermaidTransform(viewport);
     }
 
-    if (typeof HTMLElement !== 'undefined' && target instanceof HTMLElement) {
-        const block = resolveMermaidBlock(target) ?? target;
+    const isSvgTarget =
+        (typeof SVGElement !== 'undefined' && target instanceof SVGElement) ||
+        target.tagName?.toLowerCase() === 'svg';
+
+    if (!isSvgTarget) {
+        const htmlTarget = target as HTMLElement;
+        const block = resolveMermaidBlock(htmlTarget) ?? htmlTarget;
         blockViewports.set(block, { ...viewport });
 
         const container = block.classList?.contains('mermaid-container')
             ? block
             : block.querySelector?.<HTMLElement>('.mermaid-container');
-        if (container) {
+        if (container?.style) {
             container.style.overflow = 'hidden';
         }
     }
@@ -221,6 +257,17 @@ export function zoomMermaidBlock(
         ...current,
         zoom: stepMermaidZoom(current.zoom, delta),
     };
+    applyMermaidTransform(target, updated);
+    return updated;
+}
+
+export function panMermaidBlock(
+    target: HTMLElement,
+    dx: number,
+    dy: number,
+): MermaidViewport {
+    const current = getMermaidViewport(target);
+    const updated = stepMermaidPan(current, dx, dy);
     applyMermaidTransform(target, updated);
     return updated;
 }

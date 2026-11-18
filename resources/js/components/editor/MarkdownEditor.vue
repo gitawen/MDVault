@@ -15,6 +15,7 @@ import {
 } from 'vue';
 import { toast } from 'vue-sonner';
 import EditorToolbar from '@/components/editor/EditorToolbar.vue';
+import MermaidFullscreenDialog from '@/components/editor/MermaidFullscreenDialog.vue';
 import { useNoteNavigation } from '@/composables/useNoteNavigation';
 import {
     buildCodeMirrorExtensions,
@@ -42,9 +43,14 @@ import {
     stripFrontmatter,
     toggleTaskItem,
 } from '@/lib/editor/markdownPreview';
-import { renderMermaidInContainer } from '@/lib/editor/mermaidRenderer';
 import {
+    getCleanMermaidSvg,
+    renderMermaidInContainer,
+} from '@/lib/editor/mermaidRenderer';
+import {
+    MERMAID_PAN_STEP,
     MERMAID_ZOOM_STEP,
+    panMermaidBlock,
     resetMermaidViewport,
     toggleMermaidPan,
     zoomMermaidBlock,
@@ -99,6 +105,9 @@ function checkIsDark(): boolean {
 }
 
 const isDark = ref(checkIsDark());
+const fullscreenOpen = ref(false);
+const fullscreenSource = ref('');
+const fullscreenSvg = ref('');
 let themeObserver: MutationObserver | null = null;
 let isMounted = true;
 
@@ -308,6 +317,9 @@ watch(
 
 // When switching to or from split/preview, trigger CodeMirror re-measure
 watch(displayMode, (mode) => {
+    if (mode === 'code') {
+        fullscreenOpen.value = false;
+    }
     if (mode !== 'preview' && view.value) {
         void nextTick(() => {
             view.value?.requestMeasure();
@@ -491,6 +503,72 @@ function handlePreviewClick(event: MouseEvent): void {
         return;
     }
 
+    const fullscreenBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-fullscreen]',
+    );
+    if (fullscreenBtn) {
+        event.preventDefault();
+        const block = fullscreenBtn.closest<HTMLElement>('.mermaid-block');
+        const svgEl = block?.querySelector('.mermaid-container svg');
+        if (block && svgEl) {
+            fullscreenSource.value =
+                block.getAttribute('data-mermaid-source') ??
+                block.querySelector('.mermaid-raw code')?.textContent ??
+                '';
+            fullscreenSvg.value = getCleanMermaidSvg(block, isDark.value);
+            fullscreenOpen.value = true;
+        }
+        return;
+    }
+
+    const panUpBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-pan-up]',
+    );
+    if (panUpBtn) {
+        event.preventDefault();
+        const block = panUpBtn.closest<HTMLElement>('.mermaid-block');
+        if (block) {
+            panMermaidBlock(block, 0, MERMAID_PAN_STEP);
+        }
+        return;
+    }
+
+    const panDownBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-pan-down]',
+    );
+    if (panDownBtn) {
+        event.preventDefault();
+        const block = panDownBtn.closest<HTMLElement>('.mermaid-block');
+        if (block) {
+            panMermaidBlock(block, 0, -MERMAID_PAN_STEP);
+        }
+        return;
+    }
+
+    const panLeftBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-pan-left]',
+    );
+    if (panLeftBtn) {
+        event.preventDefault();
+        const block = panLeftBtn.closest<HTMLElement>('.mermaid-block');
+        if (block) {
+            panMermaidBlock(block, MERMAID_PAN_STEP, 0);
+        }
+        return;
+    }
+
+    const panRightBtn = target.closest<HTMLButtonElement>(
+        'button[data-mermaid-pan-right]',
+    );
+    if (panRightBtn) {
+        event.preventDefault();
+        const block = panRightBtn.closest<HTMLElement>('.mermaid-block');
+        if (block) {
+            panMermaidBlock(block, -MERMAID_PAN_STEP, 0);
+        }
+        return;
+    }
+
     const mermaidCopyBtn = target.closest<HTMLButtonElement>(
         'button[data-mermaid-copy]',
     );
@@ -513,9 +591,12 @@ function handlePreviewClick(event: MouseEvent): void {
     );
     if (mermaidCopySvgBtn) {
         event.preventDefault();
-        const block = mermaidCopySvgBtn.closest('.mermaid-block');
+        const block = mermaidCopySvgBtn.closest<HTMLElement>('.mermaid-block');
         const svgEl = block?.querySelector('.mermaid-container svg');
-        const svgText = svgEl ? svgEl.outerHTML : '';
+        const svgText =
+            block && svgEl
+                ? getCleanMermaidSvg(block, isDark.value) || svgEl.outerHTML
+                : '';
         if (svgText) {
             void triggerCopyFeedback(mermaidCopySvgBtn, svgText, {
                 restoreHtml: MERMAID_SVG_ICON,
@@ -591,12 +672,14 @@ function resetDisplayMode(): void {
 }
 
 watch(noteSelectionTick, () => {
+    fullscreenOpen.value = false;
     resetDisplayMode();
 });
 
 watch(
     () => noteUuid,
     () => {
+        fullscreenOpen.value = false;
         resetDisplayMode();
     },
 );
@@ -671,6 +754,13 @@ defineExpose({ getText, resetDisplayMode });
                 />
             </div>
         </div>
+
+        <MermaidFullscreenDialog
+            v-model:open="fullscreenOpen"
+            :source="fullscreenSource"
+            :initial-svg="fullscreenSvg"
+            :is-dark="isDark"
+        />
     </div>
 </template>
 
@@ -774,6 +864,40 @@ defineExpose({ getText, resetDisplayMode });
 .mermaid-action-btn:hover {
     background-color: var(--accent);
     color: var(--foreground);
+}
+
+.mermaid-action-btn:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+}
+
+.markdown-preview-content .mermaid-action-btn.mermaid-nav-btn,
+.mermaid-action-btn.mermaid-nav-btn {
+    height: 1.5rem;
+    width: 1.5rem;
+}
+
+.mermaid-block[data-mermaid-rendered='true'] {
+    min-height: 9.75rem;
+}
+
+.mermaid-block[data-mermaid-rendered='true'] .mermaid-container {
+    min-height: 7.5rem;
+}
+
+.mermaid-block:not([data-mermaid-rendered='true']) .mermaid-nav {
+    display: none;
+}
+
+.mermaid-block[data-pan-active='true'] .mermaid-toolbar {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .mermaid-toolbar,
+    .mermaid-nav {
+        opacity: 1;
+    }
 }
 
 .mermaid-action-btn.copied {

@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
     DEFAULT_MERMAID_VIEWPORT,
+    MERMAID_PAN_STEP,
     MERMAID_ZOOM_MAX,
     MERMAID_ZOOM_MIN,
     MERMAID_ZOOM_STEP,
     clampMermaidZoom,
     formatMermaidTransform,
+    formatMermaidZoomPercent,
+    panMermaidBlock,
     resolveMermaidSvg,
     setMermaidPanActive,
+    stepMermaidPan,
     stepMermaidZoom,
+    zoomMermaidBlock,
     type MermaidViewport,
 } from '../../../resources/js/lib/editor/mermaidPanZoom';
 
@@ -277,6 +282,97 @@ describe('Mermaid Pan & Zoom Engine', () => {
             setMermaidPanActive(blockEl, false);
             expect(containerEl.style.touchAction).toBe('');
             expect(containerEl.dataset.panActive).toBeUndefined();
+        });
+    });
+
+    describe('MERMAID_PAN_STEP & stepMermaidPan', () => {
+        it('exports MERMAID_PAN_STEP as 40', () => {
+            expect(MERMAID_PAN_STEP).toBe(40);
+        });
+
+        it('applies positive and negative dx/dy offsets while preserving zoom', () => {
+            const initial: MermaidViewport = { zoom: 1.4, x: 10, y: -20 };
+            expect(stepMermaidPan(initial, 40, 0)).toEqual({
+                zoom: 1.4,
+                x: 50,
+                y: -20,
+            });
+            expect(stepMermaidPan(initial, -40, 40)).toEqual({
+                zoom: 1.4,
+                x: -30,
+                y: 20,
+            });
+        });
+
+        it('guards non-finite viewport coordinates and step deltas with 0', () => {
+            expect(
+                stepMermaidPan(
+                    { zoom: NaN, x: Number.POSITIVE_INFINITY, y: NaN },
+                    NaN,
+                    Number.NEGATIVE_INFINITY,
+                ),
+            ).toEqual({
+                zoom: 1,
+                x: 0,
+                y: 0,
+            });
+        });
+    });
+
+    describe('formatMermaidZoomPercent', () => {
+        it('formats zoom scale as integer percentage and clamps to [25%, 400%]', () => {
+            expect(formatMermaidZoomPercent(1)).toBe('100%');
+            expect(formatMermaidZoomPercent(1.2)).toBe('120%');
+            expect(formatMermaidZoomPercent(0.8)).toBe('80%');
+            expect(formatMermaidZoomPercent(0.1)).toBe('25%');
+            expect(formatMermaidZoomPercent(10)).toBe('400%');
+            expect(formatMermaidZoomPercent(Number.NaN)).toBe('100%');
+        });
+    });
+
+    describe('panMermaidBlock', () => {
+        it('accumulates directional pan steps on a block and updates SVG transform while preserving zoom', () => {
+            const svgEl = {
+                tagName: 'svg',
+                style: {
+                    transform: '',
+                    transformOrigin: '',
+                },
+            } as unknown as SVGElement;
+
+            const containerEl = {
+                classList: {
+                    contains: (cls: string) => cls === 'mermaid-container',
+                },
+                style: {
+                    overflow: '',
+                },
+                querySelector: (selector: string) =>
+                    selector === 'svg' ? svgEl : null,
+            };
+
+            const blockEl = {
+                classList: {
+                    contains: (cls: string) => cls === 'mermaid-block',
+                },
+                querySelector: (selector: string) =>
+                    selector === '.mermaid-container' ? containerEl : null,
+                closest: () => null,
+            } as unknown as HTMLElement;
+
+            zoomMermaidBlock(blockEl, MERMAID_ZOOM_STEP);
+
+            const vp1 = panMermaidBlock(blockEl, 0, MERMAID_PAN_STEP);
+            expect(vp1).toEqual({ zoom: 1.2, x: 0, y: 40 });
+            expect(svgEl.style.transform).toBe(
+                'translate(0px, 40px) scale(1.2)',
+            );
+
+            const vp2 = panMermaidBlock(blockEl, -MERMAID_PAN_STEP, 0);
+            expect(vp2).toEqual({ zoom: 1.2, x: -40, y: 40 });
+            expect(svgEl.style.transform).toBe(
+                'translate(-40px, 40px) scale(1.2)',
+            );
         });
     });
 });

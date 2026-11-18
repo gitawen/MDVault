@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
     clearSvgCache,
+    getCleanMermaidSvg,
     getMermaidConfig,
     getMermaidTheme,
     getSvgCacheKey,
@@ -84,5 +85,79 @@ describe('Mermaid Renderer Configuration & Cache', () => {
 
         clearSvgCache();
         expect(svgCache.size).toBe(0);
+    });
+
+    it('getCleanMermaidSvg returns cached pristine SVG when available without inline transforms', () => {
+        clearSvgCache();
+        const source = 'graph TD\nA-->B';
+        const pristineSvg = '<svg id="pristine"><g></g></svg>';
+        svgCache.set(getSvgCacheKey(source, false), pristineSvg);
+
+        const blockEl = {
+            dataset: { mermaidSource: source },
+            classList: { contains: (cls: string) => cls === 'mermaid-block' },
+            querySelector: () => null,
+            closest: () => null,
+        } as unknown as HTMLElement;
+
+        expect(getCleanMermaidSvg(blockEl, false)).toBe(pristineSvg);
+        clearSvgCache();
+    });
+
+    it('getCleanMermaidSvg falls back to cloned DOM SVG with inline transform styles cleared', () => {
+        clearSvgCache();
+
+        const clonedSvg = {
+            style: {
+                transform: 'translate(80px, -40px) scale(1.6)',
+                transformOrigin: 'center center',
+                transition: 'transform 0.15s ease-out',
+            },
+            outerHTML: '<svg id="cloned"></svg>',
+        };
+
+        const domSvg = {
+            tagName: 'svg',
+            style: {
+                transform: 'translate(80px, -40px) scale(1.6)',
+                transformOrigin: 'center center',
+                transition: 'transform 0.15s ease-out',
+            },
+            cloneNode: (deep?: boolean) => (deep ? clonedSvg : null),
+        } as unknown as SVGElement;
+
+        const containerEl = {
+            classList: {
+                contains: (cls: string) => cls === 'mermaid-container',
+            },
+            querySelector: (selector: string) =>
+                selector === 'svg' ? domSvg : null,
+        };
+
+        const blockEl = {
+            dataset: { mermaidSource: 'graph TD\nUncached-->Node' },
+            classList: { contains: (cls: string) => cls === 'mermaid-block' },
+            querySelector: (selector: string) =>
+                selector === '.mermaid-container' ? containerEl : null,
+            closest: () => null,
+        } as unknown as HTMLElement;
+
+        const result = getCleanMermaidSvg(blockEl, true);
+        expect(result).toBe('<svg id="cloned"></svg>');
+        expect(clonedSvg.style.transform).toBe('');
+        expect(clonedSvg.style.transformOrigin).toBe('');
+        expect(clonedSvg.style.transition).toBe('');
+    });
+
+    it('getCleanMermaidSvg returns empty string when neither cache nor DOM SVG exists', () => {
+        clearSvgCache();
+        const blockEl = {
+            dataset: { mermaidSource: 'graph TD\nMissing-->Node' },
+            classList: { contains: (cls: string) => cls === 'mermaid-block' },
+            querySelector: () => null,
+            closest: () => null,
+        } as unknown as HTMLElement;
+
+        expect(getCleanMermaidSvg(blockEl, false)).toBe('');
     });
 });

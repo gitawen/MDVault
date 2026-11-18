@@ -1,5 +1,5 @@
 import { escapeHtml } from './markdownPreview';
-import { setupMermaidPanZoom } from './mermaidPanZoom';
+import { resolveMermaidSvg, setupMermaidPanZoom } from './mermaidPanZoom';
 
 export type MermaidTheme = 'dark' | 'default';
 
@@ -110,6 +110,7 @@ export async function renderMermaidInContainer(
             element.dataset.renderedTheme === targetTheme &&
             element.querySelector('.mermaid-container svg')
         ) {
+            element.dataset.mermaidRendered = 'true';
             continue;
         }
 
@@ -119,6 +120,7 @@ export async function renderMermaidInContainer(
             '';
 
         if (!source.trim()) {
+            delete element.dataset.mermaidRendered;
             const loadingEl = element.querySelector('.mermaid-loading');
             if (loadingEl) {
                 loadingEl.remove();
@@ -146,7 +148,9 @@ export async function renderMermaidInContainer(
             }
 
             element.dataset.renderedTheme = targetTheme;
+            element.dataset.mermaidRendered = 'true';
         } catch (err: any) {
+            delete element.dataset.mermaidRendered;
             const errorMessage =
                 err instanceof Error ? err.message : String(err);
             const mermaidContainer =
@@ -188,6 +192,45 @@ export async function renderMermaidInContainer(
             element.dataset.renderedTheme = targetTheme;
         }
     }
+}
+
+export function getCleanMermaidSvg(
+    block: HTMLElement,
+    isDark: boolean,
+): string {
+    if (!block) {
+        return '';
+    }
+
+    const source =
+        block.dataset?.mermaidSource ??
+        block.querySelector?.('.mermaid-raw code')?.textContent ??
+        '';
+
+    if (source.trim()) {
+        const cached = svgCache.get(getSvgCacheKey(source, isDark));
+        if (cached !== undefined) {
+            return cached;
+        }
+    }
+
+    const svg = resolveMermaidSvg(block);
+    if (!svg) {
+        return '';
+    }
+
+    const clone = svg.cloneNode?.(true) as SVGElement | undefined;
+    if (!clone) {
+        return '';
+    }
+
+    if (clone.style) {
+        clone.style.transform = '';
+        clone.style.transformOrigin = '';
+        clone.style.transition = '';
+    }
+
+    return clone.outerHTML ?? '';
 }
 
 export async function copyMermaidSvg(svg: string): Promise<boolean> {

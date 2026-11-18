@@ -245,28 +245,108 @@ describe('renderMarkdownPreview', () => {
         expect(html).toContain('&amp;');
     });
 
-    it('includes pan, zoom-out, zoom-in, reset, copy, copy-svg, and edit action buttons on the mermaid wrapper (FR-03)', () => {
+    it('splits mermaid controls into a non-redundant .mermaid-toolbar and 3x3 .mermaid-nav D-pad (FR-01, FR-02)', () => {
         const markdown = '```mermaid\ngraph TD\nStart --> Stop\n```';
         const html = renderMarkdownPreview(markdown);
 
-        expect(html).toContain('data-mermaid-pan');
-        expect(html).toContain('aria-label="Toggle pan"');
-        expect(html).toContain('title="Toggle pan"');
-        expect(html).toContain('data-mermaid-zoom-out');
-        expect(html).toContain('aria-label="Zoom out"');
-        expect(html).toContain('title="Zoom out"');
-        expect(html).toContain('data-mermaid-zoom-in');
-        expect(html).toContain('aria-label="Zoom in"');
-        expect(html).toContain('title="Zoom in"');
-        expect(html).toContain('data-mermaid-reset');
-        expect(html).toContain('aria-label="Reset view"');
-        expect(html).toContain('title="Reset view"');
-        expect(html).toContain('data-mermaid-copy');
-        expect(html).toContain('aria-label="Copy diagram source"');
-        expect(html).toContain('data-mermaid-copy-svg');
-        expect(html).toContain('aria-label="Copy SVG"');
-        expect(html).toContain('data-mermaid-edit');
-        expect(html).toContain('aria-label="Edit diagram"');
+        const toolbarStart = html.indexOf('<div class="mermaid-toolbar');
+        const containerStart = html.indexOf('<div class="mermaid-container');
+        const navStart = html.indexOf('<div class="mermaid-nav');
+        const rawStart = html.indexOf('<pre class="mermaid-raw');
+
+        expect(toolbarStart).toBeGreaterThan(-1);
+        expect(containerStart).toBeGreaterThan(toolbarStart);
+        expect(navStart).toBeGreaterThan(containerStart);
+        expect(rawStart).toBeGreaterThan(navStart);
+
+        const toolbarHtml = html.slice(toolbarStart, containerStart);
+        const navHtml = html.slice(navStart, rawStart);
+
+        // .mermaid-toolbar has ONLY the 4 utility buttons
+        expect(toolbarHtml).toContain('data-mermaid-pan');
+        expect(toolbarHtml).toContain('aria-label="Toggle pan"');
+        expect(toolbarHtml).toContain('title="Toggle pan"');
+        expect(toolbarHtml).toContain('aria-pressed="false"');
+        expect(toolbarHtml).toContain('data-mermaid-copy');
+        expect(toolbarHtml).toContain('aria-label="Copy diagram source"');
+        expect(toolbarHtml).toContain('data-mermaid-copy-svg');
+        expect(toolbarHtml).toContain('aria-label="Copy SVG"');
+        expect(toolbarHtml).toContain('data-mermaid-edit');
+        expect(toolbarHtml).toContain('aria-label="Edit diagram"');
+
+        for (const forbidden of [
+            'data-mermaid-zoom-out',
+            'data-mermaid-zoom-in',
+            'data-mermaid-reset',
+            'data-mermaid-fullscreen',
+            'data-mermaid-pan-up',
+            'data-mermaid-pan-down',
+            'data-mermaid-pan-left',
+            'data-mermaid-pan-right',
+        ]) {
+            expect(toolbarHtml).not.toContain(forbidden);
+        }
+
+        // .mermaid-nav is a 3x3 grid with 8 buttons + 1 spacer in exact row-major order
+        expect(navHtml).toContain('grid-cols-3');
+
+        const expectedGridChildren = [
+            'data-mermaid-fullscreen',
+            'data-mermaid-pan-up',
+            'data-mermaid-zoom-in',
+            'data-mermaid-pan-left',
+            'data-mermaid-reset',
+            'data-mermaid-pan-right',
+            'class="mermaid-nav-spacer"',
+            'data-mermaid-pan-down',
+            'data-mermaid-zoom-out',
+        ];
+
+        let lastPos = -1;
+        for (const token of expectedGridChildren) {
+            const pos = navHtml.indexOf(token);
+            expect(pos).toBeGreaterThan(lastPos);
+            lastPos = pos;
+        }
+
+        // Verify accessible labels and titles on all D-pad buttons
+        expect(navHtml).toContain('aria-label="Open fullscreen"');
+        expect(navHtml).toContain('title="Open fullscreen"');
+        expect(navHtml).toContain('aria-label="Pan up"');
+        expect(navHtml).toContain('title="Pan up"');
+        expect(navHtml).toContain('aria-label="Zoom in"');
+        expect(navHtml).toContain('title="Zoom in"');
+        expect(navHtml).toContain('aria-label="Pan left"');
+        expect(navHtml).toContain('title="Pan left"');
+        expect(navHtml).toContain('aria-label="Reset view"');
+        expect(navHtml).toContain('title="Reset view"');
+        expect(navHtml).toContain('aria-label="Pan right"');
+        expect(navHtml).toContain('title="Pan right"');
+        expect(navHtml).toContain('aria-label="Pan down"');
+        expect(navHtml).toContain('title="Pan down"');
+        expect(navHtml).toContain('aria-label="Zoom out"');
+        expect(navHtml).toContain('title="Zoom out"');
+
+        // Verify zero redundancy: every data-mermaid-* button attribute appears exactly once
+        const allActionAttrs = [
+            'data-mermaid-pan',
+            'data-mermaid-copy',
+            'data-mermaid-copy-svg',
+            'data-mermaid-edit',
+            'data-mermaid-fullscreen',
+            'data-mermaid-pan-up',
+            'data-mermaid-zoom-in',
+            'data-mermaid-pan-left',
+            'data-mermaid-reset',
+            'data-mermaid-pan-right',
+            'data-mermaid-pan-down',
+            'data-mermaid-zoom-out',
+        ];
+
+        for (const attr of allActionAttrs) {
+            const matches = html.match(new RegExp(`${attr}(?=[ >])`, 'g'));
+            expect(matches?.length).toBe(1);
+        }
     });
 
     it('handles empty mermaid block gracefully', () => {
