@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>MDVault</title>
+        <style>
+            :root {
+                --card-bg: rgba(255, 255, 255, 0.96);
+                --card-border: rgba(17, 24, 39, 0.08);
+                --text-primary: #111827;
+                --text-muted: #6b7280;
+                --track-bg: rgba(17, 24, 39, 0.08);
+                --bar-bg: #111827;
+                --logo-color: #111827;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --card-bg: rgba(23, 23, 23, 0.96);
+                    --card-border: rgba(255, 255, 255, 0.1);
+                    --text-primary: #f5f5f5;
+                    --text-muted: #a3a3a3;
+                    --track-bg: rgba(255, 255, 255, 0.1);
+                    --bar-bg: #f5f5f5;
+                    --logo-color: #f5f5f5;
+                }
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                background: transparent;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                    sans-serif;
+                user-select: none;
+                -webkit-app-region: drag;
+                overflow: hidden;
+            }
+
+            .container {
+                width: 100%;
+                height: 100%;
+                padding: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .card {
+                width: 100%;
+                height: 100%;
+                background: var(--card-bg);
+                border: 1px solid var(--card-border);
+                border-radius: 16px;
+                box-shadow:
+                    0 12px 30px rgba(0, 0, 0, 0.18),
+                    0 2px 8px rgba(0, 0, 0, 0.08);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 14px;
+                padding: 24px;
+            }
+
+            .logo {
+                width: 56px;
+                height: 56px;
+                color: var(--logo-color);
+            }
+
+            .title {
+                font-size: 18px;
+                font-weight: 600;
+                letter-spacing: -0.01em;
+                color: var(--text-primary);
+            }
+
+            .subtitle {
+                font-size: 12px;
+                color: var(--text-muted);
+                margin-top: -8px;
+            }
+
+            .progress-track {
+                width: 180px;
+                height: 3px;
+                border-radius: 999px;
+                background: var(--track-bg);
+                overflow: hidden;
+                margin-top: 4px;
+            }
+
+            .progress-bar {
+                width: 45%;
+                height: 100%;
+                border-radius: 999px;
+                background: var(--bar-bg);
+                animation: indeterminate 1.4s ease-in-out infinite;
+            }
+
+            @keyframes indeterminate {
+                0% {
+                    transform: translateX(-110%);
+                }
+                100% {
+                    transform: translateX(250%);
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="card">
+                <svg
+                    class="logo"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 512 512"
+                    aria-hidden="true"
+                >
+                    <g transform="translate(256 272) scale(2.3) translate(-256 -276)">
+                        <defs>
+                            <mask
+                                id="mdv-splash-mask"
+                                maskUnits="userSpaceOnUse"
+                                x="0"
+                                y="0"
+                                width="512"
+                                height="512"
+                            >
+                                <path
+                                    d="M206 254V214a50 50 0 0 1 100 0v40"
+                                    fill="none"
+                                    stroke="#fff"
+                                    stroke-width="26"
+                                    stroke-linecap="butt"
+                                />
+                                <rect
+                                    x="166"
+                                    y="240"
+                                    width="180"
+                                    height="142"
+                                    rx="26"
+                                    fill="#fff"
+                                />
+                                <path
+                                    d="M209 326V258l47 41 47-41v68"
+                                    transform="translate(0 22)"
+                                    fill="none"
+                                    stroke="#000"
+                                    stroke-width="23"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                            </mask>
+                        </defs>
+                        <rect
+                            width="512"
+                            height="512"
+                            fill="currentColor"
+                            mask="url(#mdv-splash-mask)"
+                        />
+                    </g>
+                </svg>
+                <div class="title">MDVault</div>
+                <div class="subtitle">Starting local vault…</div>
+                <div class="progress-track">
+                    <div class="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
