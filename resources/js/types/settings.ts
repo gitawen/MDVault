@@ -27,3 +27,55 @@ export type EditorPreferences = {
 export type GeneralSettings = {
     check_external_changes: boolean;
 };
+
+export type McpClientSnippet = {
+    server_name: string;
+    command: string;
+    args: string[];
+    env: Record<string, string>;
+    database_path: string;
+    uses_custom_database: boolean;
+    database_note: string;
+    json: string;
+    codex_toml: string;
+    cli_command: string;
+};
+
+export type McpVaultAccessSummary = {
+    uuid: string;
+    name: string;
+    description: string | null;
+    status: string;
+    is_current: boolean;
+    is_encrypted: boolean;
+    accessible: boolean;
+    tier: 'ai_workspace' | 'personal' | 'excluded';
+    permission: 'full_crud' | 'read_safe_write' | 'none';
+    note_count: number | null;
+    exclusion_reason: string | null;
+};
+
+export type McpSettingsProps = {
+    config: McpClientSnippet;
+    workspace: {
+        ai_vault: {
+            name: string;
+            provisioned: boolean;
+            accessible: boolean;
+            vault_uuid: string | null;
+            note: string;
+        };
+        about_me: {
+            exists: boolean;
+            relative_path: string;
+            char_count: number;
+        };
+        ai_projects: string[];
+        vaults: McpVaultAccessSummary[];
+        primitives: {
+            tools: string[];
+            resources: string[];
+            prompts: string[];
+        };
+    };
+};

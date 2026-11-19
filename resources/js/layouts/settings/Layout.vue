@@ -2,6 +2,7 @@
 import { Link, router } from '@inertiajs/vue3';
 import {
     Archive,
+    Bot,
     HardDrive,
     Palette,
     PenLine,
@@ -21,6 +22,7 @@ import { edit as editAppearance } from '@/routes/settings/appearance';
 import { edit as editBackup } from '@/routes/settings/backup';
 import { edit as editEditor } from '@/routes/settings/editor';
 import { edit as editGeneral } from '@/routes/settings/general';
+import { edit as editMcp } from '@/routes/settings/mcp';
 import { edit as editSecurity } from '@/routes/settings/security';
 import { edit as editStorage } from '@/routes/settings/storage';
 import type { NavItem } from '@/types';
@@ -50,6 +52,11 @@ const sidebarNavItems: NavItem[] = [
         title: 'Security',
         href: editSecurity(),
         icon: ShieldCheck,
+    },
+    {
+        title: 'AI & MCP',
+        href: editMcp(),
+        icon: Bot,
     },
     {
         title: 'Appearance',

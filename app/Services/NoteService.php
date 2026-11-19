@@ -111,6 +111,63 @@ final class NoteService
     }
 
     /**
+     * Creates a note with initial content in a single exclusive ('x') write.
+     * Refuses encrypted vaults, invalid UTF-8, null bytes, or content larger
+     * than EDIT_LIMIT. When $applyTemplate is true and $content does not
+     * already begin with frontmatter ("---\n"), the configured new-note
+     * template is prepended.
+     *
+     * @throws NoteOperationException
+     */
+    public function createWithContent(
+        Vault $vault,
+        ?string $folder,
+        string $name,
+        string $content,
+        bool $applyTemplate = false,
+        ?string $timezone = null,
+    ): Note {
+        if ($vault->is_encrypted) {
+            throw NoteOperationException::notEditable($name);
+        }
+
+        $this->assertVaultAvailable($vault);
+        $stem = $this->assertValidNoteName($name);
+        [$folderRel] = $this->resolveFolder($vault, $folder, 'folder');
+
+        $filename = $stem.'.'.self::EXTENSION;
+        $relative = $this->relativeFor($folderRel, $filename);
+        $absolute = $this->files->joinRelative($vault->path, $relative);
+
+        $this->assertNoConflict($vault, $relative, $absolute, 'name', null, null);
+
+        if (str_contains($content, "\0") || ! mb_check_encoding($content, 'UTF-8')) {
+            throw NoteOperationException::notEditable($relative);
+        }
+
+        $source = $this->markdown->composeSource($content);
+
+        if ($applyTemplate && ! str_starts_with($source, "---\n")) {
+            $template = $this->markdown->renderNewNoteTemplate(
+                (string) $this->settings->string(SettingKey::EditorNewNoteTemplate),
+                $stem,
+                CarbonImmutable::now($timezone ?? config('app.timezone')),
+            );
+            $source = $template.$source;
+        }
+
+        if (strlen($source) > self::EDIT_LIMIT) {
+            throw NoteOperationException::contentTooLarge();
+        }
+
+        if (! $this->files->createFile($absolute, $source)) {
+            throw NoteOperationException::createFailed($relative, 'name');
+        }
+
+        return $this->registerNewFile($vault, $relative, $filename, $stem, $absolute, $source);
+    }
+
+    /**
      * Inserts the registry record for a file this call just created
      * exclusively at $absolute holding exactly $bytes. When $clearStaleRow
      * is true, any existing row at this exact vault-scoped relative_path is
