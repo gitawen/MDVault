@@ -27,15 +27,16 @@ Each file sets `mainAgent: false`, so the specialists can't be selected as the m
 Delegate with the `invoke_subagent` tool, naming the specialist and giving it a self-contained prompt:
 
 ```text
-system-analyst   → "Level 3. Feature folder: .ai/features/active/<feature>/. Request: ..."
-senior-developer → "Implement .ai/features/active/<feature>/plan.md (Revision 1)."
-senior-qa        → "QA round 1 for .ai/features/active/<feature>/. Plan test scope applies."
+system-analyst   → "Level 3. MDVault feature path: AI/mdvault/features/active/<feature>/. Request: ..."
+senior-developer → "Implement AI/mdvault/features/active/<feature>/plan.md (Revision 1) from MDVault (or inline plan below)."
+senior-qa        → "QA round 1 for AI/mdvault/features/active/<feature>/. Plan test scope applies."
 ```
 
 Specialists must not start further subagents, even though Antigravity allows nesting; all routing stays in the main session.
 
 ## Orchestrator Rules
-- Every specialist prompt includes the level, the feature folder path and the specific ask (e.g. which QA issue IDs to fix).
-- `system-analyst` and `senior-qa` return artifacts preceded by `<!-- path: ... -->`. Save each one to that path verbatim before routing onward.
+- **MDVault Memory**: Store feature artifacts (`requirements.md`, `plan.md`, `implementation.md`, `qa-report.md`) and ADRs in MDVault (`AI` vault) via `mdvault` MCP instead of creating local `.ai/features/active/` or `.ai/features/completed/` folders. Call `read_note` for `file_hash` before `update_note`.
+- Every specialist prompt includes the level, the MDVault feature path (plus plan/requirements content if the specialist lacks `mdvault` MCP) and the specific ask (e.g. which QA issue IDs to fix).
+- `system-analyst` and `senior-qa` return artifacts preceded by `<!-- path: ... -->`. Save each one to MDVault (`AI/mdvault/...`) via `create_note` / `update_note` before routing onward.
 - After QA: MINOR/MODERATE → `senior-developer` with issue IDs; MAJOR or any issue at 3 fix attempts → `system-analyst` to replan.
-- On PASS: Level 4 gets an analyst review first; then move the feature folder to `.ai/features/completed/` and ask the user to run `php artisan test --compact`.
+- On PASS: Level 4 gets an analyst review first; then move the feature notes from `AI/mdvault/features/active/<feature>/` to `AI/mdvault/features/completed/<feature>/` in MDVault (`move_note`) and ask the user to run `php artisan test --compact`.

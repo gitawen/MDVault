@@ -126,3 +126,92 @@ test('chooseFile returns null on cancel', function () {
 
     expect($result)->toBeNull();
 });
+
+// --- chooseDirectories -------------------------------------------------------
+
+test('chooseDirectories returns empty list outside the desktop runtime', function () {
+    Http::fake();
+
+    $result = app(NativeDialogService::class)->chooseDirectories('Choose folders');
+
+    expect($result)->toBe([]);
+    Http::assertNothingSent();
+});
+
+test('chooseDirectories sends multiSelections and returns all picked directory paths', function () {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/open' => Http::response(['result' => ['/picked/one', '/picked/two']]),
+    ]);
+
+    $result = app(NativeDialogService::class)->chooseDirectories('Choose folders to add as vaults');
+
+    expect($result)->toBe(['/picked/one', '/picked/two']);
+
+    Http::assertSent(function (Request $request) {
+        return str_ends_with($request->url(), 'dialog/open')
+            && $request['title'] === 'Choose folders to add as vaults'
+            && $request['buttonLabel'] === 'Select folders'
+            && in_array('openDirectory', $request['properties'], true)
+            && in_array('createDirectory', $request['properties'], true)
+            && in_array('multiSelections', $request['properties'], true);
+    });
+});
+
+test('chooseDirectories returns a single-item list when one directory is picked', function () {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/open' => Http::response(['result' => ['/picked/one']]),
+    ]);
+
+    $result = app(NativeDialogService::class)->chooseDirectories('Choose folders');
+
+    expect($result)->toBe(['/picked/one']);
+});
+
+test('chooseDirectories returns empty list on cancellation', function (mixed $dialogResult) {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/open' => Http::response(['result' => $dialogResult]),
+    ]);
+
+    $result = app(NativeDialogService::class)->chooseDirectories('Choose folders');
+
+    expect($result)->toBe([]);
+})->with([
+    'empty array' => [[]],
+    'null result' => [null],
+]);
+
+test('chooseDirectories filters empty strings, non-strings, and duplicates while preserving order', function () {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/open' => Http::response([
+            'result' => ['/picked/first', '', null, 42, '/picked/second', '/picked/first', '/picked/third'],
+        ]),
+    ]);
+
+    $result = app(NativeDialogService::class)->chooseDirectories('Choose folders');
+
+    expect($result)->toBe(['/picked/first', '/picked/second', '/picked/third']);
+});
+
+test('chooseDirectories sends defaultPath only when the directory exists', function () {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake([
+        '*dialog/open' => Http::response(['result' => []]),
+    ]);
+
+    app(NativeDialogService::class)->chooseDirectories('Choose folders', sys_get_temp_dir());
+
+    Http::assertSent(fn (Request $request) => $request['defaultPath'] === sys_get_temp_dir());
+
+    app(NativeDialogService::class)->chooseDirectories('Choose folders', sys_get_temp_dir().'/does-not-exist-'.Str::random(8));
+
+    Http::assertSent(fn (Request $request) => $request['defaultPath'] === null);
+});

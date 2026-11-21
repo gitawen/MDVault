@@ -138,11 +138,28 @@ test('mdvault:mcp-config outputs valid JSON and Codex TOML client configurations
     expect($exitCodex)->toBe(0)
         ->and($codexOut)->toContain('[mcp_servers.mdvault]', 'mcp:start');
 
+    $exitInstructions = Artisan::call('mdvault:mcp-config', ['--client' => 'instructions']);
+    $instructionsOut = Artisan::output();
+
+    expect($exitInstructions)->toBe(0)
+        ->and($instructionsOut)->toContain(
+            'get_kos_context',
+            'AI/<project>/features/active/',
+            'AI/<project>/features/completed/',
+        );
+
     $exitAll = Artisan::call('mdvault:mcp-config', ['--client' => 'all']);
     $allOut = Artisan::output();
 
     expect($exitAll)->toBe(0)
-        ->and($allOut)->toContain('[mcp_servers.mdvault]', '"mcpServers"');
+        ->and($allOut)->toContain(
+            '[mcp_servers.mdvault]',
+            '"mcpServers"',
+            '--- Project & Orchestrator Instructions ---',
+            'get_kos_context',
+            'AI/<project>/features/active/',
+            'AI/<project>/features/completed/',
+        );
 
     $this->artisan('mdvault:mcp-config', ['--client' => 'invalid'])
         ->assertFailed();

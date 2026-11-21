@@ -37,14 +37,39 @@ const batchForm = useForm({
     paths: [] as string[],
 });
 
+type PickedFolder = {
+    path: string;
+    name: string;
+};
+
 type PickedFolderFlash = {
-    pickedFolder?: { path: string; name: string };
+    pickedFolder?: PickedFolder;
+    pickedFolders?: PickedFolder[];
 };
 
 function suggestedNameFrom(path: string): string {
     const normalized = path.replace(/\\/g, '/');
     const parts = normalized.split('/').filter(Boolean);
     return parts.length > 0 ? parts[parts.length - 1] : '';
+}
+
+function applySingleFolder(path: string, suggestedName?: string) {
+    mode.value = 'single';
+    form.path = path;
+    if (!form.name) {
+        form.name = suggestedName || suggestedNameFrom(path);
+    }
+    form.clearErrors();
+    batchForm.reset();
+    batchForm.clearErrors();
+}
+
+function applyBatchFolders(paths: string[]) {
+    mode.value = 'batch';
+    batchForm.paths = [...paths];
+    batchForm.clearErrors();
+    form.reset();
+    form.clearErrors();
 }
 
 function onChooseFolderClick() {
@@ -57,27 +82,25 @@ function onChooseFolderClick() {
 
 function onFoldersSelected(paths: string[]) {
     if (paths.length === 1) {
-        mode.value = 'single';
-        form.path = paths[0];
-        if (!form.name) {
-            form.name = suggestedNameFrom(paths[0]);
-        }
+        applySingleFolder(paths[0]);
     } else if (paths.length > 1) {
-        mode.value = 'batch';
-        batchForm.paths = [...paths];
+        applyBatchFolders(paths);
     }
 }
 
 function removeBatchFolder(index: number) {
     batchForm.paths.splice(index, 1);
+    batchForm.clearErrors();
     if (batchForm.paths.length === 1) {
         mode.value = 'single';
         form.path = batchForm.paths[0];
         form.name = suggestedNameFrom(batchForm.paths[0]);
+        form.clearErrors();
         batchForm.reset();
     } else if (batchForm.paths.length === 0) {
         mode.value = 'single';
         form.reset();
+        form.clearErrors();
         batchForm.reset();
     }
 }
@@ -88,7 +111,9 @@ function switchToSingle() {
         form.path = batchForm.paths[0];
         form.name = suggestedNameFrom(batchForm.paths[0]);
     }
+    form.clearErrors();
     batchForm.reset();
+    batchForm.clearErrors();
 }
 
 function chooseFolder() {
@@ -101,14 +126,26 @@ function chooseFolder() {
             preserveState: true,
             preserveScroll: true,
             onFlash: (flash) => {
-                const pickedFolder = (flash as PickedFolderFlash)?.pickedFolder;
+                const typedFlash = flash as PickedFolderFlash;
+                const pickedFolders = typedFlash?.pickedFolders;
+
+                if (pickedFolders && pickedFolders.length > 0) {
+                    if (pickedFolders.length === 1) {
+                        applySingleFolder(
+                            pickedFolders[0].path,
+                            pickedFolders[0].name,
+                        );
+                    } else {
+                        applyBatchFolders(pickedFolders.map((f) => f.path));
+                    }
+
+                    return;
+                }
+
+                const pickedFolder = typedFlash?.pickedFolder;
 
                 if (pickedFolder) {
-                    mode.value = 'single';
-                    form.path = pickedFolder.path;
-                    if (!form.name) {
-                        form.name = pickedFolder.name;
-                    }
+                    applySingleFolder(pickedFolder.path, pickedFolder.name);
                 }
             },
             onFinish: () => {
@@ -144,7 +181,9 @@ function submitBatch() {
 watch(open, (isOpen) => {
     if (!isOpen) {
         form.reset();
+        form.clearErrors();
         batchForm.reset();
+        batchForm.clearErrors();
         mode.value = 'single';
     }
 });
@@ -225,8 +264,8 @@ watch(open, (isOpen) => {
                 <DialogHeader>
                     <DialogTitle>Add existing folders</DialogTitle>
                     <DialogDescription>
-                        Review the {{ batchForm.paths.length }} folders to add as
-                        vaults.
+                        Review the {{ batchForm.paths.length }} folders to add
+                        as vaults.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -246,7 +285,8 @@ watch(open, (isOpen) => {
                                 variant="ghost"
                                 size="sm"
                                 class="h-7 text-xs"
-                                @click="browserOpen = true"
+                                :disabled="browsing"
+                                @click="onChooseFolderClick"
                             >
                                 Choose different folders…
                             </Button>

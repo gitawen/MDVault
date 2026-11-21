@@ -24,22 +24,65 @@ final class NativeDialogService
      */
     public function chooseDirectory(string $title, ?string $defaultPath = null): ?string
     {
+        $result = $this->openDirectoryDialog(
+            $title,
+            'Select folder',
+            ['openDirectory', 'createDirectory'],
+            $defaultPath,
+        );
+
+        return is_string($result) && $result !== '' ? $result : null;
+    }
+
+    /**
+     * Open the OS folder picker with multi-selection enabled. Returns an empty
+     * list when unavailable or cancelled.
+     *
+     * @return list<string>
+     */
+    public function chooseDirectories(string $title, ?string $defaultPath = null): array
+    {
+        $result = $this->openDirectoryDialog(
+            $title,
+            'Select folders',
+            ['openDirectory', 'createDirectory', 'multiSelections'],
+            $defaultPath,
+        );
+
+        if (! is_array($result)) {
+            return [];
+        }
+
+        $directories = [];
+
+        foreach ($result as $entry) {
+            if (is_string($entry) && $entry !== '' && ! in_array($entry, $directories, true)) {
+                $directories[] = $entry;
+            }
+        }
+
+        return $directories;
+    }
+
+    /**
+     * @param  list<string>  $properties
+     */
+    private function openDirectoryDialog(string $title, string $buttonLabel, array $properties, ?string $defaultPath): mixed
+    {
         if (! $this->isAvailable()) {
             return null;
         }
 
         $dialog = Dialog::new()
             ->title($title)
-            ->button('Select folder')
-            ->properties(['openDirectory', 'createDirectory']);
+            ->button($buttonLabel)
+            ->properties($properties);
 
         if ($defaultPath !== null && is_dir($defaultPath)) {
             $dialog->defaultPath($defaultPath);
         }
 
-        $result = $dialog->open();
-
-        return is_string($result) && $result !== '' ? $result : null;
+        return $dialog->open();
     }
 
     /**

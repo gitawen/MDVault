@@ -2,7 +2,7 @@
 
 # Multi-Agent Workflow (Claude Code & Antigravity)
 
-This repository uses a multi-agent engineering workflow. The **main session is the Workflow Orchestrator**: it triages each request, delegates to three specialist subagents and manages artifact state in `.ai/`. Supported tools: **Claude Code** and **Antigravity**.
+This repository uses a multi-agent engineering workflow. The **main session is the Workflow Orchestrator**: it triages each request, delegates to three specialist subagents and manages artifact state in **MDVault (`AI` vault)** via the `mdvault` MCP server (instead of local `.ai/features/active/` and `.ai/features/completed/`). Supported tools: **Claude Code** and **Antigravity**.
 
 ---
 
@@ -22,7 +22,7 @@ State the level before starting. When unsure, choose the higher level.
 | **1 — Mechanical** | Typo, formatting, copy change, simple docs, one-line fix | Orchestrator (or `senior-developer`) → test → done |
 | **2 — Routine** | Standard CRUD, single migration, controller/action, Form Request, ordinary Vue component | `senior-developer` → test → `senior-qa` when auth, validation, data integrity or many files are involved |
 | **3 — Complex** | Multi-module feature, business logic, schema change, external integration, major refactor | `system-analyst` (`requirements.md` + `plan.md`) → `senior-developer` (`implementation.md`) → `senior-qa` (`qa-report.md`) → complete / replan |
-| **4 — Architectural** | System redesign, core data model, security/auth architecture, critical performance | `system-analyst` (deep analysis + ADR in `.ai/decisions/` + `plan.md`) → `senior-developer` → `senior-qa` → `system-analyst` final review |
+| **4 — Architectural** | System redesign, core data model, security/auth architecture, critical performance | `system-analyst` (deep analysis + ADR in `AI/mdvault/decisions/` + `plan.md`) → `senior-developer` → `senior-qa` → `system-analyst` final review |
 
 Level 2+: the orchestrator does not write application code or tests itself.
 
@@ -32,7 +32,7 @@ Level 2+: the orchestrator does not write application code or tests itself.
 
 | Role | Claude Code model | Antigravity model | Write tools | Produces |
 |---|---|---|---|---|
-| `system-analyst` | `opus` | `pro` | No (read-only + web + Boost MCP) | `requirements.md`, `plan.md`, `.ai/decisions/<decision>.md` |
+| `system-analyst` | `opus` | `pro` | No (read-only + web + Boost MCP) | `requirements.md`, `plan.md`, `AI/mdvault/decisions/<decision>.md` |
 | `senior-developer` | `sonnet` | `flash` | Yes | Code, tests, `implementation.md` |
 | `senior-qa` | `sonnet` | `flash` | No (shell for tests only) | `qa-report.md` with MINOR / MODERATE / MAJOR issues |
 
@@ -53,12 +53,13 @@ Level 2+: the orchestrator does not write application code or tests itself.
 - **MODERATE** → `senior-developer` fixes within the existing design → `senior-qa` re-tests.
 - **MAJOR** → halt; `system-analyst` replans and updates `plan.md`.
 - **Circuit breaker**: any defect that survives **3 fix attempts** stops implementation and goes to `system-analyst` for root-cause analysis.
-- **PASS** (no open critical/high issues): Level 4 gets a `system-analyst` review first; then move `.ai/features/active/<feature>/` to `.ai/features/completed/<feature>/`.
+- **PASS** (no open critical/high issues): Level 4 gets a `system-analyst` review first; then move the feature notes from `AI/mdvault/features/active/<feature>/` to `AI/mdvault/features/completed/<feature>/` in MDVault (`move_note`).
 
 ---
 
 ## 6. Orchestrator Rules
-- Subagents start with no conversation context. Every prompt includes the **level**, the **feature folder path** and the **specific ask** (e.g. which QA issue IDs to fix).
+- **MDVault Memory (instead of `.ai/features/active` and `.ai/features/completed`)**: Store all session feature artifacts (`requirements.md`, `plan.md`, `implementation.md`, `qa-report.md`) in the `AI` vault under `AI/mdvault/features/active/<feature>/` and decisions under `AI/mdvault/decisions/` using `mdvault` MCP (`create_note`, `read_note`, `update_note`, `move_note`). Always call `read_note` to get the current `file_hash` before calling `update_note`.
+- Subagents start with no conversation context. Every prompt includes the **level**, the **MDVault feature path** (`AI/mdvault/features/active/<feature>/`, plus relevant plan/requirements content or `read_note` instructions) and the **specific ask** (e.g. which QA issue IDs to fix).
 - Subagents do not start other subagents (Claude Code forbids it; in Antigravity it is allowed but not used here). All routing happens in the main session.
 - Relay subagent results to the user in brief.
 

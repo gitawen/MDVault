@@ -4,6 +4,7 @@ use App\Enums\SettingKey;
 use App\Models\Note;
 use App\Models\Vault;
 use App\Services\SettingsService;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -95,17 +96,56 @@ test('browse flashes the picked folder path and suggested name', function () {
     $response->assertRedirect();
     $response->assertInertiaFlash('pickedFolder.path', $dir);
     $response->assertInertiaFlash('pickedFolder.name', 'Existing');
+    $response->assertInertiaFlash('pickedFolders', [
+        ['path' => $dir, 'name' => 'Existing'],
+    ]);
+
+    Http::assertSent(function (Request $request) {
+        return str_ends_with($request->url(), 'dialog/open')
+            && in_array('multiSelections', $request['properties'], true);
+    });
 
     expect(Vault::count())->toBe(0);
 });
 
-test('cancelling the browse dialog flashes nothing', function () {
+test('browse flashes pickedFolders when multiple folders are selected', function () {
     config(['nativephp-internal.running' => true]);
 
-    Http::fake(['*dialog/open' => Http::response(['result' => []])]);
+    $dir1 = $this->tmp.DIRECTORY_SEPARATOR.'First';
+    $dir2 = $this->tmp.DIRECTORY_SEPARATOR.'Second';
+    File::makeDirectory($dir1, 0755, true);
+    File::makeDirectory($dir2, 0755, true);
+
+    Http::fake(['*dialog/open' => Http::response(['result' => [$dir1, $dir2]])]);
 
     $response = $this->post(route('vaults.existing.browse'));
 
     $response->assertRedirect();
     $response->assertInertiaFlashMissing('pickedFolder');
+    $response->assertInertiaFlash('pickedFolders', [
+        ['path' => $dir1, 'name' => 'First'],
+        ['path' => $dir2, 'name' => 'Second'],
+    ]);
+
+    Http::assertSent(function (Request $request) {
+        return str_ends_with($request->url(), 'dialog/open')
+            && in_array('multiSelections', $request['properties'], true);
+    });
+
+    expect(Vault::count())->toBe(0);
 });
+
+test('cancelling the browse dialog flashes nothing', function (mixed $dialogResult) {
+    config(['nativephp-internal.running' => true]);
+
+    Http::fake(['*dialog/open' => Http::response(['result' => $dialogResult])]);
+
+    $response = $this->post(route('vaults.existing.browse'));
+
+    $response->assertRedirect();
+    $response->assertInertiaFlashMissing('pickedFolder');
+    $response->assertInertiaFlashMissing('pickedFolders');
+})->with([
+    'empty array' => [[]],
+    'null result' => [null],
+]);

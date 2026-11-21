@@ -105,13 +105,22 @@ class ExistingVaultController extends Controller
     {
         abort_unless($dialogs->isAvailable(), 404);
 
-        $chosen = $dialogs->chooseDirectory('Choose a folder to add as a vault', $paths->rootPath());
+        $chosen = $dialogs->chooseDirectories('Choose folders to add as vaults', $paths->rootPath());
 
-        if ($chosen === null) {
+        if ($chosen === []) {
             return back();
         }
 
-        Inertia::flash('pickedFolder', ['path' => $chosen, 'name' => $vaults->suggestedNameFor($chosen)]);
+        $folders = array_map(
+            fn (string $path): array => ['path' => $path, 'name' => $vaults->suggestedNameFor($path)],
+            $chosen,
+        );
+
+        Inertia::flash('pickedFolders', $folders);
+
+        if (count($folders) === 1) {
+            Inertia::flash('pickedFolder', $folders[0]);
+        }
 
         return back();
     }
