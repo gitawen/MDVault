@@ -41,10 +41,10 @@ You need `AGENTS.md` with a `<laravel-boost-guidelines>` block and `.mcp.json`. 
 ## Step 2: Create the folder structure
 
 ```bash
-mkdir -p .claude/agents .agents/agents
-mkdir -p .ai/templates .ai/decisions .ai/features/active .ai/features/completed
-touch .ai/decisions/.gitkeep .ai/features/active/.gitkeep .ai/features/completed/.gitkeep
+mkdir -p .claude/agents .agents/agents .ai/templates
 ```
+
+> **Note:** Feature artifacts (`features/active/`, `features/completed/`) and ADRs (`decisions/`) are stored in **MDVault (`AI` vault)** via the `mdvault` MCP server (`AI/<project>/...`) rather than local `.ai/decisions/` or `.ai/features/` directories.
 
 Target layout:
 
@@ -67,11 +67,7 @@ your-app/
 │       └── senior-qa.md
 └── .ai/
     ├── README.md             # Artifact lifecycle
-    ├── templates/            # requirements, plan, implementation, qa-report
-    ├── decisions/            # Architecture decision records
-    └── features/
-        ├── active/
-        └── completed/
+    └── templates/            # requirements, plan, implementation, qa-report
 ```
 
 ---
@@ -86,7 +82,7 @@ If Boost didn't create `AGENTS.md`, create the file with just this block.
 <multi-agent-workflow>
 # Multi-Agent Workflow (Claude Code & Antigravity)
 
-This repository uses a multi-agent engineering workflow. The **main session is the Workflow Orchestrator**: it triages each request, delegates to three specialist subagents and manages artifact state in `.ai/`. Supported tools: **Claude Code** and **Antigravity**.
+This repository uses a multi-agent engineering workflow. The **main session is the Workflow Orchestrator**: it triages each request, delegates to three specialist subagents and manages artifact state in **MDVault (`AI` vault)** via the `mdvault` MCP server (instead of local `.ai/features/active/` and `.ai/features/completed/`). Supported tools: **Claude Code** and **Antigravity**.
 
 ---
 
@@ -106,7 +102,7 @@ State the level before starting. When unsure, choose the higher level.
 | **1 — Mechanical** | Typo, formatting, copy change, simple docs, one-line fix | Orchestrator (or `senior-developer`) → test → done |
 | **2 — Routine** | Standard CRUD, single migration, controller/action, Form Request, ordinary Vue component | `senior-developer` → test → `senior-qa` when auth, validation, data integrity or many files are involved |
 | **3 — Complex** | Multi-module feature, business logic, schema change, external integration, major refactor | `system-analyst` (`requirements.md` + `plan.md`) → `senior-developer` (`implementation.md`) → `senior-qa` (`qa-report.md`) → complete / replan |
-| **4 — Architectural** | System redesign, core data model, security/auth architecture, critical performance | `system-analyst` (deep analysis + ADR in `.ai/decisions/` + `plan.md`) → `senior-developer` → `senior-qa` → `system-analyst` final review |
+| **4 — Architectural** | System redesign, core data model, security/auth architecture, critical performance | `system-analyst` (deep analysis + ADR in `AI/<project>/decisions/` + `plan.md`) → `senior-developer` → `senior-qa` → `system-analyst` final review |
 
 Level 2+: the orchestrator does not write application code or tests itself.
 
@@ -116,7 +112,7 @@ Level 2+: the orchestrator does not write application code or tests itself.
 
 | Role | Claude Code model | Antigravity model | Write tools | Produces |
 |---|---|---|---|---|
-| `system-analyst` | `opus` | `pro` | No (read-only + web + Boost MCP) | `requirements.md`, `plan.md`, `.ai/decisions/<decision>.md` |
+| `system-analyst` | `opus` | `pro` | No (read-only + web + Boost MCP) | `requirements.md`, `plan.md`, `AI/<project>/decisions/<decision>.md` |
 | `senior-developer` | `sonnet` | `flash` | Yes | Code, tests, `implementation.md` |
 | `senior-qa` | `sonnet` | `flash` | No (shell for tests only) | `qa-report.md` with MINOR / MODERATE / MAJOR issues |
 
@@ -137,12 +133,13 @@ Level 2+: the orchestrator does not write application code or tests itself.
 - **MODERATE** → `senior-developer` fixes within the existing design → `senior-qa` re-tests.
 - **MAJOR** → halt; `system-analyst` replans and updates `plan.md`.
 - **Circuit breaker**: any defect that survives **3 fix attempts** stops implementation and goes to `system-analyst` for root-cause analysis.
-- **PASS** (no open critical/high issues): Level 4 gets a `system-analyst` review first; then move `.ai/features/active/<feature>/` to `.ai/features/completed/<feature>/`.
+- **PASS** (no open critical/high issues): Level 4 gets a `system-analyst` review first; then move the feature notes from `AI/<project>/features/active/<feature>/` to `AI/<project>/features/completed/<feature>/` in MDVault (`move_note`).
 
 ---
 
 ## 6. Orchestrator Rules
-- Subagents start with no conversation context. Every prompt includes the **level**, the **feature folder path** and the **specific ask** (e.g. which QA issue IDs to fix).
+- **MDVault Memory (instead of `.ai/features/active` and `.ai/features/completed`)**: Store all session feature artifacts (`requirements.md`, `plan.md`, `implementation.md`, `qa-report.md`) in the `AI` vault under `AI/<project>/features/active/<feature>/` and decisions under `AI/<project>/decisions/` using `mdvault` MCP (`create_note`, `read_note`, `update_note`, `move_note`). Always call `read_note` to get the current `file_hash` before calling `update_note`.
+- Subagents start with no conversation context. Every prompt includes the **level**, the **MDVault feature path** (`AI/<project>/features/active/<feature>/`, plus relevant plan/requirements content or `read_note` instructions) and the **specific ask** (e.g. which QA issue IDs to fix).
 - Subagents do not start other subagents (Claude Code forbids it; in Antigravity it is allowed but not used here). All routing happens in the main session.
 - Relay subagent results to the user in brief.
 
@@ -208,17 +205,18 @@ Defined in `.claude/agents/`:
 Invoke them with the Agent tool:
 
 ```text
-Agent(subagent_type="system-analyst",   prompt="Level 3. Feature folder: .ai/features/active/<feature>/. Request: ...")
-Agent(subagent_type="senior-developer", prompt="Implement .ai/features/active/<feature>/plan.md (Revision 1).")
-Agent(subagent_type="senior-qa",        prompt="QA round 1 for .ai/features/active/<feature>/. Plan test scope applies.")
+Agent(subagent_type="system-analyst",   prompt="Level 3. MDVault feature path: AI/<project>/features/active/<feature>/. Request: ...")
+Agent(subagent_type="senior-developer", prompt="Implement AI/<project>/features/active/<feature>/plan.md (Revision 1) from MDVault (or inline plan below).")
+Agent(subagent_type="senior-qa",        prompt="QA round 1 for AI/<project>/features/active/<feature>/. Plan test scope applies.")
 ```
 
 ## Orchestrator Rules for Claude Code
-- Subagents start with no conversation context. Every prompt must include the level, the feature folder path and the specific ask (e.g. which QA issue IDs to fix).
+- **MDVault Memory**: Store feature artifacts (`requirements.md`, `plan.md`, `implementation.md`, `qa-report.md`) and ADRs in MDVault (`AI` vault) via `mdvault` MCP instead of creating local `.ai/features/active/` or `.ai/features/completed/` folders. Call `read_note` for `file_hash` before `update_note`.
+- Subagents start with no conversation context. Every prompt must include the level, the MDVault feature path (plus plan/requirements content if the subagent lacks `mdvault` MCP) and the specific ask (e.g. which QA issue IDs to fix).
 - Subagents cannot spawn subagents; all routing happens here.
-- `system-analyst` and `senior-qa` return artifacts preceded by `<!-- path: ... -->`. Save each one to that path verbatim before routing onward.
+- `system-analyst` and `senior-qa` return artifacts preceded by `<!-- path: ... -->`. Save each one to MDVault (`AI/<project>/...`) via `create_note` / `update_note` before routing onward.
 - After QA: route by the report's classification — MINOR/MODERATE → `senior-developer` with issue IDs; MAJOR or any issue at 3 fix attempts → `system-analyst` to replan.
-- On PASS: Level 4 gets an analyst review first; then move the feature folder to `.ai/features/completed/` and ask the user to run `php artisan test --compact`.
+- On PASS: Level 4 gets an analyst review first; then move the feature notes from `AI/<project>/features/active/<feature>/` to `AI/<project>/features/completed/<feature>/` in MDVault (`move_note`) and ask the user to run `php artisan test --compact`.
 - Relay subagent results to the user in brief; the user does not see subagent output directly.
 - Never add AI attribution (e.g. `Co-Authored-By` trailers) to commits or PRs.
 ````
@@ -245,7 +243,7 @@ model: opus
 ```markdown
 ---
 name: senior-developer
-description: Senior Developer. Use to implement Level 1-2 tasks and approved Level 3-4 plans from .ai/features/active/<feature>/plan.md, and to fix MINOR or MODERATE issues from a qa-report.md. Writes code and tests, runs Pint and the affected tests.
+description: Senior Developer. Use to implement Level 1-2 tasks and approved Level 3-4 plans from AI/<project>/features/active/<feature>/plan.md in MDVault, and to fix MINOR or MODERATE issues from a qa-report.md. Writes code and tests, runs Pint and the affected tests.
 model: sonnet
 ---
 ```
@@ -314,18 +312,19 @@ Each file sets `mainAgent: false`, so the specialists can't be selected as the m
 Delegate with the `invoke_subagent` tool, naming the specialist and giving it a self-contained prompt:
 
 ```text
-system-analyst   → "Level 3. Feature folder: .ai/features/active/<feature>/. Request: ..."
-senior-developer → "Implement .ai/features/active/<feature>/plan.md (Revision 1)."
-senior-qa        → "QA round 1 for .ai/features/active/<feature>/. Plan test scope applies."
+system-analyst   → "Level 3. MDVault feature path: AI/<project>/features/active/<feature>/. Request: ..."
+senior-developer → "Implement AI/<project>/features/active/<feature>/plan.md (Revision 1) from MDVault (or inline plan below)."
+senior-qa        → "QA round 1 for AI/<project>/features/active/<feature>/. Plan test scope applies."
 ```
 
 Specialists must not start further subagents, even though Antigravity allows nesting; all routing stays in the main session.
 
 ## Orchestrator Rules
-- Every specialist prompt includes the level, the feature folder path and the specific ask (e.g. which QA issue IDs to fix).
-- `system-analyst` and `senior-qa` return artifacts preceded by `<!-- path: ... -->`. Save each one to that path verbatim before routing onward.
+- **MDVault Memory**: Store feature artifacts (`requirements.md`, `plan.md`, `implementation.md`, `qa-report.md`) and ADRs in MDVault (`AI` vault) via `mdvault` MCP instead of creating local `.ai/features/active/` or `.ai/features/completed/` folders. Call `read_note` for `file_hash` before `update_note`.
+- Every specialist prompt includes the level, the MDVault feature path (plus plan/requirements content if the specialist lacks `mdvault` MCP) and the specific ask (e.g. which QA issue IDs to fix).
+- `system-analyst` and `senior-qa` return artifacts preceded by `<!-- path: ... -->`. Save each one to MDVault (`AI/<project>/...`) via `create_note` / `update_note` before routing onward.
 - After QA: MINOR/MODERATE → `senior-developer` with issue IDs; MAJOR or any issue at 3 fix attempts → `system-analyst` to replan.
-- On PASS: Level 4 gets an analyst review first; then move the feature folder to `.ai/features/completed/` and ask the user to run `php artisan test --compact`.
+- On PASS: Level 4 gets an analyst review first; then move the feature notes from `AI/<project>/features/active/<feature>/` to `AI/<project>/features/completed/<feature>/` in MDVault (`move_note`) and ask the user to run `php artisan test --compact`.
 ````
 
 ### 5b. Subagent frontmatter (`.agents/agents/`)
@@ -370,7 +369,7 @@ tools:
 ```markdown
 ---
 name: senior-developer
-description: Senior Developer. Use to implement Level 1-2 tasks and approved Level 3-4 plans from .ai/features/active/<feature>/plan.md, and to fix MINOR or MODERATE issues from a qa-report.md. Writes code and tests, runs Pint and the affected tests.
+description: Senior Developer. Use to implement Level 1-2 tasks and approved Level 3-4 plans from AI/<project>/features/active/<feature>/plan.md in MDVault, and to fix MINOR or MODERATE issues from a qa-report.md. Writes code and tests, runs Pint and the affected tests.
 model: flash
 mainAgent: false
 subagent: true
@@ -452,11 +451,11 @@ Your job is to reduce uncertainty. You analyse requirements, make architectural 
 4. Load the relevant skills (`laravel-best-practices`, `inertia-vue-development`, `testing-best-practices`, `fortify-development`, `wayfinder-development`, `tailwindcss-development`).
 
 ## Deliverables
-Feature folder: `.ai/features/active/<feature-name>/` (kebab-case).
+MDVault feature path: `AI/<project>/features/active/<feature-name>/` (kebab-case).
 
 - `requirements.md` — from `.ai/templates/requirements.md`
 - `plan.md` — from `.ai/templates/plan.md`
-- `.ai/decisions/<decision-name>.md` — one per significant architectural decision (always for Level 4; for Level 3 when a non-obvious trade-off was made). Record context, options considered, decision and consequences.
+- `AI/<project>/decisions/<decision-name>.md` — one per significant architectural decision (always for Level 4; for Level 3 when a non-obvious trade-off was made). Record context, options considered, decision and consequences.
 
 ### Plan Quality Bar
 - Every task names exact files to create or modify, the `php artisan make:... --no-interaction` command where applicable, and the behaviour to implement.
@@ -467,13 +466,13 @@ Feature folder: `.ai/features/active/<feature-name>/` (kebab-case).
 - Open questions are listed, never guessed. If an answer is needed from the user, set the plan status to `BLOCKED`.
 
 ## Writing Artifacts
-You have no write access to application code. Return every artifact in your final response as a complete markdown document, each preceded by a line with its target path:
+You have no write access to application code. Return every artifact in your final response as a complete markdown document, each preceded by a line with its target MDVault path:
 
 ```text
-<!-- path: .ai/features/active/<feature-name>/plan.md -->
+<!-- path: AI/<project>/features/active/<feature-name>/plan.md -->
 ```
 
-The orchestrator saves them. If your environment does grant file-write tools, write **only** inside `.ai/`.
+The orchestrator saves them in MDVault (`AI` vault). Do not write local `.ai/features/` or `.ai/decisions/` files.
 
 ## Replanning (MAJOR QA failure or circuit breaker)
 1. Read `qa-report.md`, `implementation.md` and the current `plan.md`.
@@ -499,7 +498,7 @@ You execute well-defined work precisely. **You implement plans; you do not redes
 
 ## Inputs
 - **Level 1–2**: the task description from the orchestrator.
-- **Level 3–4**: `.ai/features/active/<feature-name>/requirements.md` and `plan.md`. Read both fully before touching code. The plan is authoritative.
+- **Level 3–4**: `AI/<project>/features/active/<feature-name>/requirements.md` and `plan.md` in MDVault (via `read_note`, or provided by the orchestrator). Read both fully before touching code. The plan is authoritative.
 - **Fix rounds**: the latest `qa-report.md`. Address every issue ID assigned to you, and only those.
 
 ## Rules
@@ -513,7 +512,7 @@ You execute well-defined work precisely. **You implement plans; you do not redes
 8. Never change dependencies, create new base folders or delete tests without user approval.
 
 ## Implementation Record (Level 3–4)
-Create or update `.ai/features/active/<feature-name>/implementation.md` from `.ai/templates/implementation.md`: task progress, files changed, verification commands with results, deviations from the plan with reasons, and notes for QA. On fix rounds, append a `Fix Round N` section.
+Create or update `AI/<project>/features/active/<feature-name>/implementation.md` in MDVault (using `.ai/templates/implementation.md` as the structure): task progress, files changed, verification commands with results, deviations from the plan with reasons, and notes for QA. On fix rounds, append a `Fix Round N` section. If `mdvault` MCP is unavailable in this subagent, return the document preceded by `<!-- path: AI/<project>/features/active/<feature-name>/implementation.md -->` for the orchestrator to save.
 
 ## Final Response
 Summarise: tasks completed, files changed, test commands and results (paste failures verbatim), deviations from the plan, and anything QA should examine closely. If blocked, say exactly what is blocking and who must resolve it.
@@ -529,7 +528,7 @@ You are the **Senior QA Engineer** for <App Name> — a Laravel / PHP 8.4 applic
 You verify skeptically. Assume the implementation has defects until evidence proves otherwise. **You never modify application code or tests** — you report; the Developer fixes.
 
 ## Inputs
-- **Level 3–4**: `requirements.md`, `plan.md`, `implementation.md` and any previous `qa-report.md` in `.ai/features/active/<feature-name>/`.
+- **Level 3–4**: `requirements.md`, `plan.md`, `implementation.md` and any previous `qa-report.md` in `AI/<project>/features/active/<feature-name>/` (in MDVault).
 - **Level 2**: the task description and the list of changed files from the orchestrator.
 - Changed files: use the file list in `implementation.md`; if the project is a git repository, also inspect `git diff` / `git status`.
 
@@ -554,10 +553,10 @@ You verify skeptically. Assume the implementation has defects until evidence pro
 You have no write access to application code. Return the complete `qa-report.md` (from `.ai/templates/qa-report.md`) in your final response, preceded by:
 
 ```text
-<!-- path: .ai/features/active/<feature-name>/qa-report.md -->
+<!-- path: AI/<project>/features/active/<feature-name>/qa-report.md -->
 ```
 
-The orchestrator saves it. If your environment grants file-write tools, write **only** inside `.ai/`. For Level 2 work without a feature folder, return the verdict and issue table inline.
+The orchestrator saves it in MDVault (`AI` vault). Do not write local `.ai/features/` files. For Level 2 work without a feature path, return the verdict and issue table inline.
 
 ## Final Response
 End with: verdict, counts by severity, and routing — which issue IDs go to the Developer and which to the System Analyst.
@@ -581,20 +580,23 @@ Persistent state for multi-agent development: requirements, plans, implementatio
 ```text
 .ai/
 ├── README.md
+└── templates/                      # requirements, plan, implementation, qa-report
+
+MDVault (`AI` vault via `mdvault` MCP):
+AI/<project>/
 ├── features/
 │   ├── active/<feature-name>/      # requirements.md, plan.md, implementation.md, qa-report.md
 │   └── completed/<feature-name>/   # features that passed QA
-├── decisions/                      # Architectural Decision Records (ADRs)
-└── templates/                      # requirements, plan, implementation, qa-report
+└── decisions/                      # Architectural Decision Records (ADRs)
 ```
 
 ## Lifecycle of a Feature
-1. **Initiation**: the orchestrator receives a Level 3–4 request and creates `.ai/features/active/<feature-name>/`.
-2. **Analysis & Planning**: System Analyst produces `requirements.md`, `plan.md` and any `.ai/decisions/<decision>.md`. Analyst and QA have no write tools: they return each artifact preceded by `<!-- path: ... -->` and the orchestrator saves it.
+1. **Initiation**: the orchestrator receives a Level 3–4 request and sets the MDVault feature path `AI/<project>/features/active/<feature-name>/`.
+2. **Analysis & Planning**: System Analyst produces `requirements.md`, `plan.md` and any `AI/<project>/decisions/<decision>.md`. Analyst and QA have no write tools: they return each artifact preceded by `<!-- path: ... -->` and the orchestrator saves it in MDVault (`create_note` / `update_note`).
 3. **Implementation**: Senior Developer follows `plan.md`, records progress in `implementation.md`, runs Pint and the scoped tests.
 4. **Verification**: Senior QA reviews the diff against `requirements.md` and `plan.md`, runs the test scope, PHPStan and type checks, and returns `qa-report.md`.
 5. **Feedback Loop**:
-   - **PASS**: Level 4 gets an Analyst review first; then move the folder to `.ai/features/completed/` and ask the user to run `php artisan test --compact`.
+   - **PASS**: Level 4 gets an Analyst review first; then move the feature notes to `AI/<project>/features/completed/<feature-name>/` in MDVault (`move_note`) and ask the user to run `php artisan test --compact`.
    - **MINOR / MODERATE**: Developer fixes; QA re-tests.
    - **MAJOR**: System Analyst replans and updates `plan.md`.
    - **Circuit breaker**: a defect surviving **3 fix attempts** goes to the System Analyst for root-cause review.
@@ -703,7 +705,7 @@ The role prompt bodies in `.claude/agents/` and `.agents/agents/` are identical 
 ## 2. Architecture & Design
 - **Approach**: [Chosen design and why]
 - **Alternatives Considered**: [Option — reason rejected]
-- **Decision Records**: [`.ai/decisions/<decision-name>.md`, or "None"]
+- **Decision Records**: [`AI/<project>/decisions/<decision-name>.md`, or "None"]
 
 ### Data Model Changes
 | Table | Change | Columns / Indexes / Constraints |
@@ -886,7 +888,7 @@ The role prompt bodies in `.claude/agents/` and `.agents/agents/` are identical 
 ---
 
 ## 5. Routing Recommendation
-- [ ] **PASS** → move feature to `.ai/features/completed/`
+- [ ] **PASS** → move feature notes to `AI/<project>/features/completed/` in MDVault (`move_note`)
 - [ ] **FAIL — MINOR/MODERATE** → Senior Developer: [issue IDs]
 - [ ] **FAIL — MAJOR** → System Analyst: [issue IDs and why the plan must change]
 ````
@@ -911,7 +913,7 @@ Also keep these folders out of production builds and deploy artifacts: `.ai`, `.
 3. Run `/agents`. `system-analyst`, `senior-developer` and `senior-qa` should be listed under the project agents.
 4. Run `/mcp`. `laravel-boost` should be **connected**.
 5. Ask: *"Which level is this request and which subagent would you use: add a `title` validation rule to the post form?"* Expected: Level 2 and `senior-developer`.
-6. Real test: give it a small Level 3 feature (e.g. "add tags to posts"). It should create `.ai/features/active/<feature>/`, call `system-analyst`, save `requirements.md` and `plan.md`, then route to `senior-developer` and `senior-qa`.
+6. Real test: give it a small Level 3 feature (e.g. "add tags to posts"). It should call `system-analyst`, save `requirements.md` and `plan.md` in MDVault under `AI/<project>/features/active/<feature>/`, then route to `senior-developer` and `senior-qa`.
 
 ### Antigravity
 1. Open the project folder in Antigravity and start a new agent conversation.
